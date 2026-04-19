@@ -1,11 +1,7 @@
 # Transferly — Architecture du projet
 > Groupe 4 · INPT 2025/2026 · Mini-projet ICCN INE1
 
-**Légende**
-- `[YOUR TASK]` — fichier de votre tâche JWT
-- `[EXISTS]` — déjà dans le projet
-- `[CREATE]` — à créer avant de commencer
-- `[GENERATED]` — généré automatiquement
+
 
 ---
 
