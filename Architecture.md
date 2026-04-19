@@ -12,15 +12,15 @@
 transferly-frontend/
 │
 ├── src/
-│   ├── pages/                        [EXISTS]  ← Login, Dashboard, Files…
-│   ├── components/                   [EXISTS]  ← UI components React
+│   ├── pages/                          ← Login, Dashboard, Files…
+│   ├── components/                    ← UI components React
 │   ├── utils/
-│   │   └── acl.js                    [EXISTS]  ← masque les ressources interdites
+│   │   └── acl.js                      ← masque les ressources interdites
 │   └── api/
-│       ├── auth.js                   [EXISTS]  ← stocke + envoie le JWT dans chaque requête
-│       └── files.js                  [EXISTS]  ← fetch / axios vers le backend
+│       ├── auth.js                     ← stocke + envoie le JWT dans chaque requête
+│       └── files.js                   ← fetch / axios vers le backend
 │
-└── .env                              [CREATE]  ← REACT_APP_API_URL=http://vm2-ip:5000
+└── .env                               ← REACT_APP_API_URL=http://vm2-ip:5000
 ```
 
 ---
@@ -33,42 +33,42 @@ transferly-backend/
 │
 ├── app/
 │   │
-│   ├── __init__.py                   [EXISTS]   ← app factory · enregistre les blueprints
+│   ├── __init__.py                     ← app factory · enregistre les blueprints
 │   │
-│   ├── middleware.py                 [YOUR TASK] ← @before_request · decode JWT · g.user
-│   ├── decorators.py                 [YOUR TASK] ← @require_role('AdminGlobal' / 'AdminEspace')
+│   ├── middleware.py                  ← @before_request · decode JWT · g.user
+│   ├── decorators.py                  ← @require_role('AdminGlobal' / 'AdminEspace')
 │   │                                              ← renvoie 401 (no token) ou 403 (wrong role)
 │   │
 │   ├── routes/
-│   │   ├── auth.py                   [EXISTS]   ← /login · /register · /mfa · émet le JWT
-│   │   ├── files.py                  [EXISTS]   ← upload · download · versions
+│   │   ├── auth.py                      ← /login · /register · /mfa · émet le JWT
+│   │   ├── files.py                     ← upload · download · versions
 │   │   │                                          utilisera @require_role
-│   │   ├── admin_global.py           [EXISTS]   ← gestion users · quotas · logs
+│   │   ├── admin_global.py              ← gestion users · quotas · logs
 │   │   │                                          @require_role('AdminGlobal')
-│   │   ├── admin_espace.py           [EXISTS]   ← ACL · invitations · espace
+│   │   ├── admin_espace.py              ← ACL · invitations · espace
 │   │   │                                          @require_role('AdminEspace')
-│   │   └── acl.py                    [EXISTS]   ← moteur ACL · 6 permissions
+│   │   └── acl.py                      ← moteur ACL · 6 permissions
 │   │
 │   ├── models/
-│   │   ├── user.py                   [EXISTS]   ← id · email · role · motDePasseHash
-│   │   ├── file.py                   [EXISTS]   ← nom · taille · dateCreation · owner
-│   │   ├── acl.py                    [EXISTS]   ← lecture · écriture · upload · download…
-│   │   ├── log.py                    [EXISTS]   ← action · userId · horodatage · statut
-│   │   └── version.py                [EXISTS]   ← numeroVersion · date · auteur · SHA-256
+│   │   ├── user.py                      ← id · email · role · motDePasseHash
+│   │   ├── file.py                      ← nom · taille · dateCreation · owner
+│   │   ├── acl.py                      ← lecture · écriture · upload · download…
+│   │   ├── log.py                      ← action · userId · horodatage · statut
+│   │   └── version.py                   ← numeroVersion · date · auteur · SHA-256
 │   │
 │   └── services/
-│       ├── crypto.py                 [EXISTS]   ← chiffrement AES · Fernet
-│       ├── mfa.py                    [EXISTS]   ← génération OTP (PyOTP)
-│       └── logger.py                 [EXISTS]   ← journalisation horodatée de toutes les actions
+│       ├── crypto.py                   ← chiffrement AES · Fernet
+│       ├── mfa.py                      ← génération OTP (PyOTP)
+│       └── logger.py                   ← journalisation horodatée de toutes les actions
 │
-├── run.py                            [EXISTS]   ← point d'entrée Flask
+├── run.py                               ← point d'entrée Flask
 │
-├── .env                              [CREATE]   ← SECRET_KEY · FERNET_KEY · DATABASE_URL
-├── requirements.txt                  [CREATE]   ← flask · pyjwt · bcrypt · pyotp · cryptography
-├── .gitignore                        [CREATE]   ← .env · __pycache__/ · *.db · uploads/
+├── .env                                 ← SECRET_KEY · FERNET_KEY · DATABASE_URL
+├── requirements.txt                    ← flask · pyjwt · bcrypt · pyotp · cryptography
+├── .gitignore                           ← .env · __pycache__/ · *.db · uploads/
 │
-├── transferly.db                     [GENERATED] ← base SQLite · créée automatiquement
-└── uploads/                          [GENERATED] ← fichiers chiffrés AES · organisés par user
+├── transferly.db                      ← base SQLite · créée automatiquement
+└── uploads/                           ← fichiers chiffrés AES · organisés par user
 ```
 
 ---
