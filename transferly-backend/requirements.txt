@@ -1,6 +1,0 @@
-flask
-pyjwt
-bcrypt
-pyotp
-cryptography
-python-dotenv
