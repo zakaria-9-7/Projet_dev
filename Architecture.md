@@ -77,7 +77,7 @@ transferly-backend/
 │
 ├── run.py                             ← point d'entrée Flask · appelle create_app()
 │
-├── .env                               ← SECRET_KEY · FERNET_KEY · DATABASE_URL ⚠️ ne jamais commit
+├── .env                               ← SECRET_KEY · FERNET_KEY · DATABASE_URL 
 ├── requirements.txt                   ← flask · pyjwt · bcrypt · pyotp · cryptography · python-dotenv · flask-sqlalchemy
 ├── .gitignore                         ← .env · __pycache__/ · *.pyc · *.db · uploads/ · .key
 │
@@ -121,38 +121,3 @@ Client (navigateur)
 
 ---
 
-## Répartition des tâches
-
-| ID | Développeur | Fichiers concernés |
-|---|---|---|
-| SD-01 | Salma | `models/` · `app/__init__.py` · `flask init-db` |
-| SD-03 | Salma | `routes/auth.py` · `services/mfa.py` |
-| SD-04 | Salma | `routes/auth.py` · génération JWT HttpOnly |
-| SD-05 | Salma | `services/crypto.py` |
-| SD-06 | Salma | `pages/Login.jsx` · `Register.jsx` · `OTP.jsx` |
-| SD-07 | Salma | `pages/Dashboard.jsx` |
-| IE-01 | Imane | `routes/acl.py` · `@require_permission` |
-| IE-02 | Imane | `routes/acl.py` · CRUD ACL AdminEspace |
-| IE-03 | Imane | `routes/files.py` · upload |
-| IE-04 | Imane | `routes/files.py` · download |
-| IE-05 | Imane | `routes/files.py` · partage |
-| IE-06 | Imane | `pages/AdminEspace.jsx` |
-| NE-01 | Nizar | versionnement automatique |
-| NE-02 | Nizar | `routes/versions.py` |
-| NE-03 | Nizar | `routes/folders.py` · PUT/DELETE fichiers |
-| NE-04 | Nizar | verrouillage concurrent threading |
-| NE-05 | Nizar | `pages/MyFiles.jsx` |
-| NE-06 | Nizar | `pages/FileVersions.jsx` |
-| ZT-01 | Zakaria | `services/logger.py` |
-| ZT-02 | Zakaria | `routes/logs.py` |
-| ZT-03 | Zakaria | `services/quota.py` |
-| ZT-05 | Zakaria | `components/UploadZone.jsx` |
-| JA-01 | Jean-Arthur | `routes/admin_global.py` |
-| JA-02 | Jean-Arthur | `routes/admin_espace.py` |
-| JA-03 | Jean-Arthur | `middleware.py` · `decorators.py` · `app/__init__.py` ✅ |
-| JA-04 | Jean-Arthur | `routes/files.py` · filtrage ACL visuel |
-
----
-
-> ⚠️ **Coordination critique** : le JWT sera stocké dans un cookie HttpOnly (SD-04).
-> Le `middleware.py` devra lire le token via `request.cookies.get('access_token')` et non depuis le header `Authorization`. À confirmer avec Salma.
