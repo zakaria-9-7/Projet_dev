@@ -1,10 +1,12 @@
-markdown# Transferly — Architecture du projet
+# Transferly — Architecture du projet
 > Groupe 4 · INPT 2025/2026 · Mini-projet ICCN INE1
 
 ---
 
 ## VM 1 — Frontend · Zone DMZ
 > React.js · Nginx · Zone exposée
+
+```
 transferly-frontend/
 │
 ├── src/
@@ -29,16 +31,19 @@ transferly-frontend/
 │       └── files.js                   ← fetch / axios vers le backend
 │
 └── .env                               ← REACT_APP_API_URL=http://vm2-ip:5000
+```
 
 ---
 
 ## VM 2 — Backend · Zone interne
 > Flask · Python · SQLite · Zone sécurisée (jamais exposée directement)
+
+```
 transferly-backend/
 │
 ├── app/
 │   │
-│   ├── init.py                    ← app factory · blueprints · branche le middleware
+│   ├── __init__.py                    ← app factory · blueprints · branche le middleware
 │   │
 │   ├── middleware.py                  ← JA-03 · @before_request · decode JWT · injecte g.user
 │   ├── decorators.py                  ← JA-03 · @require_role('AdminGlobal'/'AdminEspace') · 401/403
@@ -74,31 +79,35 @@ transferly-backend/
 │
 ├── .env                               ← SECRET_KEY · FERNET_KEY · DATABASE_URL ⚠️ ne jamais commit
 ├── requirements.txt                   ← flask · pyjwt · bcrypt · pyotp · cryptography · python-dotenv · flask-sqlalchemy
-├── .gitignore                         ← .env · pycache/ · *.pyc · *.db · uploads/ · .key
+├── .gitignore                         ← .env · __pycache__/ · *.pyc · *.db · uploads/ · .key
 │
 ├── transferly.db                      ← créée automatiquement par flask init-db
 └── uploads/                           ← fichiers chiffrés AES · organisés par user_{id}/
+```
 
 ---
 
 ## Communication inter-VMs
+
+```
 Client (navigateur)
-│
-│  HTTPS
-▼
+      │
+      │  HTTPS
+      ▼
 ┌─────────────────────────────┐
 │  VM 1 — Frontend (DMZ)      │
 │  React + Nginx              │
 │  Filtre ACL visuel          │
 └─────────────┬───────────────┘
-│
-│  HTTPS · JWT HttpOnly · API REST · VLAN privé
-▼
+              │
+              │  HTTPS · JWT HttpOnly · API REST · VLAN privé
+              ▼
 ┌─────────────────────────────┐
 │  VM 2 — Backend (interne)   │
 │  Flask · SQLite · uploads/  │
 │  ACL · Crypto · Logs        │
 └─────────────────────────────┘
+```
 
 ---
 
