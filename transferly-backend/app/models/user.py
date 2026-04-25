@@ -10,7 +10,7 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(50), default='Utilisateur')
     statut = db.Column(db.String(20), default='actif')
-    quota = db.Column(db.Float, default=10.0)
+    quota = db.Column(db.Float, default=2.0)
     quota_utilise = db.Column(db.Float, default=0.0)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
 

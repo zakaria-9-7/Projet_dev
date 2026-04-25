@@ -8,6 +8,7 @@ from app.routes.files import files_bp
 from app.routes.admin_global import admin_global_bp
 from app.routes.admin_espace import admin_espace_bp
 from app.routes.acl import acl_bp
+from flask_cors import CORS
 
 load_dotenv()
 
@@ -22,6 +23,7 @@ def create_app():
 
     db.init_app(app)
     bcrypt.init_app(app)
+    CORS(app)
 
     register_middleware(app)
 
