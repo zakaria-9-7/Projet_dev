@@ -21,6 +21,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify, g, send_file
 from app.extensions import db
 from app.models.fichier import Fichier
+from app.decorators import require_role
 from app.models.acl import ACL
 from app.models.user import User
 from app.models.log import Log
@@ -348,7 +349,23 @@ def _log(user_id: int, action: str, statut: str):
         db.session.commit()
     except Exception:
         pass
-
+      
+@files_bp.route('/files/', methods=['GET'])
+def get_files():
+    user_id = g.user['id']
+    fichiers = db.session.query(File)\
+        .join(ACL, ACL.fichier_id == File.id)\
+        .filter(ACL.user_id == user_id, ACL.lecture == True)\
+        .all()
+    result = []
+    for f in fichiers :
+        result.append({
+            'id' : f.id,
+            'nom' : f.nom,
+            'taille' : f.taille,
+            'date_creation' : f.dateCreation
+        })
+    return jsonify({'files' : result}), 200
 
 def _fichier_to_dict(f: Fichier) -> dict:
     return {
