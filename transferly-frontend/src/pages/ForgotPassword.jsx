@@ -14,6 +14,7 @@ export default function ForgotPassword() {
     } catch (err) {
       console.error(err);
     }
+    // TODO: appel API reset password (ZT-04)
     setSent(true);
   };
 
