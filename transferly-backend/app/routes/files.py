@@ -3,9 +3,9 @@ import os
 import threading
 import hashlib
 from flask import Blueprint, request, jsonify, g
-from app.routes.acl import require_permission # Importé depuis le module d'Imane
-from app.services.crypto import encrypt_file # Importé depuis le module de Salma
-# from app.models.file import File
+from app.routes.acl import require_permission  # Importé depuis le module d'Imane
+from app.crypto import encrypt_file             # Importé depuis le module de Salma
+# from app.models.fichier import Fichier
 # from app.models.version import VersionFichier
 # from app import db
 

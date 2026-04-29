@@ -3,6 +3,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import OTP from './pages/OTP';
 import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 
 function PrivateRoute({ children }) {
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/otp" element={<OTP />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/dashboard" element={
           <PrivateRoute><Dashboard /></PrivateRoute>
         } />

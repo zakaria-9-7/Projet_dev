@@ -128,3 +128,112 @@ def logout():
         db.session.add(log)
         db.session.commit()
     return jsonify({'message': 'Déconnecté'}), 200
+
+
+# ══════════════════════════════════════════════════════════════════
+# ZT-04 — Reset mot de passe sécurisé (HMAC + email)
+# ══════════════════════════════════════════════════════════════════
+
+import time
+import hmac
+import hashlib
+
+RESET_TOKEN_TTL = 15 * 60
+
+def _generate_reset_token(user_id: int, email: str) -> str:
+    secret = os.getenv('SECRET_KEY', 'devsecret').encode()
+    expiry = int(time.time()) + RESET_TOKEN_TTL
+    payload = f"{expiry}.{user_id}.{email}"
+    sig = hmac.new(secret, payload.encode(), hashlib.sha256).hexdigest()
+    return f"{expiry}.{user_id}.{sig}"
+
+def _verify_reset_token(token: str):
+    try:
+        parts = token.split('.')
+        if len(parts) != 3:
+            return None, 'Token malformé'
+
+        expiry_str, user_id_str, received_sig = parts
+        expiry = int(expiry_str)
+        user_id = int(user_id_str)
+
+        if int(time.time()) > expiry:
+            return None, 'Token expiré'
+
+        user = User.query.get(user_id)
+        if not user:
+            return None, 'Utilisateur introuvable'
+
+        secret = os.getenv('SECRET_KEY', 'devsecret').encode()
+        payload = f"{expiry}.{user_id}.{user.email}"
+        expected_sig = hmac.new(secret, payload.encode(), hashlib.sha256).hexdigest()
+
+        if not hmac.compare_digest(expected_sig, received_sig):
+            return None, 'Signature invalide'
+
+        return user_id, None
+    except (ValueError, AttributeError):
+        return None, 'Token invalide'
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+
+    NEUTRAL = {'message': 'Si cette adresse est connue, un lien vous a été envoyé.'}
+
+    if not email or not re.match(r'^[\w.-]+@[\w.-]+\.\w+$', email):
+        return jsonify(NEUTRAL), 200
+
+    user = User.query.filter_by(email=email).first()
+
+    if user:
+        token = _generate_reset_token(user.id, user.email)
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        reset_url = f"{frontend_url}/reset-password/{token}"
+
+        print(f"[DEV] Reset password pour {user.email}")
+        print(f"[DEV] URL : {reset_url}")
+
+        from app.services.logger import log_action
+        log_action(
+            user_id=user.id,
+            action='reset_password_demande',
+            statut='succes',
+            details=f'Token HMAC généré, expire dans {RESET_TOKEN_TTL}s'
+        )
+
+    return jsonify(NEUTRAL), 200
+
+@auth_bp.route('/reset-password/<token>', methods=['POST'])
+def reset_password(token):
+    data = request.get_json(silent=True) or {}
+    new_password = data.get('password', '')
+
+    if len(new_password) < 8:
+        return jsonify({'error': 'Mot de passe trop court (min 8 caractères)'}), 400
+
+    user_id, error = _verify_reset_token(token)
+    if error:
+        return jsonify({'error': error}), 400
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
+
+    user.password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+
+    if user.statut == 'bloque':
+        user.statut = 'actif'
+
+    from app.services.logger import log_action
+    log_action(
+        user_id=user.id,
+        action='reset_password_succes',
+        statut='succes',
+        details='Mot de passe réinitialisé via lien HMAC'
+    )
+    db.session.commit()
+
+    return jsonify({'message': 'Mot de passe réinitialisé avec succès'}), 200
+    return jsonify({'message': 'Déconnecté'}), 200

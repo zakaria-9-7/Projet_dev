@@ -18,6 +18,10 @@ from app.models.log import Log
 from datetime import datetime
 from functools import wraps
 
+# Re-export du moteur ACL central (IE-01) — permet à tous les autres
+# modules de faire : from app.routes.acl import require_permission
+from app.acl_engine import require_permission, check_permission, grant_owner_permissions  # noqa: F401
+
 acl_bp = Blueprint("acl", __name__, url_prefix="/acl")
 
 

@@ -2,7 +2,7 @@ import jwt
 import os
 from flask import request, g, jsonify
 
-PUBLIC_ROUTES = ['/register', '/login', '/mfa/verify']
+PUBLIC_ROUTES = ['/register', '/login', '/mfa/verify', '/forgot-password']
 
 def register_middleware(app):
     @app.before_request
@@ -11,7 +11,7 @@ def register_middleware(app):
         if request.method == 'OPTIONS' :
             return 
 
-        if request.path in PUBLIC_ROUTES :
+        if request.path in PUBLIC_ROUTES or request.path.startswith('/reset-password/') :
             return 
 
         header = request.headers.get('Authorization', '')

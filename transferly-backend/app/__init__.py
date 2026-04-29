@@ -25,6 +25,8 @@ def create_app():
     bcrypt.init_app(app)
     CORS(app)
 
+    from app.routes.quota import quota_bp
+
     register_middleware(app)
 
     app.register_blueprint(auth_bp)
@@ -32,6 +34,10 @@ def create_app():
     app.register_blueprint(admin_global_bp)
     app.register_blueprint(admin_espace_bp)
     app.register_blueprint(acl_bp)
+    app.register_blueprint(quota_bp)
+
+    with app.app_context():
+        db.create_all()
 
     with app.app_context():
         db.create_all()

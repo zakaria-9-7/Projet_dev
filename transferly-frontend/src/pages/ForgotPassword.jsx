@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { forgotPassword } from '../api/auth';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -8,6 +9,11 @@ export default function ForgotPassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    try {
+      await forgotPassword({ email });
+    } catch (err) {
+      console.error(err);
+    }
     // TODO: appel API reset password (ZT-04)
     setSent(true);
   };

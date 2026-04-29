@@ -16,5 +16,7 @@ export const register = (data) => API.post('/register', data);
 export const login = (data) => API.post('/login', data);
 export const verifyOTP = (data) => API.post('/mfa/verify', data);
 export const logout = () => API.post('/logout');
+export const forgotPassword = (data) => API.post('/forgot-password', data);
+export const resetPassword = (token, data) => API.post(`/reset-password/${token}`, data);
 
 export default API;
