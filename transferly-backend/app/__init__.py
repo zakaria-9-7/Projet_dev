@@ -11,9 +11,11 @@ from app.routes.acl import acl_bp
 from app.routes.logs import logs_bp
 from app.routes.folders import folders_bp
 from app.routes.version import versions_bp
+from app.routes.quota import quota_bp
 from flask_cors import CORS
 
 load_dotenv()
+
 
 def create_app():
     app = Flask(__name__)
@@ -27,8 +29,6 @@ def create_app():
     db.init_app(app)
     bcrypt.init_app(app)
     CORS(app, origins='*', supports_credentials=True)
-
-    from app.routes.quota import quota_bp
 
     register_middleware(app)
 
@@ -44,5 +44,31 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+
+        from app.models.user import User
+
+        admin_email = os.getenv('ADMIN_EMAIL', 'admin@transferly.local')
+        admin_password = os.getenv('ADMIN_PASSWORD', 'TransferlyAdmin2026!')
+        admin_nom = os.getenv('ADMIN_NOM', 'Super Admin')
+
+        if not User.query.filter_by(email=admin_email).first():
+            hashed = bcrypt.generate_password_hash(admin_password).decode('utf-8')
+            admin = User(
+                nom=admin_nom,
+                email=admin_email,
+                password=hashed,
+                role='AdminGlobal',
+                statut='actif',
+                quota=1000.0,
+            )
+            db.session.add(admin)
+            db.session.commit()
+
+            print("=" * 50)
+            print("  AdminGlobal seed cree")
+            print(f"  Email    : {admin_email}")
+            print(f"  Password : {admin_password}")
+            print("  A CHANGER EN PRODUCTION via .env")
+            print("=" * 50)
 
     return app

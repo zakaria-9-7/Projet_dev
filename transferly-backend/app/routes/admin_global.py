@@ -78,6 +78,53 @@ def delete_user(user_id):
     return  jsonify({'message' : 'utilisateur supprimé avec succès'}), 200
 
 
+@admin_global_bp.route('/admin/files', methods=['GET'])
+@require_role('AdminGlobal')
+def get_all_files():
+    from app.models.fichier import Fichier
+    fichiers = Fichier.query.all()
+    result = []
+    for f in fichiers:
+        owner = User.query.get(f.user_id)
+        result.append({
+            'id': f.id,
+            'nom': f.nom,
+            'taille': f.taille,
+            'user_id': f.user_id,
+            'owner_nom': owner.nom if owner else None,
+            'owner_email': owner.email if owner else None,
+            'espace_id': f.espace_id,
+            'date_creation': f.date_creation.isoformat() if f.date_creation else None
+        })
+    return jsonify(result), 200
+
+
+@admin_global_bp.route('/admin/users/<int:user_id>/quota', methods=['PUT'])
+@require_role('AdminGlobal')
+def admin_update_quota(user_id):
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({'error': 'Utilisateur inexistant'}), 404
+    data = request.get_json(silent=True) or {}
+    quota = data.get('quota')
+    if quota is None or float(quota) <= 0:
+        return jsonify({'error': 'Quota invalide'}), 400
+    user.quota = float(quota)
+    db.session.commit()
+    return jsonify({'message': 'Quota mis à jour', 'quota': user.quota}), 200
+
+
+@admin_global_bp.route('/admin/users/<int:user_id>/suspend', methods=['POST'])
+@require_role('AdminGlobal')
+def admin_suspend_user(user_id):
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({'error': 'Utilisateur inexistant'}), 404
+    user.statut = 'bloque' if user.statut == 'actif' else 'actif'
+    db.session.commit()
+    return jsonify({'message': f'Utilisateur {user.statut}', 'statut': user.statut}), 200
+
+
 @admin_global_bp.route('/admin/users/<int:user_id>/role', methods=['PUT'])
 @require_role('AdminGlobal')
 def update_user_role(user_id):

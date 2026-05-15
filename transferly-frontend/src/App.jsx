@@ -8,6 +8,7 @@ import ResetPassword  from './pages/ResetPassword';
 import Dashboard      from './pages/Dashboard';
 import MyFiles        from './pages/MyFiles';
 import AdminGlobal    from './pages/AdminGlobal';
+import AdminPanel     from './pages/AdminPanel';
 import SharedWithMe   from './pages/SharedWithMe';
 import FileVersions   from './pages/FileVersions';
 import AdminEspace    from './pages/AdminEspace';
@@ -36,7 +37,7 @@ export default function App() {
         <Route path="/files"        element={<PrivateRoute><MyFiles /></PrivateRoute>} />
         <Route path="/shared"       element={<PrivateRoute><SharedWithMe /></PrivateRoute>} />
         <Route path="/versions"         element={<PrivateRoute><FileVersions /></PrivateRoute>} />
-        <Route path="/admin"        element={<PrivateRoute><AdminGlobal /></PrivateRoute>} />
+        <Route path="/admin"        element={<PrivateRoute><AdminPanel /></PrivateRoute>} />
         <Route path="/admin-espace" element={<PrivateRoute><MyEspaces /></PrivateRoute>} />
         <Route path="/acl"          element={<PrivateRoute><AdminEspace /></PrivateRoute>} />
         <Route path="/logs"         element={<PrivateRoute><Logs /></PrivateRoute>} />

@@ -85,6 +85,19 @@ export default function Settings() {
     });
   }, []);
 
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('⚠️ ATTENTION : Cette action est irréversible. Tous vos fichiers, partages et données seront définitivement supprimés. Confirmer ?')) return;
+    if (!window.confirm('Dernière confirmation : tapez OK pour supprimer définitivement votre compte.')) return;
+    try {
+      await API.delete('/me');
+      localStorage.clear();
+      alert('Votre compte a été supprimé.');
+      window.location.href = '/login';
+    } catch (e) {
+      alert(e.response?.data?.error || 'Erreur lors de la suppression');
+    }
+  };
+
   const handleSave = async () => {
     setError('');
     setLoading(true);
@@ -169,11 +182,9 @@ export default function Settings() {
             <h2 className="text-sm font-semibold text-red-600 dark:text-red-400">Zone de danger</h2>
           </div>
           <div className="px-6 py-5">
-            {/* TODO: brancher sur DELETE /admin/users/:id une fois l'accès self-service accordé */}
             <button
-              disabled
-              title="Bientôt disponible"
-              className="flex items-center justify-between w-full text-left opacity-50 cursor-not-allowed"
+              onClick={handleDeleteAccount}
+              className="flex items-center justify-between w-full text-left hover:opacity-80 transition"
             >
               <div>
                 <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Supprimer mon compte</p>

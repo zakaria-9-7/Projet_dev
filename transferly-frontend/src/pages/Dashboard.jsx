@@ -115,20 +115,26 @@ function AdminGlobalDashboard() {
   const [logs, setLogs] = useState([]);
 
   useEffect(() => {
-    Promise.all([
-      API.get('/admin/users'),
-      API.get('/files/'),
-      API.get('/logs/?limit=10'),
-    ]).then(([u, f, l]) => {
-      const totalMb = f.data.reduce((s, x) => s + (x.taille || 0), 0);
-      setStats({
-        users: u.data.total ?? u.data.users?.length ?? 0,
-        files: f.data.length,
-        storage: (totalMb / 1024).toFixed(1),
-        fails: l.data.filter(x => x.statut === 'echec').length,
-      });
-      setLogs(l.data);
-    }).catch(err => console.error('Admin dashboard', err));
+    const loadData = () => {
+      Promise.all([
+        API.get('/admin/users'),
+        API.get('/admin/files'),
+        API.get('/logs/?limit=10'),
+      ]).then(([u, f, l]) => {
+        const totalMb = f.data.reduce((s, x) => s + (x.taille || 0), 0);
+        setStats({
+          users: u.data.total ?? u.data.users?.length ?? 0,
+          files: f.data.length,
+          storage: (totalMb / 1024).toFixed(2),
+          fails: l.data.filter(x => x.statut === 'echec').length,
+        });
+        setLogs(l.data);
+      }).catch(err => console.error('Admin dashboard load:', err));
+    };
+
+    loadData();
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const statCards = [

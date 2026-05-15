@@ -4,7 +4,7 @@ import { gsap } from 'gsap';
 import {
   Grid, List, FolderPlus, UploadCloud,
   Folder, FileText, FileSpreadsheet, ImageIcon,
-  FileIcon, MoreVertical, History, Download, Trash2,
+  FileIcon, MoreVertical, History, Download, Trash2, Share2,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
@@ -125,8 +125,8 @@ export default function MyFiles() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             disabled
-            title="Bientôt disponible"
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 opacity-50 cursor-not-allowed"
+            title="Fonctionnalité bientôt disponible"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-400 cursor-not-allowed opacity-60"
           >
             <FolderPlus className="w-4 h-4" />
             Nouveau dossier
@@ -230,6 +230,12 @@ export default function MyFiles() {
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                       >
                         <History className="w-3.5 h-3.5" /> Historique
+                      </button>
+                      <button
+                        onClick={() => { setOpenMenu(null); navigate(`/acl?fichier=${file.id}`); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      >
+                        <Share2 className="w-3.5 h-3.5" /> Partager
                       </button>
                     </div>
                   )}

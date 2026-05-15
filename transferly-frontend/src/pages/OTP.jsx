@@ -62,45 +62,72 @@ export default function OTP() {
   };
 
   return (
-    <div className="min-h-screen bg-sky-50 flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background circles */}
-      <div className="geo-circle-1 top-16  right-[-40px] !bg-cyan-200/20 pointer-events-none" />
-      <div className="geo-circle-2 bottom-16 left-6      !bg-cyan-300/15 pointer-events-none" />
-      <div className="geo-circle-3 top-1/2 left-1/3      !bg-cyan-400/10 pointer-events-none" />
+    <div
+      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
+      style={{ background: '#0a0a0f' }}
+    >
+      {/* Glow effects */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Grid texture */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
+        }}
+      />
 
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0  }}
-        transition={{ duration: 0.5 }}
-        className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-md p-10 text-center"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 w-full max-w-sm bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-8 text-center"
       >
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <Share2 className="w-5 h-5 text-cyan-500" />
-          <span className="font-bold text-slate-900 text-base">Transferly</span>
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-2 mb-7">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #06b6d4, #a78bfa)' }}
+          >
+            <Share2 className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="font-bold text-white text-sm tracking-tight">Transferly</span>
         </div>
 
-        <div className="w-14 h-14 bg-cyan-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <ShieldCheck className="w-7 h-7 text-cyan-500" />
+        {/* Shield icon */}
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
+          style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)' }}
+        >
+          <ShieldCheck className="w-7 h-7" style={{ color: '#06b6d4' }} />
         </div>
 
-        <h2 className="text-xl font-extrabold text-slate-900 mb-2">Vérification en deux étapes</h2>
-        <p className="text-slate-500 text-sm mb-6">Entrez le code envoyé à votre adresse email</p>
+        <h2 className="text-xl font-extrabold text-white mb-2">Vérification en deux étapes</h2>
+        <p className="text-slate-400 text-sm mb-6">Entrez le code envoyé à votre adresse email</p>
 
         {error && (
-          <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-lg mb-4">
+          <div
+            className="px-4 py-3 rounded-lg mb-5 text-sm"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}
+          >
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* OTP boxes — staggered Motion animation */}
+          {/* OTP boxes */}
           <div className="flex gap-2.5 justify-center mb-5">
             {digits.map((d, i) => (
               <motion.input
                 key={i}
                 ref={el => (refs.current[i] = el)}
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0  }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07, duration: 0.3 }}
                 type="text"
                 inputMode="numeric"
@@ -108,23 +135,34 @@ export default function OTP() {
                 value={d}
                 onChange={e => handleChange(e.target.value, i)}
                 onKeyDown={e => handleKeyDown(e, i)}
-                className={`w-12 h-14 text-center text-xl font-bold border-2 rounded-xl text-slate-900 transition-colors outline-none focus:ring-2 focus:ring-cyan-300 ${
-                  d ? 'border-cyan-500 bg-cyan-50' : 'border-slate-200 bg-white'
-                }`}
+                className="w-12 h-14 text-center text-xl font-bold rounded-xl text-white transition-all outline-none focus:ring-2"
+                style={{
+                  background: d ? 'rgba(6,182,212,0.1)' : 'rgba(255,255,255,0.05)',
+                  border: d ? '1px solid rgba(6,182,212,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                  '--tw-ring-color': 'rgba(6,182,212,0.4)',
+                }}
               />
             ))}
           </div>
 
-          <p className="text-slate-500 text-sm mb-5">
+          <p className="text-slate-400 text-sm mb-5">
             Code expire dans :{' '}
-            <span className={`font-bold ${timer < 30 ? 'text-red-500' : 'text-cyan-600'}`}>
+            <span
+              className="font-bold"
+              style={{ color: timer < 30 ? '#f87171' : '#06b6d4' }}
+            >
               {formatTime(timer)}
             </span>
           </p>
 
           <button
             type="submit"
-            className="w-full py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg text-sm transition-colors mb-3"
+            className="w-full py-3 rounded-lg text-sm font-semibold transition-all mb-4 hover:brightness-110"
+            style={{
+              background: '#06b6d4',
+              color: '#0a0a0f',
+              boxShadow: '0 0 24px rgba(6,182,212,0.3)',
+            }}
           >
             Valider le code
           </button>
@@ -150,7 +188,8 @@ export default function OTP() {
             }
           }}
           disabled={resending}
-          className="text-sm text-cyan-600 hover:text-cyan-700 font-medium bg-transparent border-none cursor-pointer transition-colors disabled:opacity-50"
+          className="text-sm font-medium transition-colors disabled:opacity-50"
+          style={{ color: '#06b6d4', background: 'none', border: 'none', cursor: 'pointer' }}
         >
           {resending ? 'Envoi...' : 'Renvoyer le code'}
         </button>

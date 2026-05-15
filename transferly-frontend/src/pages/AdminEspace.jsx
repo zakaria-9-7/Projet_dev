@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import API from "../api/auth";
 import AppLayout from "../components/AppLayout";
 
@@ -38,6 +39,7 @@ const PERM_COLS = [
 
 
 export default function AdminEspace() {
+  const [searchParams] = useSearchParams();
   const [fichiers, setFichiers]         = useState([]);
   const [selectedFichier, setSelected]  = useState(null);
   const [rules, setRules]               = useState([]);
@@ -71,6 +73,14 @@ export default function AdminEspace() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const fichierId = searchParams.get('fichier');
+    if (fichierId && fichiers.length > 0) {
+      const f = fichiers.find(x => x.id === parseInt(fichierId));
+      if (f) setSelected(f);
+    }
+  }, [searchParams, fichiers]);
 
   // Charger les règles ACL du fichier sélectionné
   useEffect(() => {

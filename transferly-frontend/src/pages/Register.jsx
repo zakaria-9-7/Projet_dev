@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { User, Mail, Lock, Eye, EyeOff, Share2, ChevronDown } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Share2 } from 'lucide-react';
 import { register } from '../api/auth';
 
 export default function Register() {
@@ -32,34 +32,62 @@ export default function Register() {
     }
   };
 
+  const inputCls = 'w-full py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition';
+
   return (
-    <div className="min-h-screen bg-sky-50 flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background circles */}
-      <div className="geo-circle-1 top-16 left-[-60px] !bg-cyan-200/20 pointer-events-none" />
-      <div className="geo-circle-2 bottom-16 right-[-40px] !bg-cyan-300/15 pointer-events-none" />
-      <div className="geo-circle-3 top-1/2 right-1/4 !bg-cyan-400/10 pointer-events-none" />
+    <div
+      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
+      style={{ background: '#0a0a0f' }}
+    >
+      {/* Glow effects */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Grid texture */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
+        }}
+      />
 
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-md p-10"
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-8"
       >
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <Share2 className="w-5 h-5 text-cyan-500" />
-          <span className="font-bold text-slate-900 text-base">Transferly</span>
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-2 mb-7">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #06b6d4, #a78bfa)' }}
+          >
+            <Share2 className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="font-bold text-white text-sm tracking-tight">Transferly</span>
         </div>
 
-        <h2 className="text-2xl font-extrabold text-slate-900 mb-1">Créer un compte</h2>
-        <p className="text-slate-500 text-sm mb-6">Rejoignez votre espace académique</p>
+        <h2 className="text-2xl font-extrabold text-white mb-1 text-center">Créer un compte</h2>
+        <p className="text-slate-400 text-sm mb-6 text-center">Rejoignez votre espace académique</p>
 
         {error && (
-          <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-lg mb-4">
+          <div
+            className="px-4 py-3 rounded-lg mb-4 text-sm"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}
+          >
             {error}
           </div>
         )}
         {success && (
-          <div className="bg-green-50 border border-green-100 text-green-600 text-sm px-4 py-3 rounded-lg mb-4">
+          <div
+            className="px-4 py-3 rounded-lg mb-4 text-sm"
+            style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#34d399' }}
+          >
             {success}
           </div>
         )}
@@ -67,53 +95,53 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Nom */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Nom complet</label>
+            <label className="block text-xs font-semibold text-white/60 mb-2">Nom complet</label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Jean Dupont"
                 value={form.nom}
                 onChange={e => update('nom', e.target.value)}
                 required
-                className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+                className={`${inputCls} pl-10 pr-4`}
               />
             </div>
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Adresse email</label>
+            <label className="block text-xs font-semibold text-white/60 mb-2">Adresse email</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
               <input
                 type="email"
                 placeholder="nom@exemple.com"
                 value={form.email}
                 onChange={e => update('email', e.target.value)}
                 required
-                className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+                className={`${inputCls} pl-10 pr-4`}
               />
             </div>
           </div>
 
           {/* Mot de passe */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Mot de passe</label>
+            <label className="block text-xs font-semibold text-white/60 mb-2">Mot de passe</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
               <input
                 type={showPwd ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={form.password}
                 onChange={e => update('password', e.target.value)}
                 required
-                className="w-full pl-9 pr-10 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+                className={`${inputCls} pl-10 pr-10`}
               />
               <button
                 type="button"
                 onClick={() => setShowPwd(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
               >
                 {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -122,57 +150,48 @@ export default function Register() {
 
           {/* Confirmer mot de passe */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Confirmer le mot de passe
-            </label>
+            <label className="block text-xs font-semibold text-white/60 mb-2">Confirmer le mot de passe</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
               <input
                 type={showConfirm ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={form.confirm}
                 onChange={e => update('confirm', e.target.value)}
                 required
-                className="w-full pl-9 pr-10 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+                className={`${inputCls} pl-10 pr-10`}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
               >
                 {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          {/* Rôle */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Rôle</label>
-            <div className="relative">
-              <select
-                value={form.role}
-                onChange={e => update('role', e.target.value)}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition appearance-none"
-              >
-                <option value="Utilisateur">Utilisateur</option>
-                <option value="AdminEspace">Administrateur Espace</option>
-                <option value="AdminGlobal">Administrateur Global</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-
           <button
             type="submit"
-            className="w-full py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg text-sm transition-colors mt-1"
+            className="w-full py-3 rounded-lg text-sm font-semibold transition-all mt-1 hover:brightness-110"
+            style={{
+              background: '#06b6d4',
+              color: '#0a0a0f',
+              boxShadow: '0 0 24px rgba(6,182,212,0.3)',
+            }}
           >
             Créer mon compte
           </button>
         </form>
 
-        <p className="text-center text-xs text-slate-500 mt-6">
+        <p className="text-xs text-slate-500 mt-4 text-center">
+          Vous serez inscrit en tant qu'utilisateur.
+          Vous pourrez créer vos propres espaces collaboratifs après inscription.
+        </p>
+
+        <p className="text-center text-xs text-slate-600 mt-4">
           Déjà un compte ?{' '}
-          <Link to="/login" className="text-cyan-600 font-semibold hover:text-cyan-700 transition-colors">
+          <Link to="/login" className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">
             Se connecter
           </Link>
         </p>

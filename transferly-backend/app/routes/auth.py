@@ -25,8 +25,11 @@ def register():
         return jsonify({'error': 'Format email invalide'}), 400
     if len(password) < 8:
         return jsonify({'error': 'Mot de passe trop court (min 8 caractères)'}), 400
-    if role not in ['AdminGlobal', 'AdminEspace', 'Utilisateur']:
-        return jsonify({'error': 'Rôle invalide'}), 400
+    # Seul Utilisateur autorisé à l'inscription publique
+    # AdminEspace = promotion automatique lors de la création d'un espace
+    # AdminGlobal = uniquement par seed ou promotion par un AdminGlobal existant
+    if role != 'Utilisateur':
+        return jsonify({'error': 'Inscription publique réservée au rôle Utilisateur'}), 403
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email déjà utilisé'}), 409
 
@@ -244,43 +247,68 @@ def reset_password(token):
 # ── Profil personnel ──────────────────────────────────────────────
 @auth_bp.route('/me', methods=['GET'])
 def get_me():
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
     user = User.query.get(g.user['id'])
     if not user:
-        return jsonify({'error': 'introuvable'}), 404
+        return jsonify({'error': 'Introuvable'}), 404
     return jsonify({
         'id': user.id,
         'nom': user.nom,
         'email': user.email,
         'role': user.role,
         'quota': user.quota,
-        'quota_utilise': user.quota_utilise
+        'quota_utilise': user.quota_utilise,
     }), 200
 
 
 @auth_bp.route('/me', methods=['PUT'])
 def update_me():
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
     user = User.query.get(g.user['id'])
-    data = request.get_json()
-    if 'nom' in data:
+    if not user:
+        return jsonify({'error': 'Introuvable'}), 404
+    data = request.get_json(silent=True) or {}
+    if 'nom' in data and data['nom'].strip():
         user.nom = data['nom'].strip()
     if 'email' in data and data['email'] != user.email:
-        if User.query.filter_by(email=data['email']).first():
+        email = data['email'].strip().lower()
+        if not re.match(r'^[\w.-]+@[\w.-]+\.\w+$', email):
+            return jsonify({'error': 'Format email invalide'}), 400
+        if User.query.filter_by(email=email).first():
             return jsonify({'error': 'Email déjà utilisé'}), 409
-        user.email = data['email'].strip()
+        user.email = email
     db.session.commit()
-    return jsonify({'message': 'Profil mis à jour'}), 200
+    return jsonify({'message': 'Profil mis à jour', 'nom': user.nom, 'email': user.email}), 200
+
+
+@auth_bp.route('/me', methods=['DELETE'])
+def delete_my_account():
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+    user = User.query.get(g.user['id'])
+    if not user:
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({'message': 'Compte supprimé'}), 200
 
 
 @auth_bp.route('/me/password', methods=['PUT'])
 def change_password():
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
     user = User.query.get(g.user['id'])
-    data = request.get_json()
+    if not user:
+        return jsonify({'error': 'Introuvable'}), 404
+    data = request.get_json(silent=True) or {}
     current = data.get('current_password', '')
     new = data.get('new_password', '')
     if not bcrypt.check_password_hash(user.password, current):
         return jsonify({'error': 'Mot de passe actuel incorrect'}), 401
     if len(new) < 8:
-        return jsonify({'error': 'Mot de passe trop court'}), 400
+        return jsonify({'error': 'Mot de passe trop court (min 8 caractères)'}), 400
     user.password = bcrypt.generate_password_hash(new).decode('utf-8')
     db.session.commit()
     return jsonify({'message': 'Mot de passe modifié'}), 200
