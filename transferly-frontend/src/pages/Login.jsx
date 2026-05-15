@@ -1,121 +1,182 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { Mail, Lock, Eye, EyeOff, Share2 } from 'lucide-react';
 import { login } from '../api/auth';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
-  const [error, setError] = useState('');
+  const [showPwd,  setShowPwd]  = useState(false);
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+    setError('');
+    setLoading(true);
     try {
       const res = await login({ email, password });
       localStorage.setItem('user_id', res.data.user_id);
+      localStorage.setItem('email_pending', email);
+      localStorage.setItem('password_pending', password);
+
+      // MODE DEV : afficher le code OTP directement
+      if (res.data.otp_dev) {
+        alert(`Code OTP (mode démo) : ${res.data.otp_dev}\n\nCe code sera également visible dans la console serveur.`);
+      }
+
       navigate('/otp');
     } catch (err) {
       setError(err.response?.data?.error || 'Identifiants incorrects');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={s.page}>
-      <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      {/* GAUCHE */}
-      <div style={s.left}>
-        <div style={s.brand}>
-          <span style={s.logo}><svg width='20' height='20' viewBox='0 0 24 24' fill='currentColor'><circle cx='18' cy='5' r='3'/><circle cx='6' cy='12' r='3'/><circle cx='18' cy='19' r='3'/><line x1='8.59' y1='13.51' x2='15.42' y2='17.49' stroke='currentColor' strokeWidth='2'/><line x1='15.41' y1='6.51' x2='8.59' y2='10.49' stroke='currentColor' strokeWidth='2'/></svg> Transferly</span>
+    <div className="flex min-h-screen font-sans">
+
+      {/* ── GAUCHE ── */}
+      <motion.div
+        initial={{ x: -60, opacity: 0 }}
+        animate={{ x: 0,   opacity: 1 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="hidden lg:flex flex-col flex-1 bg-gradient-to-br from-cyan-500 to-cyan-700 p-12 relative overflow-hidden"
+      >
+        {/* Geometric shapes */}
+        <div className="geo-circle-1 top-10 right-[-40px]" />
+        <div className="geo-circle-2 bottom-20 left-6"     />
+        <div className="geo-circle-3 top-1/2 left-1/3"     />
+
+        {/* Brand */}
+        <div className="relative z-10 flex items-center gap-2 text-white">
+          <Share2 className="w-6 h-6" />
+          <span className="text-xl font-bold">Transferly</span>
         </div>
-        <div style={s.pitch}>
-          <h1 style={s.pitchTitle}>Votre espace académique sécurisé.</h1>
-          <p style={s.pitchSub}>Déposez, partagez, collaborez. Simple et sécurisé.</p>
+
+        {/* Pitch */}
+        <div className="relative z-10 flex-1 flex flex-col justify-center">
+          <h1 className="text-4xl font-extrabold text-white leading-tight mb-4">
+            Le savoir se partage.<br />Faites-le avec méthode.
+          </h1>
+          <p className="text-cyan-100 text-lg leading-relaxed max-w-xs">
+            Déposez, organisez et partagez vos ressources académiques en toute sécurité.
+          </p>
         </div>
-        <div style={s.fileList}>
+
+        {/* File preview cards */}
+        <div className="relative z-10 flex flex-col gap-3">
           {[
-            { name: 'TP_Reseaux_2026.pdf', status: 'Envoyé', color: '#0d9488' },
-            { name: 'Cours_Python.zip', status: 'En cours', color: '#f59e0b' },
-            { name: 'Projet_ICCN.zip', status: 'Reçu', color: '#6366f1' },
+            { name: 'TP_Reseaux_2026.pdf',  status: 'Envoyé',   color: 'bg-cyan-400'   },
+            { name: 'Cours_Python.zip',      status: 'En cours', color: 'bg-amber-400'  },
+            { name: 'Projet_ICCN.zip',       status: 'Reçu',     color: 'bg-violet-400' },
           ].map((f, i) => (
-            <div key={i} style={s.fileItem}>
-              <span style={s.fileIcon}>📄</span>
-              <div style={s.fileMeta}>
-                <span style={s.fileName}>{f.name}</span>
-                <span style={s.fileTime}>Partagé {i === 0 ? 'il y a 2 heures' : i === 1 ? "aujourd'hui" : 'hier'}</span>
+            <div key={i} className="flex items-center gap-3 bg-white/10 border border-white/10 rounded-xl px-4 py-3">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <Share2 className="w-4 h-4 text-white" />
               </div>
-              <span style={{...s.fileBadge, background: f.color}}>{f.status}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium truncate">{f.name}</p>
+                <p className="text-cyan-200 text-xs">
+                  {i === 0 ? 'Il y a 2 heures' : i === 1 ? "Aujourd'hui" : 'Hier'}
+                </p>
+              </div>
+              <span className={`${f.color} text-white text-xs font-semibold px-2.5 py-1 rounded-full`}>
+                {f.status}
+              </span>
             </div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
-      {/* DROITE */}
-      <div style={s.right}>
-        <div style={s.card}>
-          <h2 style={s.welcome}>Prêt à tout partager ? 📂</h2>
-          <p style={s.sub}>Vos cours et projets vous attendent.</p>
-          {error && <div style={s.error}>{error}</div>}
-          <form onSubmit={handleSubmit}>
-            <label style={s.label}>Adresse email</label>
-            <div style={s.inputWrap}>
-              <span style={s.inputIcon}>✉️</span>
-              <input style={s.input} type="email" placeholder="exemple@transferly.ma"
-                value={email} onChange={e => setEmail(e.target.value)} required />
+      {/* ── DROITE ── */}
+      <div className="flex flex-1 items-center justify-center bg-sky-50 p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="w-full max-w-sm bg-white rounded-2xl shadow-md p-10"
+        >
+          {/* Mobile brand */}
+          <div className="lg:hidden flex items-center justify-center gap-2 mb-6">
+            <Share2 className="w-5 h-5 text-cyan-500" />
+            <span className="font-bold text-slate-900 text-base">Transferly</span>
+          </div>
+
+          <h2 className="text-2xl font-extrabold text-slate-900 mb-1">Bon retour</h2>
+          <p className="text-slate-500 text-sm mb-6">Vos cours et projets vous attendent.</p>
+
+          {error && (
+            <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-lg mb-5">
+              {error}
             </div>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-              <label style={s.label}>Mot de passe</label>
-              <a href="/forgot-password" style={s.forgotLink}>Mot de passe oublié ?</a>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Adresse email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="email"
+                  placeholder="exemple@transferly.ma"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+                />
+              </div>
             </div>
-            <div style={s.inputWrap}>
-              <span style={s.inputIcon}>🔒</span>
-              <input style={s.input} type={showPwd ? 'text' : 'password'} placeholder="••••••••"
-                value={password} onChange={e => setPassword(e.target.value)} required />
-              <span style={s.eyeIcon} onClick={() => setShowPwd(!showPwd)}>{showPwd ? '🙈' : '👁️'}</span>
+
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-xs font-semibold text-slate-700">Mot de passe</label>
+                <Link to="/forgot-password" className="text-xs text-cyan-600 hover:text-cyan-700 transition-colors">
+                  Mot de passe oublié ?
+                </Link>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-9 pr-10 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
-            <div style={s.rememberRow}>
-              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
-              <span style={{fontSize:'13px', color:'#555'}}>Se souvenir de moi</span>
-            </div>
-            <button style={s.btn} type="submit">Se connecter →</button>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg text-sm transition-colors mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Connexion...' : 'Se connecter'}
+            </button>
           </form>
-          <p style={s.registerLink}>
-            Pas encore de compte ? <a href="/register" style={{color:'#0d9488', fontWeight:'600'}}>S'inscrire gratuitement</a>
+
+          <p className="text-center text-xs text-slate-500 mt-6">
+            Pas encore de compte ?{' '}
+            <Link to="/register" className="text-cyan-600 font-semibold hover:text-cyan-700 transition-colors">
+              S'inscrire gratuitement
+            </Link>
           </p>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
 }
-
-const s = {
-  page: { display:'flex', minHeight:'100vh', fontFamily:'system-ui, sans-serif' },
-  left: { flex:1, background:'linear-gradient(135deg, #0d9488 0%, #0891b2 100%)', padding:'48px', display:'flex', flexDirection:'column', gap:'32px' },
-  brand: { display:'flex', alignItems:'center' },
-  logo: { color:'white', fontSize:'20px', fontWeight:'700' },
-  pitch: { flex:1, display:'flex', flexDirection:'column', justifyContent:'center' },
-  pitchTitle: { color:'white', fontSize:'32px', fontWeight:'800', lineHeight:'1.2', marginBottom:'16px' },
-  pitchSub: { color:'#94a3b8', fontSize:'15px', lineHeight:'1.6' },
-  fileList: { display:'flex', flexDirection:'column', gap:'10px' },
-  fileItem: { background:'rgba(255,255,255,0.06)', borderRadius:'10px', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px', border:'1px solid rgba(255,255,255,0.08)' },
-  fileIcon: { fontSize:'20px' },
-  fileMeta: { flex:1, display:'flex', flexDirection:'column' },
-  fileName: { color:'white', fontSize:'13px', fontWeight:'500' },
-  fileTime: { color:'#64748b', fontSize:'11px' },
-  fileBadge: { color:'white', fontSize:'11px', padding:'3px 10px', borderRadius:'20px', fontWeight:'600' },
-  right: { flex:1, display:'flex', alignItems:'center', justifyContent:'center', background:'#f8fafc', padding:'32px' },
-  card: { background:'white', borderRadius:'16px', padding:'40px', width:'100%', maxWidth:'400px', boxShadow:'0 4px 24px rgba(0,0,0,0.08)', animation:'fadeInUp 0.4s ease forwards' },
-  welcome: { fontSize:'24px', fontWeight:'800', color:'#0f172a', marginBottom:'4px' },
-  sub: { color:'#64748b', fontSize:'14px', marginBottom:'24px' },
-  error: { background:'#fef2f2', color:'#dc2626', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'16px' },
-  label: { display:'block', fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'6px' },
-  inputWrap: { position:'relative', marginBottom:'16px', display:'flex', alignItems:'center' },
-  inputIcon: { position:'absolute', left:'12px', fontSize:'14px' },
-  eyeIcon: { position:'absolute', right:'12px', cursor:'pointer', fontSize:'14px' },
-  input: { width:'100%', padding:'11px 12px 11px 36px', border:'1px solid #e2e8f0', borderRadius:'8px', fontSize:'14px', outline:'none', boxSizing:'border-box' },
-  rememberRow: { display:'flex', alignItems:'center', gap:'8px', marginBottom:'20px' },
-  btn: { width:'100%', padding:'13px', background:'#0d9488', color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:'700', cursor:'pointer' },
-  forgotLink: { fontSize:'12px', color:'#0d9488', textDecoration:'none' },
-  registerLink: { textAlign:'center', fontSize:'13px', color:'#64748b', marginTop:'16px' },
-};

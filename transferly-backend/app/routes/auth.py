@@ -66,7 +66,11 @@ def login():
 
     print(f"[DEV] OTP pour {user.email} : {code}")
 
-    return jsonify({'message': 'OTP envoyé', 'user_id': user.id}), 200
+    return jsonify({
+        'message': 'OTP généré',
+        'user_id': user.id,
+        'otp_dev': code  # ⚠️ MODE DEV : on renvoie le code directement
+    }), 200
 
 
 # ── SD-04 : Vérification OTP + JWT ──────────────────────────────
@@ -116,7 +120,7 @@ def verify_otp():
     db.session.add(log)
     db.session.commit()
 
-    return jsonify({'token': token, 'role': user.role}), 200
+    return jsonify({'token': token, 'role': user.role, 'nom': user.nom, 'email': user.email}), 200
 
 
 # ── SD-04 : Logout ───────────────────────────────────────────────
@@ -192,8 +196,7 @@ def forgot_password():
         frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
         reset_url = f"{frontend_url}/reset-password/{token}"
 
-        print(f"[DEV] Reset password pour {user.email}")
-        print(f"[DEV] URL : {reset_url}")
+        print(f"[DEV] Reset URL pour {user.email} : {reset_url}")
 
         from app.services.logger import log_action
         log_action(
@@ -236,4 +239,48 @@ def reset_password(token):
     db.session.commit()
 
     return jsonify({'message': 'Mot de passe réinitialisé avec succès'}), 200
-    return jsonify({'message': 'Déconnecté'}), 200
+
+
+# ── Profil personnel ──────────────────────────────────────────────
+@auth_bp.route('/me', methods=['GET'])
+def get_me():
+    user = User.query.get(g.user['id'])
+    if not user:
+        return jsonify({'error': 'introuvable'}), 404
+    return jsonify({
+        'id': user.id,
+        'nom': user.nom,
+        'email': user.email,
+        'role': user.role,
+        'quota': user.quota,
+        'quota_utilise': user.quota_utilise
+    }), 200
+
+
+@auth_bp.route('/me', methods=['PUT'])
+def update_me():
+    user = User.query.get(g.user['id'])
+    data = request.get_json()
+    if 'nom' in data:
+        user.nom = data['nom'].strip()
+    if 'email' in data and data['email'] != user.email:
+        if User.query.filter_by(email=data['email']).first():
+            return jsonify({'error': 'Email déjà utilisé'}), 409
+        user.email = data['email'].strip()
+    db.session.commit()
+    return jsonify({'message': 'Profil mis à jour'}), 200
+
+
+@auth_bp.route('/me/password', methods=['PUT'])
+def change_password():
+    user = User.query.get(g.user['id'])
+    data = request.get_json()
+    current = data.get('current_password', '')
+    new = data.get('new_password', '')
+    if not bcrypt.check_password_hash(user.password, current):
+        return jsonify({'error': 'Mot de passe actuel incorrect'}), 401
+    if len(new) < 8:
+        return jsonify({'error': 'Mot de passe trop court'}), 400
+    user.password = bcrypt.generate_password_hash(new).decode('utf-8')
+    db.session.commit()
+    return jsonify({'message': 'Mot de passe modifié'}), 200

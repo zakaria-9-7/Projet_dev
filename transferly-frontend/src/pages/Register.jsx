@@ -1,80 +1,182 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { User, Mail, Lock, Eye, EyeOff, Share2, ChevronDown } from 'lucide-react';
 import { register } from '../api/auth';
 
 export default function Register() {
-  const [form, setForm] = useState({ nom:'', email:'', password:'', confirm:'', role:'Utilisateur' });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [form, setForm] = useState({
+    nom: '', email: '', password: '', confirm: '', role: 'Utilisateur',
+  });
+  const [showPwd,     setShowPwd]     = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [error,       setError]       = useState('');
+  const [success,     setSuccess]     = useState('');
   const navigate = useNavigate();
+
+  const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     if (form.password !== form.confirm) {
       setError('Les mots de passe ne correspondent pas');
       return;
     }
     try {
       await register({ nom: form.nom, email: form.email, password: form.password, role: form.role });
-      setSuccess('Compte créé ! Redirection...');
+      setSuccess('Compte créé avec succès ! Redirection...');
       setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
-      setError(err.response?.data?.error || 'Erreur inscription');
+      setError(err.response?.data?.error || "Erreur lors de l'inscription");
     }
   };
 
   return (
-    <div style={s.page}>
-      <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <div style={s.card}>
-        <div style={s.brand}><svg width='20' height='20' viewBox='0 0 24 24' fill='currentColor'><circle cx='18' cy='5' r='3'/><circle cx='6' cy='12' r='3'/><circle cx='18' cy='19' r='3'/><line x1='8.59' y1='13.51' x2='15.42' y2='17.49' stroke='currentColor' strokeWidth='2'/><line x1='15.41' y1='6.51' x2='8.59' y2='10.49' stroke='currentColor' strokeWidth='2'/></svg> Transferly</div>
-        <h2 style={s.title}>Création de compte</h2>
-        {error && <div style={s.error}>{error}</div>}
-        {success && <div style={s.success}>{success}</div>}
-        <form onSubmit={handleSubmit}>
-          <label style={s.label}>Nom complet</label>
-          <input style={s.input} placeholder="Jean Dupont"
-            value={form.nom} onChange={e => setForm({...form, nom:e.target.value})} required />
+    <div className="min-h-screen bg-sky-50 flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background circles */}
+      <div className="geo-circle-1 top-16 left-[-60px] !bg-cyan-200/20 pointer-events-none" />
+      <div className="geo-circle-2 bottom-16 right-[-40px] !bg-cyan-300/15 pointer-events-none" />
+      <div className="geo-circle-3 top-1/2 right-1/4 !bg-cyan-400/10 pointer-events-none" />
 
-          <label style={s.label}>Adresse email</label>
-          <input style={s.input} type="email" placeholder="nom@exemple.com"
-            value={form.email} onChange={e => setForm({...form, email:e.target.value})} required />
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-md p-10"
+      >
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <Share2 className="w-5 h-5 text-cyan-500" />
+          <span className="font-bold text-slate-900 text-base">Transferly</span>
+        </div>
 
-          <label style={s.label}>Mot de passe</label>
-          <input style={s.input} type="password" placeholder="••••••••"
-            value={form.password} onChange={e => setForm({...form, password:e.target.value})} required />
+        <h2 className="text-2xl font-extrabold text-slate-900 mb-1">Créer un compte</h2>
+        <p className="text-slate-500 text-sm mb-6">Rejoignez votre espace académique</p>
 
-          <label style={s.label}>Confirmer le mot de passe</label>
-          <input style={s.input} type="password" placeholder="••••••••"
-            value={form.confirm} onChange={e => setForm({...form, confirm:e.target.value})} required />
+        {error && (
+          <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-50 border border-green-100 text-green-600 text-sm px-4 py-3 rounded-lg mb-4">
+            {success}
+          </div>
+        )}
 
-          <label style={s.label}>Rôle</label>
-          <select style={s.input} value={form.role}
-            onChange={e => setForm({...form, role:e.target.value})}>
-            <option value="Utilisateur">Utilisateur</option>
-            <option value="AdminEspace">Administrateur Espace</option>
-            <option value="AdminGlobal">Administrateur Global</option>
-          </select>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Nom */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Nom complet</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Jean Dupont"
+                value={form.nom}
+                onChange={e => update('nom', e.target.value)}
+                required
+                className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+              />
+            </div>
+          </div>
 
-          <button style={s.btn} type="submit">Créer mon compte</button>
+          {/* Email */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Adresse email</label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type="email"
+                placeholder="nom@exemple.com"
+                value={form.email}
+                onChange={e => update('email', e.target.value)}
+                required
+                className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+              />
+            </div>
+          </div>
+
+          {/* Mot de passe */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Mot de passe</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type={showPwd ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={form.password}
+                onChange={e => update('password', e.target.value)}
+                required
+                className="w-full pl-9 pr-10 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPwd(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirmer mot de passe */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Confirmer le mot de passe
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={form.confirm}
+                onChange={e => update('confirm', e.target.value)}
+                required
+                className="w-full pl-9 pr-10 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Rôle */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Rôle</label>
+            <div className="relative">
+              <select
+                value={form.role}
+                onChange={e => update('role', e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition appearance-none"
+              >
+                <option value="Utilisateur">Utilisateur</option>
+                <option value="AdminEspace">Administrateur Espace</option>
+                <option value="AdminGlobal">Administrateur Global</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg text-sm transition-colors mt-1"
+          >
+            Créer mon compte
+          </button>
         </form>
-        <p style={s.loginLink}>
-          Déjà un compte ? <a href="/login" style={{color:'#0d9488', fontWeight:'600'}}>Se connecter</a>
+
+        <p className="text-center text-xs text-slate-500 mt-6">
+          Déjà un compte ?{' '}
+          <Link to="/login" className="text-cyan-600 font-semibold hover:text-cyan-700 transition-colors">
+            Se connecter
+          </Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }
-
-const s = {
-  page: { minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8fafc', fontFamily:'system-ui, sans-serif' },
-  card: { background:'white', borderRadius:'16px', padding:'40px', width:'100%', maxWidth:'400px', boxShadow:'0 4px 24px rgba(0,0,0,0.08)', animation:'fadeInUp 0.4s ease forwards' },
-  brand: { textAlign:'center', color:'#0d9488', fontWeight:'700', fontSize:'18px', marginBottom:'20px' },
-  title: { fontSize:'22px', fontWeight:'800', color:'#0f172a', marginBottom:'24px' },
-  label: { display:'block', fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'6px' },
-  input: { width:'100%', padding:'11px 12px', border:'1px solid #e2e8f0', borderRadius:'8px', fontSize:'14px', marginBottom:'16px', boxSizing:'border-box', outline:'none' },
-  btn: { width:'100%', padding:'13px', background:'#0d9488', color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:'700', cursor:'pointer', marginTop:'4px' },
-  error: { background:'#fef2f2', color:'#dc2626', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'16px' },
-  success: { background:'#f0fdf4', color:'#16a34a', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'16px' },
-  loginLink: { textAlign:'center', fontSize:'13px', color:'#64748b', marginTop:'16px' },
-};

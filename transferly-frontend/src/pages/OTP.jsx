@@ -1,15 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { verifyOTP } from '../api/auth';
+import { motion } from 'motion/react';
+import { Share2, ShieldCheck } from 'lucide-react';
+import { verifyOTP, login } from '../api/auth';
 
 export default function OTP() {
-  const [digits, setDigits] = useState(['','','','','','']);
-  const [error, setError] = useState('');
-  const [timer, setTimer] = useState(90); // 1min30
+  const [digits, setDigits] = useState(['', '', '', '', '', '']);
+  const [error,  setError]  = useState('');
+  const [timer,  setTimer]  = useState(300);
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
   const refs = useRef([]);
 
   useEffect(() => {
+    refs.current[0]?.focus();
     const interval = setInterval(() => {
       setTimer(t => {
         if (t <= 1) { clearInterval(interval); navigate('/login'); }
@@ -17,21 +21,22 @@ export default function OTP() {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [navigate]);
 
-  const formatTime = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const formatTime = (s) =>
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   const handleChange = (val, i) => {
     if (!/^\d*$/.test(val)) return;
-    const newDigits = [...digits];
-    newDigits[i] = val.slice(-1);
-    setDigits(newDigits);
-    if (val && i < 5) refs.current[i+1]?.focus();
+    const next = [...digits];
+    next[i] = val.slice(-1);
+    setDigits(next);
+    if (val && i < 5) refs.current[i + 1]?.focus();
   };
 
   const handleKeyDown = (e, i) => {
     if (e.key === 'Backspace' && !digits[i] && i > 0) {
-      refs.current[i-1]?.focus();
+      refs.current[i - 1]?.focus();
     }
   };
 
@@ -43,67 +48,113 @@ export default function OTP() {
     try {
       const res = await verifyOTP({ user_id: parseInt(user_id), code });
       localStorage.setItem('token', res.data.token);
-      localStorage.setItem('role', res.data.role);
+      localStorage.setItem('role',  res.data.role);
+      if (res.data.nom)   localStorage.setItem('nom',   res.data.nom);
+      if (res.data.email) localStorage.setItem('email', res.data.email);
+      localStorage.removeItem('email_pending');
+      localStorage.removeItem('password_pending');
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Code incorrect');
-      setDigits(['','','','','','']);
+      setDigits(['', '', '', '', '', '']);
       refs.current[0]?.focus();
     }
   };
 
   return (
-    <div style={s.page}>
-      <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <div style={s.card}>
-        <div style={s.brand}><svg width='20' height='20' viewBox='0 0 24 24' fill='currentColor'><circle cx='18' cy='5' r='3'/><circle cx='6' cy='12' r='3'/><circle cx='18' cy='19' r='3'/><line x1='8.59' y1='13.51' x2='15.42' y2='17.49' stroke='currentColor' strokeWidth='2'/><line x1='15.41' y1='6.51' x2='8.59' y2='10.49' stroke='currentColor' strokeWidth='2'/></svg> Transferly</div>
-        <h2 style={s.title}>Vérification en deux étapes</h2>
-        <p style={s.sub}>Entrez le code envoyé à votre email</p>
+    <div className="min-h-screen bg-sky-50 flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background circles */}
+      <div className="geo-circle-1 top-16  right-[-40px] !bg-cyan-200/20 pointer-events-none" />
+      <div className="geo-circle-2 bottom-16 left-6      !bg-cyan-300/15 pointer-events-none" />
+      <div className="geo-circle-3 top-1/2 left-1/3      !bg-cyan-400/10 pointer-events-none" />
 
-        {error && <div style={s.error}>{error}</div>}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0  }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-md p-10 text-center"
+      >
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <Share2 className="w-5 h-5 text-cyan-500" />
+          <span className="font-bold text-slate-900 text-base">Transferly</span>
+        </div>
+
+        <div className="w-14 h-14 bg-cyan-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <ShieldCheck className="w-7 h-7 text-cyan-500" />
+        </div>
+
+        <h2 className="text-xl font-extrabold text-slate-900 mb-2">Vérification en deux étapes</h2>
+        <p className="text-slate-500 text-sm mb-6">Entrez le code envoyé à votre adresse email</p>
+
+        {error && (
+          <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
-          <div style={s.digitsRow}>
+          {/* OTP boxes — staggered Motion animation */}
+          <div className="flex gap-2.5 justify-center mb-5">
             {digits.map((d, i) => (
-              <input
+              <motion.input
                 key={i}
-                ref={el => refs.current[i] = el}
-                style={{...s.digitBox, borderColor: d ? '#0d9488' : '#e2e8f0'}}
+                ref={el => (refs.current[i] = el)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0  }}
+                transition={{ delay: i * 0.07, duration: 0.3 }}
                 type="text"
                 inputMode="numeric"
                 maxLength={1}
                 value={d}
                 onChange={e => handleChange(e.target.value, i)}
                 onKeyDown={e => handleKeyDown(e, i)}
+                className={`w-12 h-14 text-center text-xl font-bold border-2 rounded-xl text-slate-900 transition-colors outline-none focus:ring-2 focus:ring-cyan-300 ${
+                  d ? 'border-cyan-500 bg-cyan-50' : 'border-slate-200 bg-white'
+                }`}
               />
             ))}
           </div>
 
-          <p style={s.timer}>
-            Code expire dans : <span style={{color:'#0d9488', fontWeight:'700'}}>{formatTime(timer)}</span>
+          <p className="text-slate-500 text-sm mb-5">
+            Code expire dans :{' '}
+            <span className={`font-bold ${timer < 30 ? 'text-red-500' : 'text-cyan-600'}`}>
+              {formatTime(timer)}
+            </span>
           </p>
 
-          <button style={s.btn} type="submit">Valider</button>
+          <button
+            type="submit"
+            className="w-full py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg text-sm transition-colors mb-3"
+          >
+            Valider le code
+          </button>
         </form>
 
-        <button style={s.resendBtn} onClick={() => navigate('/login')}>
-          Renvoyer le code
+        <button
+          onClick={async () => {
+            const email = localStorage.getItem('email_pending');
+            const password = localStorage.getItem('password_pending');
+            if (!email || !password) { navigate('/login'); return; }
+            setResending(true);
+            try {
+              const res = await login({ email, password });
+              localStorage.setItem('user_id', res.data.user_id);
+              setTimer(300);
+              setDigits(['', '', '', '', '', '']);
+              setError('');
+              refs.current[0]?.focus();
+            } catch {
+              navigate('/login');
+            } finally {
+              setResending(false);
+            }
+          }}
+          disabled={resending}
+          className="text-sm text-cyan-600 hover:text-cyan-700 font-medium bg-transparent border-none cursor-pointer transition-colors disabled:opacity-50"
+        >
+          {resending ? 'Envoi...' : 'Renvoyer le code'}
         </button>
-      </div>
+      </motion.div>
     </div>
   );
 }
-
-const s = {
-  page: { minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8fafc', fontFamily:'system-ui, sans-serif' },
-  card: { background:'white', borderRadius:'16px', padding:'40px', width:'100%', maxWidth:'380px', boxShadow:'0 4px 24px rgba(0,0,0,0.08)', textAlign:'center', animation:'fadeInUp 0.4s ease forwards' },
-  brand: { color:'#0d9488', fontWeight:'700', fontSize:'18px', marginBottom:'24px' },
-  title: { fontSize:'20px', fontWeight:'800', color:'#0f172a', marginBottom:'8px' },
-  sub: { color:'#64748b', fontSize:'14px', marginBottom:'24px' },
-  error: { background:'#fef2f2', color:'#dc2626', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'16px' },
-  digitsRow: { display:'flex', gap:'10px', justifyContent:'center', marginBottom:'20px' },
-  digitBox: { width:'46px', height:'54px', textAlign:'center', fontSize:'22px', fontWeight:'700', border:'2px solid #e2e8f0', borderRadius:'10px', outline:'none', color:'#0f172a', transition:'border-color .2s' },
-  timer: { color:'#64748b', fontSize:'13px', marginBottom:'20px' },
-  btn: { width:'100%', padding:'13px', background:'#0d9488', color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:'700', cursor:'pointer', marginBottom:'12px' },
-  resendBtn: { background:'none', border:'none', color:'#0d9488', fontSize:'13px', cursor:'pointer', fontWeight:'500' },
-};

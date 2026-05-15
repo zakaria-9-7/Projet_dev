@@ -8,6 +8,9 @@ from app.routes.files import files_bp
 from app.routes.admin_global import admin_global_bp
 from app.routes.admin_espace import admin_espace_bp
 from app.routes.acl import acl_bp
+from app.routes.logs import logs_bp
+from app.routes.folders import folders_bp
+from app.routes.version import versions_bp
 from flask_cors import CORS
 
 load_dotenv()
@@ -23,7 +26,7 @@ def create_app():
 
     db.init_app(app)
     bcrypt.init_app(app)
-    CORS(app)
+    CORS(app, origins='*', supports_credentials=True)
 
     from app.routes.quota import quota_bp
 
@@ -35,9 +38,9 @@ def create_app():
     app.register_blueprint(admin_espace_bp)
     app.register_blueprint(acl_bp)
     app.register_blueprint(quota_bp)
-
-    with app.app_context():
-        db.create_all()
+    app.register_blueprint(logs_bp)
+    app.register_blueprint(folders_bp)
+    app.register_blueprint(versions_bp)
 
     with app.app_context():
         db.create_all()

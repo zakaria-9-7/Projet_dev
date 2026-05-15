@@ -1,11 +1,9 @@
 from flask import Blueprint, request, jsonify, g
 from app.decorators import require_role
-from app.models.user import User      
-from app.extensions import db 
-from flask_bcrypt import Bcrypt
+from app.models.user import User
+from app.extensions import db, bcrypt
 
 admin_global_bp = Blueprint('admin_global', __name__)
-bcrypt = Bcrypt()
 
 @admin_global_bp.route('/admin/users', methods=['GET'])
 @require_role('AdminGlobal')
@@ -17,6 +15,7 @@ def get_users():
     for user in users1.items :
        users.append( {
     'id': user.id,
+    'nom': user.nom,
     'email': user.email,
     'role': user.role,
     'statut': user.statut
@@ -36,7 +35,7 @@ def create_user():
       if User.query.filter_by(email=email).first() is None :
         if role in ['AdminGlobal', 'AdminEspace', 'Utilisateur']:
           password = bcrypt.generate_password_hash(password).decode('utf-8')
-          new_user = User(email=email, name=name, role=role, password=password)
+          new_user = User(email=email, nom=name, role=role, password=password)
           db.session.add(new_user)
           db.session.commit()
           return jsonify({'message' : 'Utilisateur créé avec succès'}), 201

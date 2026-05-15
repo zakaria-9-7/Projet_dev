@@ -10,6 +10,8 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import API from "../api/auth";
+import AppLayout from "../components/AppLayout";
 
 const C = {
   primary: "#00BCD4",
@@ -34,22 +36,6 @@ const PERM_COLS = [
   { key: "partage",     label: "Partage" },
 ];
 
-const API = async (path, options = {}) => {
-  const token = localStorage.getItem("jwt_token");
-  const res = await fetch(`/api${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(options.headers || {}),
-    },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${res.status}`);
-  }
-  return res.json();
-};
 
 export default function AdminEspace() {
   const [fichiers, setFichiers]         = useState([]);
@@ -68,10 +54,12 @@ export default function AdminEspace() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [fichiersData, usersData] = await Promise.all([
-        API("/files/"),
-        API("/admin/users"),
+      const [fichiersRes, usersRes] = await Promise.all([
+        API.get("/files/"),
+        API.get("/users/list"),
       ]);
+      const fichiersData = Array.isArray(fichiersRes.data) ? fichiersRes.data : (fichiersRes.data.files || []);
+      const usersData    = Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data.users || []);
       setFichiers(fichiersData);
       setUsers(usersData);
       // Sélectionner le premier fichier par défaut
@@ -88,8 +76,8 @@ export default function AdminEspace() {
   useEffect(() => {
     if (!selectedFichier) return;
     setLoadingRules(true);
-    API(`/acl/fichier/${selectedFichier.id}`)
-      .then(setRules)
+    API.get(`/acl/fichier/${selectedFichier.id}`)
+      .then(r => setRules(r.data))
       .catch(() => setRules([]))
       .finally(() => setLoadingRules(false));
   }, [selectedFichier]);
@@ -103,10 +91,7 @@ export default function AdminEspace() {
   const togglePerm = async (ruleId, permKey, currentVal) => {
     setSaving(s => ({ ...s, [`${ruleId}-${permKey}`]: true }));
     try {
-      const updated = await API(`/acl/${ruleId}`, {
-        method: "PUT",
-        body: JSON.stringify({ [permKey]: !currentVal }),
-      });
+      const updated = (await API.put(`/acl/${ruleId}`, { [permKey]: !currentVal })).data;
       setRules(prev => prev.map(r => r.id === ruleId ? updated : r));
       showToast("Permission mise à jour");
     } catch (e) { showToast(e.message, "error"); }
@@ -117,7 +102,7 @@ export default function AdminEspace() {
   const revoke = async (ruleId, userName) => {
     if (!window.confirm(`Révoquer tous les accès de ${userName} ?`)) return;
     try {
-      await API(`/acl/${ruleId}`, { method: "DELETE" });
+      await API.delete(`/acl/${ruleId}`);
       setRules(prev => prev.filter(r => r.id !== ruleId));
       showToast(`Accès de ${userName} révoqué`);
     } catch (e) { showToast(e.message, "error"); }
@@ -127,24 +112,22 @@ export default function AdminEspace() {
   const handleAdd = async (targetUserId, perms) => {
     if (!selectedFichier) return;
     try {
-      const newRule = await API("/acl/", {
-        method: "POST",
-        body: JSON.stringify({
-          user_id: targetUserId,
-          fichier_id: selectedFichier.id,
-          ...perms,
-        }),
-      });
+      const newRule = (await API.post("/acl/", {
+        user_id: targetUserId,
+        fichier_id: selectedFichier.id,
+        ...perms,
+      })).data;
       setRules(prev => [...prev, newRule]);
       setAddModal(false);
       showToast("Permission ajoutée ✓");
     } catch (e) { showToast(e.message, "error"); }
   };
 
-  if (loading) return <Loading />;
-  if (error) return <ErrorScreen msg={error} onRetry={load} />;
+  if (loading) return <AppLayout><Loading /></AppLayout>;
+  if (error) return <AppLayout><ErrorScreen msg={error} onRetry={load} /></AppLayout>;
 
   return (
+    <AppLayout>
     <div style={S.page}>
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
@@ -256,10 +239,7 @@ export default function AdminEspace() {
           rule={editModal}
           onConfirm={async (perms) => {
             try {
-              const updated = await API(`/acl/${editModal.id}`, {
-                method: "PUT",
-                body: JSON.stringify(perms),
-              });
+              const updated = (await API.put(`/acl/${editModal.id}`, perms)).data;
               setRules(prev => prev.map(r => r.id === editModal.id ? updated : r));
               setEditModal(null);
               showToast("Permissions mises à jour ✓");
@@ -269,6 +249,7 @@ export default function AdminEspace() {
         />
       )}
     </div>
+    </AppLayout>
   );
 }
 
@@ -558,7 +539,6 @@ function avatarColor(name) {
 
 const S = {
   page: {
-    background: C.bg, minHeight:"100vh", padding:"32px 40px",
     fontFamily:"'DM Sans','Segoe UI',sans-serif", color: C.ink,
   },
   pageHeader: {
