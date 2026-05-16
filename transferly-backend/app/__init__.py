@@ -2,7 +2,7 @@ from flask import Flask
 from dotenv import load_dotenv
 import os
 from app.middleware import register_middleware
-from app.extensions import db, bcrypt
+from app.extensions import db, bcrypt, mail
 from app.routes.auth import auth_bp
 from app.routes.files import files_bp
 from app.routes.admin_global import admin_global_bp
@@ -27,8 +27,17 @@ def create_app():
         'SQLALCHEMY_DATABASE_URL', 'sqlite:///transferly.db'
     )
 
+    app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
+    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+    app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() in ['true', '1', 't']
+    app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').lower() in ['true', '1', 't']
+    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+    app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+    app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
+
     db.init_app(app)
     bcrypt.init_app(app)
+    mail.init_app(app)
     CORS(app, origins='*', supports_credentials=True)
 
     register_middleware(app)

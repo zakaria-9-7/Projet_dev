@@ -4,11 +4,13 @@ import { gsap } from 'gsap';
 import {
   Grid, List, UploadCloud,
   Folder, FileText, FileSpreadsheet, ImageIcon,
-  FileIcon, MoreVertical, History, Download, Trash2, Share2,
+  FileIcon, MoreVertical, History, Download, Trash2, Share2, X,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
+import { ShareModal } from '../components/ShareModal';
+import UploadZone from '../components/UploadZone';
 
 function normalizeFile(f) {
   const ext = f.nom?.split('.').pop()?.toUpperCase() || 'FILE';
@@ -28,10 +30,11 @@ export default function MyFiles() {
   const [viewMode, setViewMode] = useState('grid');
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
-  const [openMenu, setOpenMenu] = useState(null); // file.id or null
+  const [openMenu,  setOpenMenu]  = useState(null);
+  const [shareFile,  setShareFile]  = useState(null);
+  const [showUpload, setShowUpload] = useState(false);
   const cardsRef = useRef([]);
-  const inputRef = useRef(null);
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
 
   const fetchFiles = () => {
     setLoading(true);
@@ -47,16 +50,7 @@ export default function MyFiles() {
 
   useEffect(() => { fetchFiles(); }, []);
 
-  const handleUpload = (e) => {
-    const file = e.target.files[0];
-    e.target.value = '';
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    API.post('/files/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      .then(() => fetchFiles())
-      .catch(err => alert(err.response?.data?.error || 'Échec upload'));
-  };
+  const handleUpload = () => setShowUpload(true);
 
   const handleDownload = async (file) => {
     try {
@@ -115,9 +109,8 @@ export default function MyFiles() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <input ref={inputRef} type="file" className="hidden" onChange={handleUpload} />
           <button
-            onClick={() => inputRef.current?.click()}
+            onClick={handleUpload}
             className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
           >
             <UploadCloud className="w-4 h-4" />
@@ -216,7 +209,7 @@ export default function MyFiles() {
                         <History className="w-3.5 h-3.5" /> Historique
                       </button>
                       <button
-                        onClick={() => { setOpenMenu(null); navigate(`/acl?fichier=${file.id}`); }}
+                        onClick={() => { setOpenMenu(null); setShareFile(file); }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                       >
                         <Share2 className="w-3.5 h-3.5" /> Partager
@@ -261,6 +254,37 @@ export default function MyFiles() {
           ))}
         </div>
       )}
+	{shareFile && (
+		<ShareModal
+			fichier={shareFile}
+			onClose={() => setShareFile(null)}
+			onSuccess={(msg) => { alert(msg); setShareFile(null); }}
+		/>
+	)}
+
+	{/* Upload modal */}
+	{showUpload && (
+		<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+			<div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+				<div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+					<div>
+						<h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Téléverser des fichiers</h2>
+						<p className="text-xs text-slate-400 mt-0.5">Glissez ou sélectionnez vos fichiers</p>
+					</div>
+					<button
+						onClick={() => setShowUpload(false)}
+						className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+					>
+						<X className="w-5 h-5" />
+					</button>
+				</div>
+				<div className="p-6">
+					<UploadZone onSuccess={() => { fetchFiles(); setShowUpload(false); }} />
+				</div>
+			</div>
+		</div>
+	)}
+
     </AppLayout>
   );
 }

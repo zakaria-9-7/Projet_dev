@@ -1,9 +1,12 @@
-from flask import Blueprint, jsonify, request, g
+from flask import Blueprint, jsonify, request, g, Response
 from app.extensions import db
 from app.models.log import Log
 from app.models.user import User
 from app.models.fichier import Fichier
 from app.decorators import require_role
+from datetime import datetime, timedelta
+import csv
+from io import StringIO
 
 logs_bp = Blueprint('logs', __name__, url_prefix='/logs')
 
@@ -36,13 +39,52 @@ def get_all_logs():
     limit  = min(request.args.get('limit',  100, type=int), _LIMIT_MAX)
     offset = request.args.get('offset', 0, type=int)
 
-    logs = (
-        Log.query
-        .order_by(Log.date.desc())
-        .limit(limit)
-        .offset(offset)
-        .all()
-    )
+    user_id = request.args.get('user_id', type=int)
+    action = request.args.get('action')
+    statut = request.args.get('statut')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    export_format = request.args.get('export')
+
+    query = Log.query
+
+    if user_id:
+        query = query.filter(Log.user_id == user_id)
+    if action:
+        query = query.filter(Log.action == action)
+    if statut:
+        query = query.filter(Log.statut == statut)
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            query = query.filter(Log.date >= start_dt)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+            query = query.filter(Log.date < end_dt)
+        except ValueError:
+            pass
+
+    query = query.order_by(Log.date.desc())
+
+    if export_format == 'csv':
+        logs = query.all()
+        si = StringIO()
+        cw = csv.writer(si)
+        cw.writerow(['id', 'action', 'statut', 'user_email', 'date', 'resource_id', 'details'])
+        for log in logs:
+            user = User.query.get(log.user_id) if log.user_id else None
+            user_email = user.email if user else ''
+            cw.writerow([log.id, log.action, log.statut, user_email, log.date.isoformat() if log.date else '', log.resource_id or '', log.details or ''])
+        return Response(
+            si.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=logs_export.csv"}
+        )
+
+    logs = query.limit(limit).offset(offset).all()
     return jsonify([_log_to_dict(l) for l in logs]), 200
 
 
