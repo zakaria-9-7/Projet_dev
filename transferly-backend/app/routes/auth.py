@@ -236,4 +236,3 @@ def reset_password(token):
     db.session.commit()
 
     return jsonify({'message': 'Mot de passe réinitialisé avec succès'}), 200
-    return jsonify({'message': 'Déconnecté'}), 200
