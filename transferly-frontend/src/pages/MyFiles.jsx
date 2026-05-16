@@ -9,11 +9,12 @@ import {
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { ShareModal } from '../components/ShareModal';
+import UploadModal from '../components/UploadModal';
 
 function formatRelativeDate(iso) {
   if (!iso) return '—';
   const diff = Math.floor((Date.now() - new Date(iso + 'Z')) / 1000);
-  if (diff < 3600)  return `Il y a ${Math.floor(diff / 60)} min`;
+  if (diff < 3600) return `Il y a ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} heure${Math.floor(diff / 3600) > 1 ? 's' : ''}`;
   if (diff < 172800) return 'Hier';
   return `Il y a ${Math.floor(diff / 86400)} jours`;
@@ -33,14 +34,14 @@ function normalizeFile(f) {
 }
 
 export default function MyFiles() {
-  const [files,    setFiles]    = useState([]);
+  const [files, setFiles] = useState([]);
   const [viewMode, setViewMode] = useState('grid');
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [openMenu, setOpenMenu] = useState(null); // file.id or null
   const [shareFile, setShareFile] = useState(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const cardsRef = useRef([]);
-  const inputRef = useRef(null);
   const navigate = useNavigate();
 
   const fetchFiles = () => {
@@ -57,16 +58,7 @@ export default function MyFiles() {
 
   useEffect(() => { fetchFiles(); }, []);
 
-  const handleUpload = (e) => {
-    const file = e.target.files[0];
-    e.target.value = '';
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    API.post('/files/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      .then(() => fetchFiles())
-      .catch(err => alert(err.response?.data?.error || 'Échec upload'));
-  };
+
 
   const handleDownload = async (file) => {
     try {
@@ -133,9 +125,8 @@ export default function MyFiles() {
             <FolderPlus className="w-4 h-4" />
             Nouveau dossier
           </button>
-          <input ref={inputRef} type="file" className="hidden" onChange={handleUpload} />
           <button
-            onClick={() => inputRef.current?.click()}
+            onClick={() => setShowUploadModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
           >
             <UploadCloud className="w-4 h-4" />
@@ -146,21 +137,19 @@ export default function MyFiles() {
           <div className="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 transition-colors ${
-                viewMode === 'grid'
-                  ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
-                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-              }`}
+              className={`p-2 transition-colors ${viewMode === 'grid'
+                ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
+                : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
             >
               <Grid className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 border-l border-slate-200 dark:border-slate-600 transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
-                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-              }`}
+              className={`p-2 border-l border-slate-200 dark:border-slate-600 transition-colors ${viewMode === 'list'
+                ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
+                : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
             >
               <List className="w-4 h-4" />
             </button>
@@ -195,11 +184,10 @@ export default function MyFiles() {
               key={file.id ?? i}
               ref={el => (cardsRef.current[i] = el)}
               style={{ opacity: 0 }}
-              className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md hover:border-cyan-200 dark:hover:border-cyan-700 transition-all group relative ${
-                viewMode === 'list'
-                  ? 'flex items-center gap-4 p-4'
-                  : 'flex flex-col p-4 min-h-[160px]'
-              }`}
+              className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md hover:border-cyan-200 dark:hover:border-cyan-700 transition-all group relative ${viewMode === 'list'
+                ? 'flex items-center gap-4 p-4'
+                : 'flex flex-col p-4 min-h-[160px]'
+                }`}
             >
               {file.type === 'file' && (
                 <div className="absolute top-3 right-3">
@@ -279,13 +267,23 @@ export default function MyFiles() {
           ))}
         </div>
       )}
-	{shareFile && (
-		<ShareModal
-			fichier={shareFile}
-			onClose={() => setShareFile(null)}
-			onSuccess={(msg) => { alert(msg); setShareFile(null); }}
-		/>
-	)}
+      {shareFile && (
+        <ShareModal
+          fichier={shareFile}
+          onClose={() => setShareFile(null)}
+          onSuccess={(msg) => { alert(msg); setShareFile(null); }}
+        />
+      )}
+
+      {showUploadModal && (
+        <UploadModal
+          onClose={() => setShowUploadModal(false)}
+          onSuccess={(msg) => {
+            setShowUploadModal(false);
+            fetchFiles();
+          }}
+        />
+      )}
 
     </AppLayout>
   );
@@ -293,9 +291,9 @@ export default function MyFiles() {
 
 function FileTypeIcon({ file, listMode }) {
   const base = `stroke-[1.5] ${listMode ? 'w-6 h-6' : 'w-10 h-10 mb-4'}`;
-  if (file.type === 'folder')             return <Folder          className={`${base} text-cyan-400`}   />;
-  if (file.ft === 'PDF' || file.ft === 'PPT') return <FileText    className={`${base} text-slate-400`}  />;
-  if (file.ft === 'XLS')                  return <FileSpreadsheet className={`${base} text-slate-400`}  />;
-  if (file.ft === 'IMG')                  return <ImageIcon       className={`${base} text-slate-400`}  />;
-  return                                         <FileIcon        className={`${base} text-slate-400`}  />;
+  if (file.type === 'folder') return <Folder className={`${base} text-cyan-400`} />;
+  if (file.ft === 'PDF' || file.ft === 'PPT') return <FileText className={`${base} text-slate-400`} />;
+  if (file.ft === 'XLS') return <FileSpreadsheet className={`${base} text-slate-400`} />;
+  if (file.ft === 'IMG') return <ImageIcon className={`${base} text-slate-400`} />;
+  return <FileIcon className={`${base} text-slate-400`} />;
 }
