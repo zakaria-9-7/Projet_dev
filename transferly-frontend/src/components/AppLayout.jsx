@@ -6,6 +6,7 @@ import {
   ShieldCheck, Users, FolderOpen, Activity,
   Shield, Crown, User,
 } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 /* ── Nav items per role ─────────────────────────── */
 const NAV_BY_ROLE = {
@@ -175,13 +176,7 @@ export default function AppLayout({ children }) {
               {dark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            <button
-              disabled
-              title="Notifications bientôt disponibles"
-              className="p-2.5 rounded-xl text-slate-300 dark:text-slate-600 cursor-not-allowed"
-            >
-              <Bell className="w-4 h-4" />
-            </button>
+            <NotificationBell />
 
             <div className="relative ml-1.5" ref={profileRef}>
               <button
