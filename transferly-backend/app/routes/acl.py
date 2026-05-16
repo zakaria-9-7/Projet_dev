@@ -260,3 +260,92 @@ def _write_log(user_id: int, action: str, statut: str):
         db.session.commit()
     except Exception:
         pass
+
+
+# ─── GET /acl/fichier/<fichier_id>/espace ────────────────────────
+@acl_bp.route('/fichier/<int:fichier_id>/espace', methods=['GET'])
+def get_acl_fichier_espace(fichier_id):
+    from app.models.membership import Membership
+
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+
+    if not fichier.espace_id:
+        return jsonify({'error': 'Ce fichier n est pas dans un espace'}), 400
+
+    espace = Espace.query.get(fichier.espace_id)
+    uid = g.user['id']
+    is_espace_admin = espace and espace.admin_id == uid
+    is_owner = fichier.user_id == uid
+
+    member_ids = set([espace.admin_id]) if espace else set()
+    for m in Membership.query.filter_by(espace_id=fichier.espace_id).all():
+        member_ids.add(m.user_id)
+
+    result = []
+    for mid in member_ids:
+        u = User.query.get(mid)
+        if not u:
+            continue
+        acl = ACL.query.filter_by(user_id=mid, fichier_id=fichier_id).first()
+        result.append({
+            'user_id': u.id,
+            'nom': u.nom,
+            'email': u.email,
+            'is_owner': u.id == fichier.user_id,
+            'is_espace_admin': espace and u.id == espace.admin_id,
+            'lecture': acl.lecture if acl else False,
+            'download': acl.download if acl else False,
+            'ecriture': acl.ecriture if acl else False,
+            'suppression': acl.suppression if acl else False,
+        })
+
+    return jsonify({
+        'fichier_id': fichier_id,
+        'fichier_nom': fichier.nom,
+        'can_manage': is_espace_admin or is_owner,
+        'permissions': result
+    }), 200
+
+
+# ─── PUT /acl/fichier/<fichier_id>/membre/<user_id> ──────────────
+@acl_bp.route('/fichier/<int:fichier_id>/membre/<int:user_id>', methods=['PUT'])
+def update_acl_membre(fichier_id, user_id):
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+
+    espace = Espace.query.get(fichier.espace_id) if fichier.espace_id else None
+    uid = g.user['id']
+    is_espace_admin = espace and espace.admin_id == uid
+    is_owner = fichier.user_id == uid
+
+    if not (is_espace_admin or is_owner):
+        return jsonify({'error': 'Vous ne pouvez pas gérer les accès de ce fichier'}), 403
+
+    if espace and user_id == espace.admin_id:
+        return jsonify({'error': 'Les droits de l admin de l espace ne peuvent pas être modifiés'}), 400
+    if user_id == fichier.user_id:
+        return jsonify({'error': 'Les droits du propriétaire ne peuvent pas être modifiés'}), 400
+
+    data = request.get_json(silent=True) or {}
+
+    acl = ACL.query.filter_by(user_id=user_id, fichier_id=fichier_id).first()
+    if acl is None:
+        acl = ACL(user_id=user_id, fichier_id=fichier_id)
+        db.session.add(acl)
+
+    if 'lecture' in data:     acl.lecture = bool(data['lecture'])
+    if 'download' in data:    acl.download = bool(data['download'])
+    if 'ecriture' in data:    acl.ecriture = bool(data['ecriture'])
+    if 'suppression' in data: acl.suppression = bool(data['suppression'])
+
+    db.session.commit()
+    return jsonify({'message': 'Permissions mises à jour'}), 200

@@ -12,25 +12,21 @@ const NAV_BY_ROLE = {
   Utilisateur: [
     { to: '/dashboard',    icon: LayoutDashboard, label: 'Tableau de bord'   },
     { to: '/files',        icon: Files,           label: 'Mes fichiers'       },
-    { to: '/shared',       icon: ShareIcon,       label: 'Partagés avec moi' },
-    { to: '/versions',     icon: History,         label: 'Versions'           },
     { to: '/admin-espace', icon: FolderOpen,      label: 'Mes espaces'        },
+    { to: '/shared',       icon: ShareIcon,       label: 'Partagés avec moi' },
   ],
   AdminEspace: [
     { to: '/dashboard',    icon: LayoutDashboard, label: 'Tableau de bord'   },
     { to: '/files',        icon: Files,           label: 'Mes fichiers'       },
-    { to: '/shared',       icon: ShareIcon,       label: 'Partagés avec moi' },
-    { to: '/versions',     icon: History,         label: 'Versions'           },
     { to: '/admin-espace', icon: FolderOpen,      label: 'Mes espaces'        },
-    { to: '/acl',          icon: ShieldCheck,     label: "Droits d'accès"    },
+    { to: '/shared',       icon: ShareIcon,       label: 'Partagés avec moi' },
   ],
   AdminGlobal: [
     { to: '/dashboard',    icon: LayoutDashboard, label: 'Tableau de bord'   },
     { to: '/files',        icon: Files,           label: 'Mes fichiers'       },
+    { to: '/admin-espace', icon: FolderOpen,      label: 'Mes espaces'        },
     { to: '/shared',       icon: ShareIcon,       label: 'Partagés avec moi' },
-    { to: '/versions',     icon: History,         label: 'Versions'           },
     { to: '/admin-users',  icon: Users,           label: 'Utilisateurs'       },
-    { to: '/acl',          icon: ShieldCheck,     label: "Droits d'accès"    },
     { to: '/logs',         icon: Activity,        label: 'Logs'               },
   ],
 };

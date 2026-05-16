@@ -72,10 +72,18 @@ def delete_user(user_id):
   user = User.query.get(user_id)
   if user is None :
     return  jsonify({'error' : 'utilisateur inexistant'}), 404
-  else :
-    db.session.delete(user)
-    db.session.commit()
-    return  jsonify({'message' : 'utilisateur supprimé avec succès'}), 200
+
+  if user_id == g.user['id']:
+      return jsonify({'error': 'Vous ne pouvez pas supprimer votre propre compte administrateur'}), 403
+
+  if user.role == 'AdminGlobal':
+      nb_admins = User.query.filter_by(role='AdminGlobal').count()
+      if nb_admins <= 1:
+          return jsonify({'error': 'Impossible de supprimer le dernier administrateur global'}), 403
+
+  db.session.delete(user)
+  db.session.commit()
+  return  jsonify({'message' : 'utilisateur supprimé avec succès'}), 200
 
 
 @admin_global_bp.route('/admin/files', methods=['GET'])
@@ -134,9 +142,14 @@ def update_user_role(user_id):
       else :
         data = request.get_json()
         new_role = data.get('role', user.role)
-        if new_role in ['AdminGlobal', 'AdminEspace', 'Utilisateur'] :
-          user.role = new_role
-          db.session.commit()
-          return jsonify({'message': 'role modifié avec succès'}), 200
-        else :
+        if new_role not in ['AdminGlobal', 'AdminEspace', 'Utilisateur'] :
           return jsonify({'error' : 'role non valide'}), 400
+
+        if user_id == g.user['id'] and new_role != 'AdminGlobal':
+            nb_admins = User.query.filter_by(role='AdminGlobal').count()
+            if nb_admins <= 1:
+                return jsonify({'error': 'Vous êtes le dernier administrateur, vous ne pouvez pas changer votre rôle'}), 403
+
+        user.role = new_role
+        db.session.commit()
+        return jsonify({'message': 'role modifié avec succès'}), 200

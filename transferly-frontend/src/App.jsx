@@ -16,6 +16,8 @@ import MyEspaces     from './pages/MyEspaces';
 import Logs           from './pages/Logs';
 import AdminUsers     from './pages/AdminUsers';
 import Settings       from './pages/Settings';
+import EspaceDetail   from './pages/EspaceDetail';
+import JoinEspace     from './pages/JoinEspace';
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -43,6 +45,8 @@ export default function App() {
         <Route path="/logs"         element={<PrivateRoute><Logs /></PrivateRoute>} />
         <Route path="/admin-users"  element={<PrivateRoute><AdminUsers /></PrivateRoute>} />
         <Route path="/settings"     element={<PrivateRoute><Settings /></PrivateRoute>} />
+        <Route path="/espace/:espaceId" element={<PrivateRoute><EspaceDetail /></PrivateRoute>} />
+        <Route path="/join/:token"  element={<JoinEspace />} />
       </Routes>
     </BrowserRouter>
   );

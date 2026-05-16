@@ -145,6 +145,8 @@ function QuotaModal({ user, onClose, onSave }) {
 }
 
 export default function AdminUsers() {
+  const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+
   const [users, setUsers]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
@@ -280,6 +282,9 @@ export default function AdminUsers() {
                   <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                     <td className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-200">
                       {user.nom || '—'}
+                      {user.id === currentUserId && (
+                        <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 bg-cyan-100 text-cyan-700 rounded-full">VOUS</span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">{user.email}</td>
                     <td className="px-5 py-3.5">
@@ -306,15 +311,17 @@ export default function AdminUsers() {
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleToggle(user)}
-                          title={user.statut === 'actif' ? 'Désactiver' : 'Activer'}
-                          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition"
-                        >
-                          {user.statut === 'actif'
-                            ? <ToggleRight className="w-4 h-4 text-emerald-500" />
-                            : <ToggleLeft  className="w-4 h-4 text-slate-400" />}
-                        </button>
+                        {user.id !== currentUserId && (
+                          <button
+                            onClick={() => handleToggle(user)}
+                            title={user.statut === 'actif' ? 'Désactiver' : 'Activer'}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition"
+                          >
+                            {user.statut === 'actif'
+                              ? <ToggleRight className="w-4 h-4 text-emerald-500" />
+                              : <ToggleLeft  className="w-4 h-4 text-slate-400" />}
+                          </button>
+                        )}
                         <button
                           onClick={() => setQuotaUser(user)}
                           title="Modifier le quota"
@@ -322,13 +329,15 @@ export default function AdminUsers() {
                         >
                           <HardDrive className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(user)}
-                          title="Supprimer"
-                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 text-red-500 transition"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {user.id !== currentUserId && (
+                          <button
+                            onClick={() => handleDelete(user)}
+                            title="Supprimer"
+                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 text-red-500 transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

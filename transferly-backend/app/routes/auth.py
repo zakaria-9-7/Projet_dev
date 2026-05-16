@@ -137,6 +137,34 @@ def logout():
     return jsonify({'message': 'Déconnecté'}), 200
 
 
+# ── Refresh JWT (mise à jour du rôle sans déconnexion) ───────────
+@auth_bp.route('/auth/refresh', methods=['POST'])
+def refresh_token():
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+
+    user = User.query.get(g.user['id'])
+    if not user:
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
+
+    if user.statut == 'bloque':
+        return jsonify({'error': 'Compte bloqué'}), 403
+
+    new_token = jwt.encode({
+        'user_id': user.id,
+        'role': user.role,
+        'email': user.email,
+        'exp': datetime.utcnow() + timedelta(hours=2)
+    }, os.getenv('SECRET_KEY', 'devsecret'), algorithm='HS256')
+
+    return jsonify({
+        'token': new_token,
+        'role': user.role,
+        'nom': user.nom,
+        'email': user.email
+    }), 200
+
+
 # ══════════════════════════════════════════════════════════════════
 # ZT-04 — Reset mot de passe sécurisé (HMAC + email)
 # ══════════════════════════════════════════════════════════════════

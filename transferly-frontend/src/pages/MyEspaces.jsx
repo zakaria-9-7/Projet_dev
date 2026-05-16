@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { FolderOpen, Plus, Users, Mail } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 
 export default function MyEspaces() {
+  const navigate = useNavigate();
   const [espaces, setEspaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -24,7 +26,7 @@ export default function MyEspaces() {
     setLoading(true);
     setError(null);
     try {
-      const res = await API.get('/espaces/mine');
+      const res = await API.get('/espaces/all-mine');
       setEspaces(res.data);
     } catch (e) {
       setError(e.response?.data?.error || 'Erreur de chargement');
@@ -47,12 +49,23 @@ export default function MyEspaces() {
     try {
       const res = await API.post('/espaces', { nom: newName.trim() });
       if (res.data.role_updated && res.data.role_updated !== localStorage.getItem('role')) {
-        showToast('Espace créé ! Reconnexion nécessaire pour activer votre nouveau rôle (Admin Espace)...');
-        setTimeout(() => {
-          localStorage.clear();
-          window.location.href = '/login';
-        }, 2500);
-        return;
+        try {
+          const refreshRes = await API.post('/auth/refresh');
+          localStorage.setItem('token', refreshRes.data.token);
+          localStorage.setItem('role', refreshRes.data.role);
+          if (refreshRes.data.nom) localStorage.setItem('nom', refreshRes.data.nom);
+          if (refreshRes.data.email) localStorage.setItem('email', refreshRes.data.email);
+          showToast(`Espace créé ! Vous êtes maintenant Admin Espace.`);
+          setTimeout(() => window.location.reload(), 1500);
+          return;
+        } catch (err) {
+          showToast('Reconnexion nécessaire...', 'error');
+          setTimeout(() => {
+            localStorage.clear();
+            window.location.href = '/login';
+          }, 2000);
+          return;
+        }
       }
       showToast('Espace créé');
       setNewName('');
@@ -119,7 +132,7 @@ export default function MyEspaces() {
               <motion.div
                 key={e.id}
                 whileHover={{ scale: 1.01 }}
-                onClick={() => setSelectedEspace(e)}
+                onClick={() => navigate(`/espace/${e.id}`)}
                 className={`p-4 rounded-xl cursor-pointer border transition-colors ${
                   selectedEspace?.id === e.id
                     ? 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-300'
@@ -132,6 +145,11 @@ export default function MyEspaces() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">{e.nom}</p>
+                    {e.role === 'admin' ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">ADMIN</span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded-full">MEMBRE</span>
+                    )}
                     <p className="text-xs text-slate-500 dark:text-slate-400">Espace #{e.id}</p>
                   </div>
                 </div>

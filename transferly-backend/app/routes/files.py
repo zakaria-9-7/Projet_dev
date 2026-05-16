@@ -116,6 +116,27 @@ def upload_file():
         encrypted = encrypt_file(file_content)
         espace_id = request.form.get('espace_id', type=int)
 
+        if espace_id:
+            from app.models.espace import Espace
+            from app.models.membership import Membership
+            espace_obj = Espace.query.get(espace_id)
+            if espace_obj is None:
+                return jsonify({'error': 'Espace introuvable'}), 404
+
+            uid = g.user['id']
+            is_espace_admin = (espace_obj.admin_id == uid)
+            policy = espace_obj.upload_policy or 'tous'
+
+            if not is_espace_admin:
+                if policy == 'admin_seul':
+                    return jsonify({'error': 'Seul l administrateur de l espace peut téléverser des fichiers'}), 403
+                elif policy == 'membres_choisis':
+                    autorises = []
+                    if espace_obj.upload_autorises:
+                        autorises = [int(x) for x in espace_obj.upload_autorises.split(',') if x.strip()]
+                    if uid not in autorises:
+                        return jsonify({'error': 'Vous n êtes pas autorisé à téléverser dans cet espace'}), 403
+
         fichier = Fichier(
             nom=uploaded.filename,
             taille=round(file_size_mb, 6),
@@ -145,6 +166,34 @@ def upload_file():
         db.session.commit()
 
         grant_owner_permissions(user_id, fichier.id)
+
+        # Si le fichier est dans un espace, donner accès à tous les membres
+        if espace_id:
+            from app.models.membership import Membership
+            from app.models.espace import Espace
+            from app.models.acl import ACL
+            espace = Espace.query.get(espace_id)
+            if espace:
+                members_ids = [m.user_id for m in Membership.query.filter_by(espace_id=espace_id).all()]
+                members_ids.append(espace.admin_id)
+                for member_id in set(members_ids):
+                    if member_id != user_id:
+                        existing = ACL.query.filter_by(user_id=member_id, fichier_id=fichier.id).first()
+                        if not existing:
+                            is_espace_admin = (member_id == espace.admin_id)
+                            new_acl = ACL(
+                                user_id=member_id,
+                                fichier_id=fichier.id,
+                                lecture=True,
+                                download=True,
+                                ecriture=is_espace_admin,
+                                upload=is_espace_admin,
+                                suppression=is_espace_admin,
+                                partage=is_espace_admin,
+                            )
+                            db.session.add(new_acl)
+                db.session.commit()
+
         update_quota(user_id, file_size_mb, is_upload=True)
         log_action(user_id, 'upload', resource_id=fichier.id, statut='succes')
 
@@ -233,6 +282,43 @@ def delete_file(fichier_id):
         return jsonify({'error': str(e)}), 500
     finally:
         lock.release()
+
+
+# ── GET /files/espace/<espace_id> ────────────────────────────────
+@files_bp.route('/espace/<int:espace_id>', methods=['GET'])
+def list_files_in_espace(espace_id):
+    from app.models.espace import Espace
+    from app.models.membership import Membership
+
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+
+    espace = Espace.query.get(espace_id)
+    if espace is None:
+        return jsonify({'error': 'Espace introuvable'}), 404
+
+    user_id = g.user['id']
+    is_admin_espace = espace.admin_id == user_id
+    is_admin_global = g.user['role'] == 'AdminGlobal'
+    is_member = Membership.query.filter_by(user_id=user_id, espace_id=espace_id).first() is not None
+
+    if not (is_admin_espace or is_admin_global or is_member):
+        return jsonify({'error': 'Vous n êtes pas membre de cet espace'}), 403
+
+    fichiers = Fichier.query.filter_by(espace_id=espace_id).all()
+    result = []
+    for f in fichiers:
+        owner = User.query.get(f.user_id)
+        result.append({
+            'id': f.id,
+            'nom': f.nom,
+            'taille': f.taille,
+            'date_creation': f.date_creation.isoformat() if f.date_creation else None,
+            'owner_id': f.user_id,
+            'owner_nom': owner.nom if owner else None,
+            'owner_email': owner.email if owner else None,
+        })
+    return jsonify(result), 200
 
 
 # ── PUT /files/<fichier_id> ───────────────────────────────────────
