@@ -4,17 +4,17 @@ import { gsap } from 'gsap';
 import {
   Grid, List, FolderPlus, UploadCloud,
   Folder, FileText, FileSpreadsheet, ImageIcon,
-  FileIcon, MoreVertical, History, Download, Trash2, Share2,
+  FileIcon, MoreVertical, History, Download, Trash2, Share2, X,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { ShareModal } from '../components/ShareModal';
-import UploadModal from '../components/UploadModal';
+import UploadZone from '../components/UploadZone';
 
 function formatRelativeDate(iso) {
   if (!iso) return '—';
   const diff = Math.floor((Date.now() - new Date(iso + 'Z')) / 1000);
-  if (diff < 3600) return `Il y a ${Math.floor(diff / 60)} min`;
+  if (diff < 3600)  return `Il y a ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} heure${Math.floor(diff / 3600) > 1 ? 's' : ''}`;
   if (diff < 172800) return 'Hier';
   return `Il y a ${Math.floor(diff / 86400)} jours`;
@@ -34,15 +34,15 @@ function normalizeFile(f) {
 }
 
 export default function MyFiles() {
-  const [files, setFiles] = useState([]);
+  const [files,    setFiles]    = useState([]);
   const [viewMode, setViewMode] = useState('grid');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [openMenu, setOpenMenu] = useState(null); // file.id or null
-  const [shareFile, setShareFile] = useState(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
+  const [openMenu,  setOpenMenu]  = useState(null);
+  const [shareFile,  setShareFile]  = useState(null);
+  const [showUpload, setShowUpload] = useState(false);
   const cardsRef = useRef([]);
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
 
   const fetchFiles = () => {
     setLoading(true);
@@ -58,7 +58,7 @@ export default function MyFiles() {
 
   useEffect(() => { fetchFiles(); }, []);
 
-
+  const handleUpload = () => setShowUpload(true);
 
   const handleDownload = async (file) => {
     try {
@@ -126,7 +126,7 @@ export default function MyFiles() {
             Nouveau dossier
           </button>
           <button
-            onClick={() => setShowUploadModal(true)}
+            onClick={handleUpload}
             className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
           >
             <UploadCloud className="w-4 h-4" />
@@ -137,19 +137,21 @@ export default function MyFiles() {
           <div className="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 transition-colors ${viewMode === 'grid'
-                ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
-                : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-                }`}
+              className={`p-2 transition-colors ${
+                viewMode === 'grid'
+                  ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
+                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
             >
               <Grid className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 border-l border-slate-200 dark:border-slate-600 transition-colors ${viewMode === 'list'
-                ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
-                : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-                }`}
+              className={`p-2 border-l border-slate-200 dark:border-slate-600 transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
+                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
             >
               <List className="w-4 h-4" />
             </button>
@@ -184,10 +186,11 @@ export default function MyFiles() {
               key={file.id ?? i}
               ref={el => (cardsRef.current[i] = el)}
               style={{ opacity: 0 }}
-              className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md hover:border-cyan-200 dark:hover:border-cyan-700 transition-all group relative ${viewMode === 'list'
-                ? 'flex items-center gap-4 p-4'
-                : 'flex flex-col p-4 min-h-[160px]'
-                }`}
+              className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md hover:border-cyan-200 dark:hover:border-cyan-700 transition-all group relative ${
+                viewMode === 'list'
+                  ? 'flex items-center gap-4 p-4'
+                  : 'flex flex-col p-4 min-h-[160px]'
+              }`}
             >
               {file.type === 'file' && (
                 <div className="absolute top-3 right-3">
@@ -267,23 +270,36 @@ export default function MyFiles() {
           ))}
         </div>
       )}
-      {shareFile && (
-        <ShareModal
-          fichier={shareFile}
-          onClose={() => setShareFile(null)}
-          onSuccess={(msg) => { alert(msg); setShareFile(null); }}
-        />
-      )}
+	{shareFile && (
+		<ShareModal
+			fichier={shareFile}
+			onClose={() => setShareFile(null)}
+			onSuccess={(msg) => { alert(msg); setShareFile(null); }}
+		/>
+	)}
 
-      {showUploadModal && (
-        <UploadModal
-          onClose={() => setShowUploadModal(false)}
-          onSuccess={(msg) => {
-            setShowUploadModal(false);
-            fetchFiles();
-          }}
-        />
-      )}
+	{/* Upload modal */}
+	{showUpload && (
+		<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+			<div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+				<div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+					<div>
+						<h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Téléverser des fichiers</h2>
+						<p className="text-xs text-slate-400 mt-0.5">Glissez ou sélectionnez vos fichiers</p>
+					</div>
+					<button
+						onClick={() => setShowUpload(false)}
+						className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+					>
+						<X className="w-5 h-5" />
+					</button>
+				</div>
+				<div className="p-6">
+					<UploadZone onSuccess={() => { fetchFiles(); setShowUpload(false); }} />
+				</div>
+			</div>
+		</div>
+	)}
 
     </AppLayout>
   );
@@ -291,9 +307,9 @@ export default function MyFiles() {
 
 function FileTypeIcon({ file, listMode }) {
   const base = `stroke-[1.5] ${listMode ? 'w-6 h-6' : 'w-10 h-10 mb-4'}`;
-  if (file.type === 'folder') return <Folder className={`${base} text-cyan-400`} />;
-  if (file.ft === 'PDF' || file.ft === 'PPT') return <FileText className={`${base} text-slate-400`} />;
-  if (file.ft === 'XLS') return <FileSpreadsheet className={`${base} text-slate-400`} />;
-  if (file.ft === 'IMG') return <ImageIcon className={`${base} text-slate-400`} />;
-  return <FileIcon className={`${base} text-slate-400`} />;
+  if (file.type === 'folder')             return <Folder          className={`${base} text-cyan-400`}   />;
+  if (file.ft === 'PDF' || file.ft === 'PPT') return <FileText    className={`${base} text-slate-400`}  />;
+  if (file.ft === 'XLS')                  return <FileSpreadsheet className={`${base} text-slate-400`}  />;
+  if (file.ft === 'IMG')                  return <ImageIcon       className={`${base} text-slate-400`}  />;
+  return                                         <FileIcon        className={`${base} text-slate-400`}  />;
 }
