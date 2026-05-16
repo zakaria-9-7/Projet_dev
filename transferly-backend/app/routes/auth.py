@@ -229,6 +229,11 @@ def forgot_password():
 
         print(f"[DEV] Reset URL pour {user.email} : {reset_url}")
 
+        from app.services.mailer import send_reset_email
+        email_envoye = send_reset_email(user.email, reset_url, user.nom)
+        if not email_envoye:
+            print(f"[ERROR] Échec de l'envoi de l'email de reset à {user.email}")
+
         from app.services.logger import log_action
         log_action(
             user_id=user.id,
@@ -270,7 +275,6 @@ def reset_password(token):
     db.session.commit()
 
     return jsonify({'message': 'Mot de passe réinitialisé avec succès'}), 200
-
 
 # ── Profil personnel ──────────────────────────────────────────────
 @auth_bp.route('/me', methods=['GET'])
