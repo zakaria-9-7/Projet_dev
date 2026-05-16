@@ -21,7 +21,7 @@ def register_middleware(app):
         token = header.split(' ')[1]
         
         try:
-            payload = jwt.decode(token, os.getenv('SECRET_KEY'), algorithms=['HS256'])
+            payload = jwt.decode(token, os.getenv('SECRET_KEY', 'devsecret'), algorithms=['HS256'])
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Token expiré'}), 401 
         except jwt.InvalidTokenError:

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import API from "../api/auth";
 
-// ─── CONFIG API ────────────────────────────────────────────────
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+// ─── CONFIG ────────────────────────────────────────────────────
 const REFRESH_INTERVAL = 30000; // 30 secondes
 
 // ─── PALETTE & STYLES ──────────────────────────────────────────
@@ -283,34 +283,27 @@ const useDashboard = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      // TODO : brancher sur les vrais endpoints quand ZT-01 sera prêt
-      // const [metricsRes, logsRes] = await Promise.all([
-      //   fetch(`${API}/admin/metrics`, { credentials: 'include' }),
-      //   fetch(`${API}/logs/?limit=10`, { credentials: 'include' }),
-      // ]);
-      // const metricsData = await metricsRes.json();
-      // const logsData = await logsRes.json();
-
-      // ── Données fictives en attendant ZT-01 ──
-      setMetrics({
-        users_actifs: 248,
-        espace_consomme: 129 * 1024 ** 3,
-        espace_total: 500 * 1024 ** 3,
-        total_fichiers: 1542,
-        tentatives_echecs: 12,
-      });
-      setLogs([
-        { id: 1, user_email: "marie.dubois@inpt.ma", action: "upload", statut: "succes", date: new Date(Date.now() - 120000).toISOString() },
-        { id: 2, user_email: "jean.martin@inpt.ma", action: "download", statut: "succes", date: new Date(Date.now() - 300000).toISOString() },
-        { id: 3, user_email: "sophie.laurent@inpt.ma", action: "suppression", statut: "succes", date: new Date(Date.now() - 600000).toISOString() },
-        { id: 4, user_email: "inconnu@externe.com", action: "login", statut: "echec", date: new Date(Date.now() - 900000).toISOString() },
-        { id: 5, user_email: "pierre.rousseau@inpt.ma", action: "partage", statut: "succes", date: new Date(Date.now() - 1200000).toISOString() },
-        { id: 6, user_email: "claire.dubois@inpt.ma", action: "login", statut: "echec", date: new Date(Date.now() - 1500000).toISOString() },
-        { id: 7, user_email: "marie.dubois@inpt.ma", action: "ecriture", statut: "succes", date: new Date(Date.now() - 1800000).toISOString() },
-        { id: 8, user_email: "jean.martin@inpt.ma", action: "upload", statut: "succes", date: new Date(Date.now() - 2100000).toISOString() },
-        { id: 9, user_email: "admin@inpt.ma", action: "role_change", statut: "succes", date: new Date(Date.now() - 2400000).toISOString() },
-        { id: 10, user_email: "inconnu@externe.com", action: "login", statut: "echec", date: new Date(Date.now() - 2700000).toISOString() },
+      const [logsRes, usersRes, filesRes] = await Promise.all([
+        API.get("/logs/?limit=100"),
+        API.get("/admin/users"),
+        API.get("/files/"),
       ]);
+      const logsData  = logsRes.data;
+      const usersData = usersRes.data;
+      const filesData = filesRes.data.files || [];
+
+      const espaceConsomme    = usersData.reduce((s, u) => s + (u.quota_utilise || 0) * 1024 ** 3, 0);
+      const espaceTotal       = usersData.reduce((s, u) => s + (u.quota         || 0) * 1024 ** 3, 0);
+      const tentativesEchecs  = logsData.filter(l => l.statut === "echec").length;
+
+      setMetrics({
+        users_actifs:      usersData.length,
+        espace_consomme:   espaceConsomme,
+        espace_total:      espaceTotal || 500 * 1024 ** 3,
+        total_fichiers:    filesData.length,
+        tentatives_echecs: tentativesEchecs,
+      });
+      setLogs(logsData.slice(0, 10));
     } catch (err) {
       console.error("Erreur fetch dashboard:", err);
     } finally {

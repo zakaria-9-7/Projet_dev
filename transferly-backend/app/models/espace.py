@@ -7,3 +7,5 @@ class Espace(db.Model):
     nom = db.Column(db.String(100), unique=True, nullable=False)
     admin_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     quota = db.Column(db.Float, default=0.0)
+    upload_policy = db.Column(db.String(20), default='tous')
+    upload_autorises = db.Column(db.Text, default='')

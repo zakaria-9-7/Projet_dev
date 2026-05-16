@@ -1,4 +1,8 @@
 flask
+flask-sqlalchemy
+flask-bcrypt
+flask-cors
+flask-mail
 pyjwt
 bcrypt
 pyotp

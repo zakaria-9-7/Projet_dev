@@ -1,80 +1,201 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { User, Mail, Lock, Eye, EyeOff, Share2 } from 'lucide-react';
 import { register } from '../api/auth';
 
 export default function Register() {
-  const [form, setForm] = useState({ nom:'', email:'', password:'', confirm:'', role:'Utilisateur' });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [form, setForm] = useState({
+    nom: '', email: '', password: '', confirm: '', role: 'Utilisateur',
+  });
+  const [showPwd,     setShowPwd]     = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [error,       setError]       = useState('');
+  const [success,     setSuccess]     = useState('');
   const navigate = useNavigate();
+
+  const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     if (form.password !== form.confirm) {
       setError('Les mots de passe ne correspondent pas');
       return;
     }
     try {
       await register({ nom: form.nom, email: form.email, password: form.password, role: form.role });
-      setSuccess('Compte créé ! Redirection...');
+      setSuccess('Compte créé avec succès ! Redirection...');
       setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
-      setError(err.response?.data?.error || 'Erreur inscription');
+      setError(err.response?.data?.error || "Erreur lors de l'inscription");
     }
   };
 
+  const inputCls = 'w-full py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition';
+
   return (
-    <div style={s.page}>
-      <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <div style={s.card}>
-        <div style={s.brand}><svg width='20' height='20' viewBox='0 0 24 24' fill='currentColor'><circle cx='18' cy='5' r='3'/><circle cx='6' cy='12' r='3'/><circle cx='18' cy='19' r='3'/><line x1='8.59' y1='13.51' x2='15.42' y2='17.49' stroke='currentColor' strokeWidth='2'/><line x1='15.41' y1='6.51' x2='8.59' y2='10.49' stroke='currentColor' strokeWidth='2'/></svg> Transferly</div>
-        <h2 style={s.title}>Création de compte</h2>
-        {error && <div style={s.error}>{error}</div>}
-        {success && <div style={s.success}>{success}</div>}
-        <form onSubmit={handleSubmit}>
-          <label style={s.label}>Nom complet</label>
-          <input style={s.input} placeholder="Jean Dupont"
-            value={form.nom} onChange={e => setForm({...form, nom:e.target.value})} required />
+    <div
+      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
+      style={{ background: '#0a0a0f' }}
+    >
+      {/* Glow effects */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          <label style={s.label}>Adresse email</label>
-          <input style={s.input} type="email" placeholder="nom@exemple.com"
-            value={form.email} onChange={e => setForm({...form, email:e.target.value})} required />
+      {/* Grid texture */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
+        }}
+      />
 
-          <label style={s.label}>Mot de passe</label>
-          <input style={s.input} type="password" placeholder="••••••••"
-            value={form.password} onChange={e => setForm({...form, password:e.target.value})} required />
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-8"
+      >
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-2 mb-7">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #06b6d4, #a78bfa)' }}
+          >
+            <Share2 className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="font-bold text-white text-sm tracking-tight">Transferly</span>
+        </div>
 
-          <label style={s.label}>Confirmer le mot de passe</label>
-          <input style={s.input} type="password" placeholder="••••••••"
-            value={form.confirm} onChange={e => setForm({...form, confirm:e.target.value})} required />
+        <h2 className="text-2xl font-extrabold text-white mb-1 text-center">Créer un compte</h2>
+        <p className="text-slate-400 text-sm mb-6 text-center">Rejoignez votre espace académique</p>
 
-          <label style={s.label}>Rôle</label>
-          <select style={s.input} value={form.role}
-            onChange={e => setForm({...form, role:e.target.value})}>
-            <option value="Utilisateur">Utilisateur</option>
-            <option value="AdminEspace">Administrateur Espace</option>
-            <option value="AdminGlobal">Administrateur Global</option>
-          </select>
+        {error && (
+          <div
+            className="px-4 py-3 rounded-lg mb-4 text-sm"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}
+          >
+            {error}
+          </div>
+        )}
+        {success && (
+          <div
+            className="px-4 py-3 rounded-lg mb-4 text-sm"
+            style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#34d399' }}
+          >
+            {success}
+          </div>
+        )}
 
-          <button style={s.btn} type="submit">Créer mon compte</button>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Nom */}
+          <div>
+            <label className="block text-xs font-semibold text-white/60 mb-2">Nom complet</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Jean Dupont"
+                value={form.nom}
+                onChange={e => update('nom', e.target.value)}
+                required
+                className={`${inputCls} pl-10 pr-4`}
+              />
+            </div>
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-xs font-semibold text-white/60 mb-2">Adresse email</label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
+              <input
+                type="email"
+                placeholder="nom@exemple.com"
+                value={form.email}
+                onChange={e => update('email', e.target.value)}
+                required
+                className={`${inputCls} pl-10 pr-4`}
+              />
+            </div>
+          </div>
+
+          {/* Mot de passe */}
+          <div>
+            <label className="block text-xs font-semibold text-white/60 mb-2">Mot de passe</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
+              <input
+                type={showPwd ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={form.password}
+                onChange={e => update('password', e.target.value)}
+                required
+                className={`${inputCls} pl-10 pr-10`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPwd(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+              >
+                {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirmer mot de passe */}
+          <div>
+            <label className="block text-xs font-semibold text-white/60 mb-2">Confirmer le mot de passe</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
+              <input
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={form.confirm}
+                onChange={e => update('confirm', e.target.value)}
+                required
+                className={`${inputCls} pl-10 pr-10`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+              >
+                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3 rounded-lg text-sm font-semibold transition-all mt-1 hover:brightness-110"
+            style={{
+              background: '#06b6d4',
+              color: '#0a0a0f',
+              boxShadow: '0 0 24px rgba(6,182,212,0.3)',
+            }}
+          >
+            Créer mon compte
+          </button>
         </form>
-        <p style={s.loginLink}>
-          Déjà un compte ? <a href="/login" style={{color:'#0d9488', fontWeight:'600'}}>Se connecter</a>
+
+        <p className="text-xs text-slate-500 mt-4 text-center">
+          Vous serez inscrit en tant qu'utilisateur.
+          Vous pourrez créer vos propres espaces collaboratifs après inscription.
         </p>
-      </div>
+
+        <p className="text-center text-xs text-slate-600 mt-4">
+          Déjà un compte ?{' '}
+          <Link to="/login" className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">
+            Se connecter
+          </Link>
+        </p>
+      </motion.div>
     </div>
   );
 }
-
-const s = {
-  page: { minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8fafc', fontFamily:'system-ui, sans-serif' },
-  card: { background:'white', borderRadius:'16px', padding:'40px', width:'100%', maxWidth:'400px', boxShadow:'0 4px 24px rgba(0,0,0,0.08)', animation:'fadeInUp 0.4s ease forwards' },
-  brand: { textAlign:'center', color:'#0d9488', fontWeight:'700', fontSize:'18px', marginBottom:'20px' },
-  title: { fontSize:'22px', fontWeight:'800', color:'#0f172a', marginBottom:'24px' },
-  label: { display:'block', fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'6px' },
-  input: { width:'100%', padding:'11px 12px', border:'1px solid #e2e8f0', borderRadius:'8px', fontSize:'14px', marginBottom:'16px', boxSizing:'border-box', outline:'none' },
-  btn: { width:'100%', padding:'13px', background:'#0d9488', color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:'700', cursor:'pointer', marginTop:'4px' },
-  error: { background:'#fef2f2', color:'#dc2626', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'16px' },
-  success: { background:'#f0fdf4', color:'#16a34a', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'16px' },
-  loginLink: { textAlign:'center', fontSize:'13px', color:'#64748b', marginTop:'16px' },
-};

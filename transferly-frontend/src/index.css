@@ -1,13 +1,65 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@import "tailwindcss";
+
+/* ─── Dark mode via class on <html> ───────────── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Design tokens (locked — never drift) ────── */
+@theme {
+  /* Brand palette */
+  --color-bg:           #F0F9FF;
+  --color-surface:      #FFFFFF;
+  --color-accent:       #06B6D4;
+  --color-accent-dark:  #0891B2;
+  --color-muted:        #64748B;
+  --color-border:       #E2E8F0;
+
+  /* Dark mode surfaces */
+  --color-dark-bg:      #121414;
+  --color-dark-surface: #1E293B;
+  --color-dark-text:    #e3e2e2;
+
+  /* Named animations */
+  --animate-float:       float 6s ease-in-out infinite;
+  --animate-float-delay: float 8s ease-in-out 2s infinite;
+  --animate-float-slow:  float 10s ease-in-out 1s infinite;
+  --animate-pulse-slow:  pulse-slow 3s ease-in-out infinite;
+  --animate-fade-in:     fadeIn 0.4s ease forwards;
+  --animate-fade-in-up:  fadeInUp 0.5s ease forwards;
 }
+
+/* ─── Keyframes ────────────────────────────────── */
+@keyframes fadeIn    { from{opacity:0}               to{opacity:1}                          }
+@keyframes fadeInUp  { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+@keyframes float     { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-20px)}   }
+@keyframes pulse-slow{ 0%,100%{opacity:1}            50%{opacity:.4}                       }
+
+/* ─── Global base ──────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
 
 body {
-  font-family: system-ui, sans-serif;
+  background: #121414;
+  color: #e3e2e2;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  text-decoration: none;
+a { text-decoration: none; }
+
+/* ─── Geometric circles (auth pages) ──────────── */
+.geo-circle-1 {
+  position:absolute; width:280px; height:280px; border-radius:9999px;
+  background:rgba(255,255,255,.08); animation:float 6s ease-in-out infinite;
+}
+.geo-circle-2 {
+  position:absolute; width:180px; height:180px; border-radius:9999px;
+  background:rgba(255,255,255,.06); animation:float 8s ease-in-out 2s infinite;
+}
+.geo-circle-3 {
+  position:absolute; width:100px; height:100px; border-radius:9999px;
+  background:rgba(255,255,255,.05); animation:float 10s ease-in-out 1s infinite;
 }

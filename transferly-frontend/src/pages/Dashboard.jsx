@@ -1,221 +1,391 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
+import {
+  FileText, HardDrive, Share2, Activity, Download, Settings, Share,
+  Users, AlertTriangle, ShieldCheck, FolderOpen, ArrowRight,
+} from 'lucide-react';
+import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 
-export default function Dashboard() {
-  const [stats, setStats] = useState({ fichiers: 124, quota: 45, partages: 32, activite: 18 });
-  const [fichiers, setFichiers] = useState([
-    { nom: 'TP_Reseaux_2026.pdf', taille: '2.4 MB', modifie: 'Il y a 2 heures', partage_par: 'Salma D.' },
-    { nom: 'Cours_Python_S3.pptx', taille: '8.1 MB', modifie: 'Il y a 5 heures', partage_par: 'Nizar E.' },
-    { nom: 'Projet_ICCN_Groupe4.xlsx', taille: '1.2 MB', modifie: 'Hier', partage_par: 'Imane E.' },
-    { nom: 'Schema_Architecture.png', taille: '450 KB', modifie: 'Il y a 2 jours', partage_par: 'Moi' },
-    { nom: 'Rapport_Bibliographique.pdf', taille: '3.8 MB', modifie: 'Il y a 3 jours', partage_par: 'Zakaria T.' },
-  ]);
-  const [hoveredStat, setHoveredStat] = useState(null);
-  const [hoveredTable, setHoveredTable] = useState(false);
-  const [dark, setDark] = useState(() => localStorage.getItem('darkMode') === 'true');
-  const navigate = useNavigate();
-  const role = localStorage.getItem('role');
+/* ── Shared time helper ─────────────────────────── */
+function formatTime(iso) {
+  if (!iso) return '—';
+  const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (diff < 60)    return `il y a ${diff}s`;
+  if (diff < 3600)  return `il y a ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
+  return `il y a ${Math.floor(diff / 86400)} j`;
+}
 
-  const toggleDark = () => {
-    const next = !dark;
-    setDark(next);
-    localStorage.setItem('darkMode', String(next));
-  };
-
-  const nom = localStorage.getItem('nom');
-  const email = localStorage.getItem('email');
-  const getInitials = () => {
-    if (nom) {
-      const parts = nom.trim().split(' ');
-      return parts.length >= 2
-        ? (parts[0][0] + parts[1][0]).toUpperCase()
-        : parts[0][0].toUpperCase();
-    }
-    if (email) return email[0].toUpperCase();
-    return 'U';
-  };
-
-  const dk = (light, darkVal) => dark ? darkVal : light;
-
-  const statCardStyle = (i) => ({
-    ...s.statCard,
-    background: dk('white', '#1e293b'),
-    border: dk('1px solid #e2e8f0', '1px solid #334155'),
-    ...(hoveredStat === i ? s.statCardHover : {}),
-    animation: 'fadeInUp 0.4s ease forwards',
-    animationDelay: `${i * 100}ms`,
-    opacity: 0,
-  });
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate('/login');
-  };
-
+/* ── Shared stat card ───────────────────────────── */
+function StatCard({ icon: Icon, bg, iconCls, label, value, suffix = '', delay, quota, quotaLabel }) {
   return (
-    <div style={{ ...s.layout, background: dk('#f8fafc', '#0f172a') }}>
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0);    }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-      `}</style>
-
-      {/* SIDEBAR */}
-      <div style={{ ...s.sidebar, background: dk('white', '#1e293b'), borderRight: dk('1px solid #e2e8f0', '1px solid #334155') }}>
-        <div style={{ ...s.sidebarBrand, color: dk('#0d9488', '#5eead4') }}>
-          <svg width='22' height='22' viewBox='0 0 24 24' fill='currentColor'><circle cx='18' cy='5' r='3'/><circle cx='6' cy='12' r='3'/><circle cx='18' cy='19' r='3'/><line x1='8.59' y1='13.51' x2='15.42' y2='17.49' stroke='currentColor' strokeWidth='2'/><line x1='15.41' y1='6.51' x2='8.59' y2='10.49' stroke='currentColor' strokeWidth='2'/></svg>
-        </div>
-        <nav style={s.nav}>
-          <a href="/dashboard" title="Tableau de bord" style={{ ...s.navItem, ...s.navActive, ...(dark ? { background: '#0f3460', color: '#5eead4', borderRight: '3px solid #0d9488' } : {}) }}>🏠</a>
-          <a href="/files"    title="Mes Fichiers"    style={{ ...s.navItem, color: dk('#64748b', '#94a3b8') }}>📄</a>
-          <a href="/shared"   title="Partagés avec moi" style={{ ...s.navItem, color: dk('#64748b', '#94a3b8') }}>⇄</a>
-          <a href="/versions" title="Versions"        style={{ ...s.navItem, color: dk('#64748b', '#94a3b8') }}>🕐</a>
-          {role === 'AdminGlobal' && (
-            <a href="/admin"  title="Administration"  style={{ ...s.navItem, color: dk('#64748b', '#94a3b8') }}>👥</a>
-          )}
-        </nav>
-        <div style={{ ...s.sidebarBottom, borderTop: dk('1px solid #e2e8f0', '1px solid #334155') }}>
-          <a href="/settings" title="Paramètres" style={{ ...s.navItem, color: dk('#64748b', '#94a3b8') }}>⚙️</a>
-          <button title="Déconnexion" style={s.logoutBtn} onClick={handleLogout}>↪</button>
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.4 }}
+      whileHover={{ y: -4 }}
+      className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-md border border-slate-100 dark:border-slate-700 cursor-default"
+    >
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${bg}`}>
+        <Icon className={`w-5 h-5 ${iconCls}`} />
       </div>
+      <div className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mb-0.5">
+        {value}{suffix}
+      </div>
+      <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
+      {quota !== undefined && (
+        <>
+          <div className="mt-3 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-cyan-500 rounded-full transition-all" style={{ width: `${quota}%` }} />
+          </div>
+          <div className="text-xs text-slate-400 mt-1">{quotaLabel || ''}</div>
+        </>
+      )}
+    </motion.div>
+  );
+}
 
-      {/* MAIN */}
-      <div style={s.main}>
-        {/* TOPBAR */}
-        <div style={{ ...s.topbar, background: dk('white', '#1e293b'), borderBottom: dk('1px solid #e2e8f0', '1px solid #334155') }}>
-          <div style={s.searchWrap}>
-            <span style={s.searchIcon}>🔍</span>
-            <input
-              style={{ ...s.search, background: dk('#f8fafc', '#0f172a'), border: dk('1px solid #e2e8f0', '1px solid #334155'), color: dk('#0f172a', '#f8fafc') }}
-              placeholder="Rechercher des fichiers..."
-            />
-          </div>
-          <div style={s.topRight}>
-            <button onClick={toggleDark} style={{ ...s.darkToggle, background: dk('white', '#334155'), color: dk('#374151', '#f8fafc'), border: dk('1px solid #e2e8f0', '1px solid #475569') }}>
-              {dark ? '☀️' : '🌙'}
-            </button>
-            <span style={s.notifIcon}>🔔</span>
-            <div style={s.avatar}>{getInitials()}</div>
-          </div>
+/* ── Shared shortcut card ───────────────────────── */
+function ShortcutCard({ to, icon: Icon, title, desc, delay }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.4 }}
+    >
+      <Link
+        to={to}
+        className="flex items-center gap-4 p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm hover:border-cyan-300 dark:hover:border-cyan-700 hover:shadow-md transition-all group"
+      >
+        <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center shrink-0">
+          <Icon className="w-5 h-5 text-cyan-500" />
         </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{desc}</div>
+        </div>
+        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-cyan-500 transition-colors shrink-0" />
+      </Link>
+    </motion.div>
+  );
+}
 
-        {/* CONTENT */}
-        <div style={s.content}>
-          <h1 style={{ ...s.greeting, color: dk('#0f172a', '#f8fafc') }}>Ça roule ?</h1>
-          <p style={{ ...s.greetingSub, color: dk('#64748b', '#94a3b8') }}>Voilà ce qui se passe sur ton espace</p>
-
-          {/* STATS */}
-          <div style={s.statsGrid}>
-            {[
-              { icon: '📄', bg: '#dbeafe', num: stats.fichiers, label: 'Total Fichiers' },
-              { icon: '💾', bg: '#fef3c7', num: `${stats.quota}%`, label: 'Espace utilisé', extra: true },
-              { icon: '⇄',  bg: '#dcfce7', num: stats.partages, label: 'Fichiers partagés' },
-              { icon: '📊', bg: '#fce7f3', num: stats.activite, label: 'Activité récente' },
-            ].map((card, i) => (
-              <div key={i} style={statCardStyle(i)} onMouseEnter={() => setHoveredStat(i)} onMouseLeave={() => setHoveredStat(null)}>
-                <div style={{ ...s.statIcon, background: card.bg }}>{card.icon}</div>
-                <div style={{ ...s.statNum, color: dk('#0f172a', '#f8fafc') }}>{card.num}</div>
-                <div style={{ ...s.statLabel, color: dk('#64748b', '#94a3b8') }}>{card.label}</div>
-                {card.extra && (
-                  <>
-                    <div style={s.progressBar}><div style={{ ...s.progressFill, width: `${stats.quota}%` }}></div></div>
-                    <div style={s.statSub}>0.9 GB / 2 GB</div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* FICHIERS RECENTS */}
-          <div
-            style={{
-              ...s.tableCard,
-              background: dk('white', '#1e293b'),
-              border: dk('1px solid #e2e8f0', '1px solid #334155'),
-              ...(hoveredTable ? s.tableCardHover : {}),
-              animation: 'fadeIn 0.4s ease forwards',
-              animationDelay: '400ms',
-              opacity: 0,
-            }}
-            onMouseEnter={() => setHoveredTable(true)}
-            onMouseLeave={() => setHoveredTable(false)}
-          >
-            <h2 style={{ ...s.tableTitle, color: dk('#0f172a', '#f8fafc'), borderBottom: dk('1px solid #e2e8f0', '1px solid #334155') }}>Fichiers récents</h2>
-            <table style={s.table}>
-              <thead>
-                <tr style={{ ...s.thead, background: dk('#f8fafc', '#0f172a') }}>
-                  {['Nom', 'Taille', 'Modifié le', 'Partagé par', 'Actions'].map(h => (
-                    <th key={h} style={{ ...s.th, color: dk('#64748b', '#94a3b8') }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {fichiers.map((f, i) => (
-                  <tr key={i} style={{ ...s.tr, borderBottom: dk('1px solid #f1f5f9', '1px solid #334155') }}>
-                    <td style={{ ...s.td, color: dk('#374151', '#cbd5e1') }}>📄 {f.nom}</td>
-                    <td style={{ ...s.td, color: dk('#374151', '#cbd5e1') }}>{f.taille}</td>
-                    <td style={{ ...s.td, color: dk('#374151', '#cbd5e1') }}>{f.modifie}</td>
-                    <td style={{ ...s.td, color: dk('#374151', '#cbd5e1') }}>{f.partage_par}</td>
-                    <td style={s.td}>
-                      <span style={s.action}>⬇</span>
-                      <span style={s.action}>⚙</span>
-                      <span style={s.action}>↗</span>
-                    </td>
-                  </tr>
+/* ── Shared activity table ──────────────────────── */
+function ActivityTable({ title, rows, columns }) {
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden">
+      <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+        {title}
+      </h2>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-slate-50 dark:bg-slate-900/40">
+              {columns.map(c => (
+                <th key={c} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
+            {rows.map((row, i) => (
+              <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                {row.cells.map((cell, j) => (
+                  <td key={j} className="px-6 py-3.5 text-sm text-slate-500 dark:text-slate-400">
+                    {cell}
+                  </td>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
 
-const s = {
-  layout: { display:'flex', minHeight:'100vh', fontFamily:'system-ui, sans-serif' },
-  sidebar: { width:'65px', display:'flex', flexDirection:'column', alignItems:'center', padding:'16px 0', position:'fixed', height:'100vh' },
-  sidebarBrand: { fontWeight:'700', fontSize:'13px', padding:'0', marginBottom:'20px', display:'flex', alignItems:'center', justifyContent:'center' },
-  nav: { display:'flex', flexDirection:'column', gap:'4px', flex:1, width:'100%' },
-  navItem: { padding:'10px 0', fontSize:'18px', textDecoration:'none', display:'block', textAlign:'center', transition:'all .15s' },
-  navActive: { background:'#f0fdfa', color:'#0d9488', fontWeight:'600', borderRight:'3px solid #0d9488' },
-  sidebarBottom: { display:'flex', flexDirection:'column', gap:'4px', paddingTop:'16px' },
-  logoutBtn: { padding:'10px 0', color:'#ef4444', fontSize:'18px', background:'none', border:'none', cursor:'pointer', textAlign:'center', width:'100%' },
-  main: { marginLeft:'65px', flex:1, display:'flex', flexDirection:'column' },
-  topbar: { padding:'12px 32px', display:'flex', alignItems:'center', gap:'16px', position:'sticky', top:0, zIndex:10 },
-  searchWrap: { flex:1, position:'relative', display:'flex', alignItems:'center' },
-  searchIcon: { position:'absolute', left:'12px', fontSize:'14px' },
-  search: { width:'100%', padding:'9px 12px 9px 36px', borderRadius:'8px', fontSize:'14px', outline:'none' },
-  topRight: { display:'flex', alignItems:'center', gap:'12px' },
-  darkToggle: { borderRadius:'8px', padding:'6px 10px', cursor:'pointer', fontSize:'16px', transition:'all 0.2s' },
-  notifIcon: { fontSize:'20px', cursor:'pointer' },
-  avatar: { width:'36px', height:'36px', borderRadius:'50%', background:'#0d9488', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'700', fontSize:'15px' },
-  content: { padding:'32px' },
-  greeting: { fontSize:'24px', fontWeight:'800', marginBottom:'4px' },
-  greetingSub: { fontSize:'14px', marginBottom:'28px' },
-  statsGrid: { display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'16px', marginBottom:'28px' },
-  statCard: { borderRadius:'12px', padding:'20px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)', transition:'all 0.2s ease' },
-  statCardHover: { transform:'translateY(-4px)', boxShadow:'0 8px 24px rgba(0,0,0,0.12)' },
-  statIcon: { width:'40px', height:'40px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', marginBottom:'12px' },
-  statNum: { fontSize:'28px', fontWeight:'800', marginBottom:'4px' },
-  statLabel: { fontSize:'12px' },
-  statSub: { fontSize:'11px', color:'#94a3b8', marginTop:'4px' },
-  progressBar: { background:'#e2e8f0', borderRadius:'4px', height:'6px', marginTop:'8px' },
-  progressFill: { background:'#0d9488', height:'6px', borderRadius:'4px' },
-  tableCard: { borderRadius:'12px', overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)', transition:'all 0.2s ease' },
-  tableCardHover: { transform:'translateY(-4px)', boxShadow:'0 8px 24px rgba(0,0,0,0.12)' },
-  tableTitle: { fontSize:'16px', fontWeight:'700', padding:'20px 24px' },
-  table: { width:'100%', borderCollapse:'collapse' },
-  thead: {},
-  th: { padding:'12px 24px', fontSize:'12px', fontWeight:'600', textAlign:'left', textTransform:'uppercase', letterSpacing:'.05em' },
-  tr: {},
-  td: { padding:'14px 24px', fontSize:'13px' },
-  action: { marginRight:'12px', cursor:'pointer', color:'#64748b', fontSize:'16px' },
-};
+/* ════════════════════════════════════════════════
+   VIEW: AdminGlobal
+   ════════════════════════════════════════════════ */
+function AdminGlobalDashboard() {
+  const [stats, setStats] = useState({ users: 0, files: 0, storage: 0, fails: 0 });
+  const [logs, setLogs] = useState([]);
+
+  useEffect(() => {
+    const loadData = () => {
+      Promise.all([
+        API.get('/admin/users'),
+        API.get('/admin/files'),
+        API.get('/logs/?limit=10'),
+      ]).then(([u, f, l]) => {
+        const totalMb = f.data.reduce((s, x) => s + (x.taille || 0), 0);
+        setStats({
+          users: u.data.total ?? u.data.users?.length ?? 0,
+          files: f.data.length,
+          storage: (totalMb / 1024).toFixed(2),
+          fails: l.data.filter(x => x.statut === 'echec').length,
+        });
+        setLogs(l.data);
+      }).catch(err => console.error('Admin dashboard load:', err));
+    };
+
+    loadData();
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const statCards = [
+    { icon: Users,         bg: 'bg-blue-50 dark:bg-blue-900/20',   iconCls: 'text-blue-500',   label: 'Total utilisateurs',    value: stats.users },
+    { icon: FileText,      bg: 'bg-green-50 dark:bg-green-900/20', iconCls: 'text-green-500',  label: 'Total fichiers',        value: stats.files },
+    { icon: HardDrive,     bg: 'bg-amber-50 dark:bg-amber-900/20', iconCls: 'text-amber-500',  label: 'Espace disque utilisé', value: `${stats.storage} GB` },
+    { icon: AlertTriangle, bg: 'bg-red-50 dark:bg-red-900/20',     iconCls: 'text-red-500',    label: 'Tentatives échouées',   value: stats.fails },
+  ];
+
+  const activityRows = logs.map(l => ({
+    cells: [
+      l.user_email || '—',
+      l.action,
+      formatTime(l.date),
+      <StatusBadge key={l.id} ok={l.statut === 'succes'} />,
+    ],
+  }));
+
+  const shortcuts = [
+    { to: '/admin', icon: Users,       title: 'Gestion utilisateurs', desc: 'Créer, modifier, suspendre des comptes' },
+    { to: '/acl',   icon: ShieldCheck, title: 'Permissions ACL',      desc: "Droits d'accès par fichier et espace"  },
+    { to: '/logs',  icon: Activity,    title: "Journaux d'activité",  desc: 'Historique complet des actions'        },
+  ];
+
+  return (
+    <>
+      <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mb-1">
+        Tableau de bord administrateur
+      </h1>
+      <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">Vue globale de la plateforme</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {statCards.map((s, i) => <StatCard key={s.label} {...s} delay={i * 0.1} />)}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {shortcuts.map((s, i) => <ShortcutCard key={s.to} {...s} delay={0.4 + i * 0.1} />)}
+      </div>
+
+      <ActivityTable
+        title="Activité récente"
+        columns={['Utilisateur', 'Action', 'Horodatage', 'Statut']}
+        rows={activityRows}
+      />
+    </>
+  );
+}
+
+/* ════════════════════════════════════════════════
+   VIEW: AdminEspace
+   ════════════════════════════════════════════════ */
+function AdminEspaceDashboard() {
+  const [stats, setStats] = useState({ members: 0, files: 0, quotaPct: 0, acls: 0 });
+  const [activityRows] = useState([]);
+
+  useEffect(() => {
+    API.get('/admin/espaces').then(res => {
+      const myId = parseInt(localStorage.getItem('user_id'));
+      const myEspace = res.data.spaces?.find(e => e.admin_id === myId);
+      if (myEspace) setStats(s => ({ ...s, files: myEspace.files_count || 0 }));
+    }).catch(() => {});
+  }, []);
+
+  const statCards = [
+    { icon: Users,       bg: 'bg-blue-50 dark:bg-blue-900/20',    iconCls: 'text-blue-500',   label: "Membres de l'espace",  value: stats.members },
+    { icon: FileText,    bg: 'bg-green-50 dark:bg-green-900/20',  iconCls: 'text-green-500',  label: "Fichiers de l'espace", value: stats.files },
+    { icon: HardDrive,   bg: 'bg-amber-50 dark:bg-amber-900/20',  iconCls: 'text-amber-500',  label: 'Quota utilisé',        value: stats.quotaPct, suffix: '%', quota: stats.quotaPct },
+    { icon: ShieldCheck, bg: 'bg-violet-50 dark:bg-violet-900/20',iconCls: 'text-violet-500', label: 'Permissions actives',  value: stats.acls },
+  ];
+
+  const shortcuts = [
+    { to: '/admin-espace', icon: FolderOpen,  title: 'Gérer mon espace', desc: "Arborescence et droits de l'espace" },
+    { to: '/acl',          icon: ShieldCheck, title: 'Permissions ACL',  desc: 'Configurer les droits par utilisateur' },
+  ];
+
+  return (
+    <>
+      <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mb-1">
+        Tableau de bord — Mon espace
+      </h1>
+      <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">Gestion de votre espace académique</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {statCards.map((s, i) => <StatCard key={s.label} {...s} delay={i * 0.1} />)}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        {shortcuts.map((s, i) => <ShortcutCard key={s.to} {...s} delay={0.4 + i * 0.1} />)}
+      </div>
+
+      <ActivityTable
+        title="Activité de l'espace"
+        columns={['Utilisateur', 'Action', 'Horodatage', 'Statut']}
+        rows={activityRows}
+      />
+    </>
+  );
+}
+
+/* ════════════════════════════════════════════════
+   VIEW: Utilisateur
+   ════════════════════════════════════════════════ */
+function UtilisateurDashboard() {
+  const [stats, setStats] = useState({ files: 0, quotaPct: 0, quotaUsed: 0, quotaTotal: 0, shared: 0, activity: 0 });
+  const [files, setFiles] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    Promise.all([
+      API.get('/files/'),
+      API.get('/files/shared-with-me'),
+      API.get('/quota/me'),
+      API.get('/logs/me?limit=20').catch(() => ({ data: [] })),
+    ]).then(([filesRes, sharedRes, quotaRes, logsRes]) => {
+      const filesData = filesRes.data;
+      const quota = quotaRes.data;
+      const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+
+      setFiles(filesData.slice(0, 5).map(f => ({
+        ...f,
+        taille_fmt:  f.taille != null ? `${Number(f.taille).toFixed(1)} MB` : '—',
+        modifie:     formatTime(f.date_creation),
+        partage_par: f.user_id === currentUserId ? 'Moi' : 'Autre',
+      })));
+
+      setStats({
+        files:      filesData.length,
+        quotaPct:   Math.round(quota.pourcentage_utilise ?? 0),
+        quotaUsed:  quota.quota_utilise_gb ?? 0,
+        quotaTotal: quota.quota_total_gb ?? 0,
+        shared:     sharedRes.data.length,
+        activity:   logsRes.data.length,
+      });
+    }).catch(err => console.error('Dashboard load', err));
+  }, []);
+
+  const dashStats = [
+    { icon: FileText,  bg: 'bg-blue-50 dark:bg-blue-900/20',   iconCls: 'text-blue-500',  label: 'Mes fichiers',      value: stats.files },
+    { icon: HardDrive, bg: 'bg-amber-50 dark:bg-amber-900/20', iconCls: 'text-amber-500', label: 'Mon quota',         value: stats.quotaPct, suffix: '%', quota: stats.quotaPct, quotaLabel: `${stats.quotaUsed?.toFixed(2) ?? '0'} GB / ${stats.quotaTotal ?? '0'} GB` },
+    { icon: Share2,    bg: 'bg-green-50 dark:bg-green-900/20', iconCls: 'text-green-500', label: 'Partagés avec moi', value: stats.shared },
+    { icon: Activity,  bg: 'bg-pink-50 dark:bg-pink-900/20',   iconCls: 'text-pink-500',  label: 'Activité récente',  value: stats.activity },
+  ];
+
+  const handleDownload = async (f) => {
+    try {
+      const res = await API.get(`/files/${f.id}/download`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = f.nom; a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Échec du téléchargement');
+    }
+  };
+
+  return (
+    <>
+      <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mb-1">
+        Ça roule ?
+      </h1>
+      <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">Voilà ce qui se passe sur votre espace</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {dashStats.map((s, i) => <StatCard key={s.label} {...s} delay={i * 0.1} />)}
+      </div>
+
+      {/* Recent files table */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden">
+        <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          Fichiers récents
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-900/40">
+                {['Nom', 'Taille', 'Modifié', 'Partagé par', 'Actions'].map(h => (
+                  <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
+              {files.map((f, i) => (
+                <tr key={f.id ?? i} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                  <td className="px-6 py-3.5">
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                      <span className="truncate max-w-[200px]">{f.nom}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3.5 text-sm text-slate-500 dark:text-slate-400">{f.taille_fmt}</td>
+                  <td className="px-6 py-3.5 text-sm text-slate-500 dark:text-slate-400">{f.modifie}</td>
+                  <td className="px-6 py-3.5 text-sm text-slate-500 dark:text-slate-400">{f.partage_par}</td>
+                  <td className="px-6 py-3.5">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleDownload(f)}
+                        className="p-1.5 text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-md transition-colors"
+                        title="Télécharger"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/versions?fileId=${f.id}`)}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+                        title="Historique des versions"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => navigate('/shared')}
+                        className="p-1.5 text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-md transition-colors"
+                        title="Partager"
+                      >
+                        <Share className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ── Status badge helper ────────────────────────── */
+function StatusBadge({ ok }) {
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+      ok
+        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+        : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+    }`}>
+      {ok ? 'Succès' : 'Échec'}
+    </span>
+  );
+}
+
+/* ════════════════════════════════════════════════
+   ROOT — role dispatcher, no redirect
+   ════════════════════════════════════════════════ */
+export default function Dashboard() {
+  const role = localStorage.getItem('role');
+
+  return (
+    <AppLayout>
+      {role === 'AdminGlobal'  ? <AdminGlobalDashboard />  :
+       role === 'AdminEspace'  ? <AdminEspaceDashboard />  :
+                                 <UtilisateurDashboard />}
+    </AppLayout>
+  );
+}

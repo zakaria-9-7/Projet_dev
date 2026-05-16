@@ -8,6 +8,8 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import API from "../api/auth";
+import AppLayout from "../components/AppLayout";
 
 // ── Design tokens (fidèle au prototype : blanc/cyan/gris) ─────────
 const C = {
@@ -36,22 +38,6 @@ const PERM_BADGES = {
   upload:       { label: "Upload",         color: "#E8F5E9", text: "#1B5E20" },
 };
 
-const API = async (path, options = {}) => {
-  const token = localStorage.getItem("jwt_token");
-  const res = await fetch(`/api${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(options.headers || {}),
-    },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${res.status}`);
-  }
-  return res.json();
-};
 
 export default function SharedWithMe() {
   const [fichiers, setFichiers]         = useState([]);
@@ -67,7 +53,7 @@ export default function SharedWithMe() {
     setLoading(true);
     setError(null);
     try {
-      setFichiers(await API("/files/shared-with-me"));
+      setFichiers((await API.get("/files/shared-with-me")).data);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -84,18 +70,13 @@ export default function SharedWithMe() {
 
   const handleDownload = async (f) => {
     try {
-      const token = localStorage.getItem("jwt_token");
-      const res = await fetch(`/api/files/${f.id}/download`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Téléchargement refusé");
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
+      const res = await API.get(`/files/${f.id}/download`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a   = document.createElement("a");
       a.href = url; a.download = f.nom; a.click();
       URL.revokeObjectURL(url);
       showToast(`"${f.nom}" téléchargé`);
-    } catch (e) { showToast(e.message, "error"); }
+    } catch (e) { showToast(e.response?.data?.error || e.message, "error"); }
   };
 
   // Filtrage selon le prototype
@@ -119,10 +100,11 @@ export default function SharedWithMe() {
     return true;
   });
 
-  if (loading) return <LoadingState />;
-  if (error)   return <ErrorState msg={error} onRetry={load} />;
+  if (loading) return <AppLayout><LoadingState /></AppLayout>;
+  if (error)   return <AppLayout><ErrorState msg={error} onRetry={load} /></AppLayout>;
 
   return (
+    <AppLayout>
     <div style={S.page}>
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
@@ -212,6 +194,7 @@ export default function SharedWithMe() {
         />
       )}
     </div>
+    </AppLayout>
   );
 }
 
@@ -320,7 +303,7 @@ export function ShareModal({ fichier, onClose, onSuccess }) {
     const t = setTimeout(async () => {
       setLoadingU(true);
       try {
-        setResults(await API(`/users/search?q=${encodeURIComponent(search)}`));
+        setResults((await API.get(`/users/search?q=${encodeURIComponent(search)}`)).data);
       } catch { setResults([]); }
       finally { setLoadingU(false); }
     }, 300);
@@ -331,10 +314,7 @@ export function ShareModal({ fichier, onClose, onSuccess }) {
     if (!selected) return;
     setSubmitting(true);
     try {
-      await API(`/files/${fichier.id}/share`, {
-        method: "POST",
-        body: JSON.stringify({ target_user_id: selected.id, permissions: perms }),
-      });
+      await API.post(`/files/${fichier.id}/share`, { target_user_id: selected.id, permissions: perms });
       onSuccess?.(`Fichier partagé avec ${selected.nom} ✓`);
     } catch (e) { onSuccess?.(e.message, "error"); }
     finally { setSubmitting(false); }
@@ -460,7 +440,7 @@ function fileIcon(nom) {
 
 function relativeDate(iso) {
   if (!iso) return "—";
-  const d = new Date(iso), now = new Date(), diff = (now - d) / 1000;
+  const d = new Date(iso + 'Z'), now = new Date(), diff = (now - d) / 1000;
   if (diff < 3600) return `Il y a ${Math.floor(diff/60)} min`;
   if (diff < 86400) return `Il y a ${Math.floor(diff/3600)} heure${Math.floor(diff/3600) > 1 ? "s" : ""}`;
   if (diff < 172800) return "Hier";
@@ -479,7 +459,6 @@ function avatarColor(name) {
 
 const S = {
   page: {
-    background: C.bg, minHeight: "100vh", padding: "32px 40px",
     fontFamily: "'DM Sans', 'Segoe UI', sans-serif", color: C.ink,
   },
   pageHeader: { marginBottom: 24 },
