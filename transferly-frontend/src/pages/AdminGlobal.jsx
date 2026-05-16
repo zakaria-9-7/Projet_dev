@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../api/auth";
+import { formatAction } from "../utils/formatAction";
 
 // ─── CONFIG ────────────────────────────────────────────────────
 const REFRESH_INTERVAL = 30000; // 30 secondes
@@ -349,7 +351,7 @@ const LogRow = ({ log, index }) => (
     <span style={styles.logText}>
       <span style={{ color: "#e8eaf0" }}>{log.user_email}</span>
       {" — "}
-      {log.action}
+      {formatAction(log.action)}
     </span>
     <span style={styles.logTime}>{formatTime(log.date)}</span>
   </div>
@@ -367,12 +369,12 @@ const Shortcut = ({ icon, label, desc, onClick }) => (
 const AdminGlobal = ({ onNavigate }) => {
   const { metrics, logs, loading, countdown, refresh } = useDashboard();
   const [activeNav, setActiveNav] = useState("dashboard");
+  const navigate = useNavigate();
 
   const navItems = [
     { id: "dashboard", label: "TABLEAU DE BORD", icon: "▦" },
     { id: "users", label: "UTILISATEURS", icon: "◈" },
     { id: "espaces", label: "ESPACES", icon: "◉" },
-    { id: "acl", label: "PERMISSIONS ACL", icon: "◎" },
     { id: "logs", label: "JOURNAUX", icon: "◫" },
   ];
 
@@ -507,9 +509,9 @@ const AdminGlobal = ({ onNavigate }) => {
               />
               <Shortcut
                 icon="◉"
-                label="Gérer les espaces"
-                desc="Créer des espaces, attribuer des admins"
-                onClick={() => { setActiveNav("espaces"); onNavigate && onNavigate("espaces"); }}
+                label="Gestion des espaces"
+                desc="Superviser et modérer les espaces collaboratifs"
+                onClick={() => navigate('/admin-espaces-all')}
               />
               <Shortcut
                 icon="◫"

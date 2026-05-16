@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Activity, Search, Filter, Download } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
+import { formatAction } from '../utils/formatAction';
 
 function normalizeLog(l) {
   return {
     id:          l.id,
     utilisateur: l.user_email ?? '—',
-    action:      l.action ?? '—',
-    fichier:     l.details || (l.resource_id ? `Fichier #${l.resource_id}` : '—'),
+    action:      formatAction(l.action ?? ''),
+    fichier:     l.fichier_nom || l.details || '—',
     horodatage:  l.date ? new Date(l.date).toLocaleString('fr-FR') : '—',
     statut:      l.statut === 'succes',
   };

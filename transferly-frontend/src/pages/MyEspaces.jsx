@@ -150,7 +150,11 @@ export default function MyEspaces() {
                     ) : (
                       <span className="text-[10px] font-bold px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded-full">MEMBRE</span>
                     )}
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Espace #{e.id}</p>
+                    {e.role === 'admin' ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Vous gérez cet espace</p>
+                    ) : (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Vous êtes membre</p>
+                    )}
                   </div>
                 </div>
               </motion.div>
