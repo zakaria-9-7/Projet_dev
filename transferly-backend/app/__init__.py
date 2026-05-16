@@ -12,6 +12,7 @@ from app.routes.logs import logs_bp
 from app.routes.folders import folders_bp
 from app.routes.version import versions_bp
 from app.routes.quota import quota_bp
+from app.routes.notifications import notifications_bp
 from flask_cors import CORS
 
 load_dotenv()
@@ -41,6 +42,7 @@ def create_app():
     app.register_blueprint(logs_bp)
     app.register_blueprint(folders_bp)
     app.register_blueprint(versions_bp)
+    app.register_blueprint(notifications_bp)
 
     with app.app_context():
         db.create_all()

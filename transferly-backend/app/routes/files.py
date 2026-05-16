@@ -206,6 +206,22 @@ def upload_file():
         update_quota(user_id, file_size_mb, is_upload=True)
         log_action(user_id, 'upload', resource_id=fichier.id, statut='succes')
 
+        if espace_id:
+            from app.services.notifier import notifier_plusieurs
+            from app.models.membership import Membership as _MS
+            from app.models.espace import Espace as _ES
+            _esp = _ES.query.get(espace_id)
+            if _esp:
+                _dest = [m.user_id for m in _MS.query.filter_by(espace_id=espace_id).all()]
+                _dest.append(_esp.admin_id)
+                _dest = [uid for uid in set(_dest) if uid != g.user['id']]
+                notifier_plusieurs(
+                    _dest,
+                    'upload_espace',
+                    f'Nouveau fichier "{fichier.nom}" dans l espace "{_esp.nom}"',
+                    lien=f'/espace/{espace_id}'
+                )
+
         return jsonify({
             'id':           fichier.id,
             'nom':          fichier.nom,
