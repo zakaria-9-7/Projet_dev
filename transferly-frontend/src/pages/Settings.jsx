@@ -75,6 +75,7 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [quota, setQuota] = useState(null);
 
   useEffect(() => {
     API.get('/me').then(r => {
@@ -83,6 +84,9 @@ export default function Settings() {
       setOriginalNom(r.data.nom);
       setOriginalEmail(r.data.email);
     });
+    API.get('/quota/me')
+      .then(res => setQuota(res.data))
+      .catch(err => console.error('quota err', err));
   }, []);
 
   const handleDeleteAccount = async () => {
@@ -154,6 +158,40 @@ export default function Settings() {
           <Field label="Nom complet" value={nom} onChange={e => setNom(e.target.value)} placeholder="Votre nom" />
           <Field label="Adresse e-mail" value={email} onChange={e => setEmail(e.target.value)} placeholder="votre@email.fr" />
         </Section>
+
+        {/* Stockage */}
+        {quota && (
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">Stockage</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Espace utilisé sur votre quota personnel.
+            </p>
+
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+                {(quota.quota_utilise_mb ?? 0).toFixed(2)}<span className="text-base font-medium text-slate-400"> Mo</span>
+              </span>
+              <span className="text-sm text-slate-500">sur {(quota.quota_total_mb ?? 0).toFixed(0)} Mo</span>
+            </div>
+
+            <div className="w-full h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  (quota.pourcentage_utilise ?? 0) >= 90
+                    ? 'bg-red-500'
+                    : (quota.pourcentage_utilise ?? 0) >= 70
+                    ? 'bg-amber-500'
+                    : 'bg-cyan-500'
+                }`}
+                style={{ width: `${Math.min(100, quota.pourcentage_utilise ?? 0)}%` }}
+              />
+            </div>
+
+            <p className="text-xs text-slate-400 mt-2">
+              {(quota.pourcentage_utilise ?? 0)}% de votre espace utilisé
+            </p>
+          </div>
+        )}
 
         {/* Security */}
         <Section icon={Lock} title="Sécurité">

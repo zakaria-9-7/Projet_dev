@@ -250,11 +250,11 @@ function UtilisateurDashboard() {
       API.get('/quota/me'),
       API.get('/logs/me?limit=20').catch(() => ({ data: [] })),
     ]).then(([filesRes, sharedRes, quotaRes, logsRes]) => {
-      const filesData = filesRes.data;
+      const filesData = Array.isArray(filesRes.data) ? filesRes.data : (filesRes.data?.files || []);
       const quota = quotaRes.data;
       const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
 
-      setFiles(filesData.slice(0, 5).map(f => ({
+      setFiles((Array.isArray(filesData) ? filesData : []).slice(0, 5).map(f => ({
         ...f,
         taille_fmt:  f.taille != null ? `${Number(f.taille).toFixed(1)} MB` : '—',
         modifie:     formatRelativeTime(f.date_creation),
@@ -266,7 +266,7 @@ function UtilisateurDashboard() {
         quotaPct:   Math.round(quota.pourcentage_utilise ?? 0),
         quotaUsed:  quota.quota_utilise_gb ?? 0,
         quotaTotal: quota.quota_total_gb ?? 0,
-        shared:     sharedRes.data.length,
+        shared:     Array.isArray(sharedRes.data) ? sharedRes.data.length : (sharedRes.data?.files?.length ?? 0),
         activity:   logsRes.data.length,
       });
     }).catch(err => console.error('Dashboard load', err));
