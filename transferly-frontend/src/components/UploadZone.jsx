@@ -14,20 +14,20 @@ function formatBytes(bytes) {
 function FileItem({ file, status, progress, error, onRemove }) {
   const ext = file.name.split('.').pop().toLowerCase();
   const isUploading = status === 'uploading';
-  const isDone      = status === 'done';
-  const isError     = status === 'error';
+  const isDone = status === 'done';
+  const isError = status === 'error';
 
   return (
     <div className={`relative flex items-center gap-3 p-3 rounded-xl border transition-all
-      ${isDone  ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800'
-      : isError ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
-      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
+      ${isDone ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800'
+        : isError ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
     >
       {/* Icon */}
       <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold
         ${isDone ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-        : isError ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
-        : 'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400'}`}
+          : isError ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
+            : 'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400'}`}
       >
         {ext.toUpperCase().slice(0, 3)}
       </div>
@@ -76,9 +76,9 @@ function FileItem({ file, status, progress, error, onRemove }) {
 }
 
 export default function UploadZone({ onSuccess }) {
-  const [dragging, setDragging]     = useState(false);
-  const [queue, setQueue]           = useState([]); // [{file, status, progress, error}]
-  const [uploading, setUploading]   = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [queue, setQueue] = useState([]); // [{file, status, progress, error}]
+  const [uploading, setUploading] = useState(false);
   const inputRef = useRef(null);
 
   const addFiles = useCallback((rawFiles) => {
@@ -87,7 +87,7 @@ export default function UploadZone({ onSuccess }) {
       const sizeMb = file.size / (1024 * 1024);
       let error = null;
       if (FORBIDDEN_EXT.includes(ext)) error = `Extension .${ext} non autorisée`;
-      else if (sizeMb > MAX_SIZE_MB)   error = `Fichier trop volumineux (max ${MAX_SIZE_MB} Mo)`;
+      else if (sizeMb > MAX_SIZE_MB) error = `Fichier trop volumineux (max ${MAX_SIZE_MB} Mo)`;
       return { file, status: error ? 'error' : 'pending', progress: 0, error };
     });
     setQueue(prev => [...prev, ...newItems]);
@@ -147,7 +147,7 @@ export default function UploadZone({ onSuccess }) {
   };
 
   const pendingCount = queue.filter(q => q.status === 'pending').length;
-  const allDone      = queue.length > 0 && queue.every(q => q.status === 'done' || q.status === 'error');
+  const allDone = queue.length > 0 && queue.every(q => q.status === 'done' || q.status === 'error');
 
   return (
     <div className="space-y-3">
