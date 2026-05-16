@@ -8,6 +8,7 @@ from app.models.fichier import Fichier
 from app.models.version import VersionFichier
 from app.models.acl import ACL
 from app.models.user import User
+from app.models.espace import Espace
 from app.crypto import encrypt_file, decrypt_file
 from app.routes.acl import require_permission
 from app.acl_engine import grant_owner_permissions
@@ -61,6 +62,12 @@ def shared_with_me():
             if fichier is None or fichier.user_id == user_id:
                 continue
             proprietaire = User.query.get(fichier.user_id)
+            espace_nom = None
+            source = 'direct'
+            if fichier.espace_id:
+                source = 'espace'
+                esp = Espace.query.get(fichier.espace_id)
+                espace_nom = esp.nom if esp else None
             result.append({
                 'id':                fichier.id,
                 'nom':               fichier.nom,
@@ -68,6 +75,8 @@ def shared_with_me():
                 'date_creation':     fichier.date_creation.isoformat() if fichier.date_creation else None,
                 'proprietaire_nom':  proprietaire.nom   if proprietaire else None,
                 'proprietaire_email': proprietaire.email if proprietaire else None,
+                'source':            source,
+                'espace_nom':        espace_nom,
                 'mes_permissions': {
                     'lecture':     acl.lecture,
                     'ecriture':    acl.ecriture,

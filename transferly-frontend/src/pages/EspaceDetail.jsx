@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
+import { formatRelativeTime } from '../utils/formatTime';
 
 export default function EspaceDetail() {
   const { espaceId } = useParams();
@@ -399,7 +400,7 @@ export default function EspaceDetail() {
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{f.owner_nom || f.owner_email}</td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{f.taille?.toFixed(1)} MB</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{new Date(f.date_creation).toLocaleDateString('fr-FR')}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500">{formatRelativeTime(f.date_creation)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <button

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
+import { formatRelativeTime } from '../utils/formatTime';
 
 /* ── Shared time helper ─────────────────────────── */
 function formatTime(iso) {
@@ -256,7 +257,7 @@ function UtilisateurDashboard() {
       setFiles(filesData.slice(0, 5).map(f => ({
         ...f,
         taille_fmt:  f.taille != null ? `${Number(f.taille).toFixed(1)} MB` : '—',
-        modifie:     formatTime(f.date_creation),
+        modifie:     formatRelativeTime(f.date_creation),
         partage_par: f.user_id === currentUserId ? 'Moi' : 'Autre',
       })));
 

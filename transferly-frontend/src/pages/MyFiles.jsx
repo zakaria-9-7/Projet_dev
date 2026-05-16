@@ -8,15 +8,7 @@ import {
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
-
-function formatRelativeDate(iso) {
-  if (!iso) return '—';
-  const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
-  if (diff < 3600)  return `Il y a ${Math.floor(diff / 60)} min`;
-  if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} heure${Math.floor(diff / 3600) > 1 ? 's' : ''}`;
-  if (diff < 172800) return 'Hier';
-  return `Il y a ${Math.floor(diff / 86400)} jours`;
-}
+import { formatRelativeTime } from '../utils/formatTime';
 
 function normalizeFile(f) {
   const ext = f.nom?.split('.').pop()?.toUpperCase() || 'FILE';
@@ -27,7 +19,7 @@ function normalizeFile(f) {
     name: f.nom,
     ft: ext,
     size,
-    date: formatRelativeDate(f.date_creation),
+    date: formatRelativeTime(f.date_creation),
   };
 }
 
