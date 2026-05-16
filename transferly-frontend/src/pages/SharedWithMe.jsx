@@ -440,7 +440,7 @@ function fileIcon(nom) {
 
 function relativeDate(iso) {
   if (!iso) return "—";
-  const d = new Date(iso), now = new Date(), diff = (now - d) / 1000;
+  const d = new Date(iso + 'Z'), now = new Date(), diff = (now - d) / 1000;
   if (diff < 3600) return `Il y a ${Math.floor(diff/60)} min`;
   if (diff < 86400) return `Il y a ${Math.floor(diff/3600)} heure${Math.floor(diff/3600) > 1 ? "s" : ""}`;
   if (diff < 172800) return "Hier";

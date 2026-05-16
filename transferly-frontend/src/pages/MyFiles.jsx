@@ -8,10 +8,11 @@ import {
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
+import { ShareModal } from '../components/ShareModal';
 
 function formatRelativeDate(iso) {
   if (!iso) return '—';
-  const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+  const diff = Math.floor((Date.now() - new Date(iso + 'Z')) / 1000);
   if (diff < 3600)  return `Il y a ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} heure${Math.floor(diff / 3600) > 1 ? 's' : ''}`;
   if (diff < 172800) return 'Hier';
@@ -37,6 +38,7 @@ export default function MyFiles() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
   const [openMenu, setOpenMenu] = useState(null); // file.id or null
+  const [shareFile, setShareFile] = useState(null);
   const cardsRef = useRef([]);
   const inputRef = useRef(null);
   const navigate = useNavigate();
@@ -232,7 +234,7 @@ export default function MyFiles() {
                         <History className="w-3.5 h-3.5" /> Historique
                       </button>
                       <button
-                        onClick={() => { setOpenMenu(null); navigate(`/acl?fichier=${file.id}`); }}
+                        onClick={() => { setOpenMenu(null); setShareFile(file); }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                       >
                         <Share2 className="w-3.5 h-3.5" /> Partager
@@ -277,6 +279,14 @@ export default function MyFiles() {
           ))}
         </div>
       )}
+	{shareFile && (
+		<ShareModal
+			fichier={shareFile}
+			onClose={() => setShareFile(null)}
+			onSuccess={(msg) => { alert(msg); setShareFile(null); }}
+		/>
+	)}
+
     </AppLayout>
   );
 }
