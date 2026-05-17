@@ -168,10 +168,13 @@ def upload_file():
 
         fichier.chemin = file_path
 
+        sha256_init = hashlib.sha256(file_content).hexdigest()
         version = VersionFichier(
             numero_version=1,
             description='Version initiale',
             chemin=file_path,
+            sha256=sha256_init,
+            auteur_id=user_id,
             fichier_id=fichier.id,
         )
         db.session.add(version)
@@ -393,6 +396,8 @@ def update_file(fichier_id):
             numero_version=next_num,
             description=f'Mise à jour par user {user_id}',
             chemin=archive_path,
+            sha256=sha256,
+            auteur_id=user_id,
             fichier_id=fichier_id,
         )
         db.session.add(version)
