@@ -3,6 +3,7 @@ from app.extensions import db, bcrypt
 from app.models.user import User
 from app.models.otp import OTP
 from app.models.log import Log
+from app.services.mailer import send_otp_email, send_welcome_email, send_password_changed_email, send_account_deleted_email
 import jwt, os, re, pyotp
 from datetime import datetime, timedelta
 
@@ -38,6 +39,8 @@ def register():
     db.session.add(user)
     db.session.commit()
 
+    send_welcome_email(user.email, user.nom)
+
     return jsonify({'message': 'Compte créé avec succès'}), 201
 
 
@@ -67,12 +70,17 @@ def login():
     db.session.add(otp_entry)
     db.session.commit()
 
-    print(f"[DEV] OTP pour {user.email} : {code}")
+    email_envoye = send_otp_email(user.email, code, user.nom)
+
+    if email_envoye:
+        print(f"[OTP] Email envoyé à {user.email}")
+    else:
+        print(f"[OTP FALLBACK] Email échoué. Code pour {user.email} : {code}")
 
     return jsonify({
-        'message': 'OTP généré',
+        'message': 'OTP envoyé',
         'user_id': user.id,
-        'otp_dev': code  # ⚠️ MODE DEV : on renvoie le code directement
+        'email_envoye': email_envoye
     }), 200
 
 
@@ -227,12 +235,12 @@ def forgot_password():
         frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
         reset_url = f"{frontend_url}/reset-password/{token}"
 
-        print(f"[DEV] Reset URL pour {user.email} : {reset_url}")
-
         from app.services.mailer import send_reset_email
         email_envoye = send_reset_email(user.email, reset_url, user.nom)
-        if not email_envoye:
-            print(f"[ERROR] Échec de l'envoi de l'email de reset à {user.email}")
+        if email_envoye:
+            print(f"[RESET] Email envoyé à {user.email}")
+        else:
+            print(f"[RESET FALLBACK] Email échoué. Reset URL pour {user.email} : {reset_url}")
 
         from app.services.logger import log_action
         log_action(
@@ -323,8 +331,10 @@ def delete_my_account():
     user = User.query.get(g.user['id'])
     if not user:
         return jsonify({'error': 'Utilisateur introuvable'}), 404
+    user_email, user_nom = user.email, user.nom
     db.session.delete(user)
     db.session.commit()
+    send_account_deleted_email(user_email, user_nom)
     return jsonify({'message': 'Compte supprimé'}), 200
 
 
@@ -344,6 +354,9 @@ def change_password():
         return jsonify({'error': 'Mot de passe trop court (min 8 caractères)'}), 400
     user.password = bcrypt.generate_password_hash(new).decode('utf-8')
     db.session.commit()
+
+    send_password_changed_email(user.email, user.nom)
+
     return jsonify({'message': 'Mot de passe modifié'}), 200
 
 

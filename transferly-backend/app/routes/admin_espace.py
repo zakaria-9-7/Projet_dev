@@ -240,8 +240,23 @@ def create_invitation(espace_id):
     db.session.add(invitation)
     db.session.commit()
 
+    if email:
+        from app.services.notifier import creer_notification
+        target_invit = User.query.filter_by(email=email).first()
+        if target_invit:
+            creer_notification(
+                target_invit.id,
+                'invitation',
+                f'Vous avez été invité à rejoindre l espace "{espace.nom}"',
+                lien=f'/join/{invitation.token}'
+            )
+
     frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
     invite_url = f"{frontend_url}/join/{invitation.token}"
+
+    if email:
+        from app.services.mailer import send_invitation_email
+        send_invitation_email(email, invite_url, espace.nom)
 
     from app.services.logger import log_action
     log_action(
@@ -361,6 +376,16 @@ def accept_invitation(token):
         statut='succes'
     )
 
+    from app.services.notifier import creer_notification
+    nouveau = User.query.get(user_id)
+    if espace and nouveau:
+        creer_notification(
+            espace.admin_id,
+            'join_espace',
+            f'{nouveau.nom} a rejoint votre espace "{espace.nom}"',
+            lien=f'/espace/{espace.id}'
+        )
+
     return jsonify({
         'message': 'Bienvenue dans l espace !',
         'espace_id': invitation.espace_id
@@ -462,6 +487,16 @@ def remove_member(espace_id, user_id):
 
     db.session.delete(membership)
     db.session.commit()
+
+    from app.services.notifier import creer_notification
+    espace_obj = Espace.query.get(espace_id)
+    if espace_obj:
+        creer_notification(
+            user_id,
+            'retrait_espace',
+            f'Vous avez été retiré de l espace "{espace_obj.nom}"',
+            lien='/admin-espace'
+        )
 
     return jsonify({'message': 'Membre retiré'}), 200
 
@@ -572,6 +607,17 @@ def leave_espace(espace_id):
 
     db.session.delete(membership)
     db.session.commit()
+
+    from app.services.notifier import creer_notification
+    partant = User.query.get(g.user['id'])
+    if espace and partant:
+        creer_notification(
+            espace.admin_id,
+            'leave_espace',
+            f'{partant.nom} a quitté votre espace "{espace.nom}"',
+            lien=f'/espace/{espace.id}'
+        )
+
     return jsonify({'message': 'Vous avez quitté l espace'}), 200
 
 

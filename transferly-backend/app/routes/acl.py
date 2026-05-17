@@ -160,6 +160,15 @@ def create_acl():
     db.session.add(new_acl)
     db.session.commit()
 
+    from app.services.notifier import creer_notification as _cn
+    if fichier:
+        _cn(
+            target_user_id,
+            'partage_fichier',
+            f'Un fichier "{fichier.nom}" a été partagé avec vous',
+            lien='/shared'
+        )
+
     _write_log(user.id, f"CREATE_ACL:fichier_{fichier_id}:user_{target_user_id}", "succes")
     return jsonify(_acl_to_dict(new_acl)), 201
 

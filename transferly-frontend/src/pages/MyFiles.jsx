@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import {
-  Grid, List, FolderPlus, UploadCloud,
+  Grid, List, UploadCloud,
   Folder, FileText, FileSpreadsheet, ImageIcon,
   FileIcon, MoreVertical, History, Download, Trash2, Share2, X,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
-import { ShareModal } from '../components/ShareModal';
+import { formatRelativeTime } from '../utils/formatTime';
+import { ShareModal } from './SharedWithMe';
 import UploadZone from '../components/UploadZone';
 
 function formatRelativeDate(iso) {
@@ -36,7 +37,7 @@ function normalizeFile(f) {
     name: f.nom,
     ft: ext,
     size: formatSize(f.taille),
-    date: formatRelativeDate(f.date_creation),
+    date: formatRelativeTime(f.date_creation),
   };
 }
 
@@ -124,14 +125,6 @@ export default function MyFiles() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            disabled
-            title="Fonctionnalité bientôt disponible"
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-400 cursor-not-allowed opacity-60"
-          >
-            <FolderPlus className="w-4 h-4" />
-            Nouveau dossier
-          </button>
           <button
             onClick={handleUpload}
             className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"

@@ -6,6 +6,7 @@ import {
   ShieldCheck, Users, FolderOpen, Activity,
   Shield, Crown, User,
 } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 /* ── Nav items per role ─────────────────────────── */
 const NAV_BY_ROLE = {
@@ -22,12 +23,14 @@ const NAV_BY_ROLE = {
     { to: '/shared',       icon: ShareIcon,       label: 'Partagés avec moi' },
   ],
   AdminGlobal: [
-    { to: '/dashboard',    icon: LayoutDashboard, label: 'Tableau de bord'   },
-    { to: '/files',        icon: Files,           label: 'Mes fichiers'       },
-    { to: '/admin-espace', icon: FolderOpen,      label: 'Mes espaces'        },
-    { to: '/shared',       icon: ShareIcon,       label: 'Partagés avec moi' },
-    { to: '/admin-users',  icon: Users,           label: 'Utilisateurs'       },
-    { to: '/logs',         icon: Activity,        label: 'Logs'               },
+    { to: '/dashboard',          icon: LayoutDashboard, label: 'Tableau de bord'    },
+    { to: '/files',              icon: Files,           label: 'Mes fichiers'        },
+    { to: '/admin-espace',       icon: FolderOpen,      label: 'Mes espaces'         },
+    { to: '/shared',             icon: ShareIcon,       label: 'Partagés avec moi'  },
+    { to: '/admin-users',        icon: Users,           label: 'Utilisateurs'        },
+    { to: '/admin-espaces-all',  icon: FolderOpen,      label: 'Tous les espaces'    },
+    { to: '/admin-fichiers-all', icon: Files,           label: 'Tous les fichiers'   },
+    { to: '/logs',               icon: Activity,        label: 'Journaux'            },
   ],
 };
 
@@ -96,12 +99,12 @@ export default function AppLayout({ children }) {
       <aside className="w-[240px] fixed top-0 left-0 h-screen bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col z-20">
 
         {/* Brand */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-100 dark:border-slate-800">
+        <Link to="/" className="flex items-center gap-3 px-5 py-5 border-b border-slate-100 dark:border-slate-800 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 bg-cyan-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
             <Share2 className="w-4 h-4 text-white" />
           </div>
           <span className="font-bold text-lg text-slate-900 dark:text-slate-100 tracking-tight">Transferly</span>
-        </div>
+        </Link>
 
         {/* Role badge */}
         <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800">
@@ -147,16 +150,6 @@ export default function AppLayout({ children }) {
             <LogOut className="w-4 h-4 shrink-0 stroke-[1.5]" />
             Déconnexion
           </button>
-
-          <button
-            onClick={() => setDark(d => !d)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 w-full text-left transition-colors"
-          >
-            {dark
-              ? <Sun  className="w-4 h-4 stroke-[1.5] text-amber-400 shrink-0" />
-              : <Moon className="w-4 h-4 stroke-[1.5] text-slate-400 shrink-0" />}
-            {dark ? 'Mode clair' : 'Mode sombre'}
-          </button>
         </div>
       </aside>
 
@@ -183,13 +176,7 @@ export default function AppLayout({ children }) {
               {dark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            <button
-              disabled
-              title="Notifications bientôt disponibles"
-              className="p-2.5 rounded-xl text-slate-300 dark:text-slate-600 cursor-not-allowed"
-            >
-              <Bell className="w-4 h-4" />
-            </button>
+            <NotificationBell />
 
             <div className="relative ml-1.5" ref={profileRef}>
               <button

@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, g, Response
 from app.extensions import db
 from app.models.log import Log
 from app.models.user import User
+from app.models.fichier import Fichier
 from app.decorators import require_role
 from datetime import datetime, timedelta
 import csv
@@ -14,6 +15,11 @@ _LIMIT_MAX = 1000
 
 def _log_to_dict(log):
     user = User.query.get(log.user_id) if log.user_id else None
+    fichier_nom = None
+    if log.resource_id:
+        fic = Fichier.query.get(log.resource_id)
+        if fic:
+            fichier_nom = fic.nom
     return {
         'id':          log.id,
         'action':      log.action,
@@ -22,6 +28,7 @@ def _log_to_dict(log):
         'date':        log.date.isoformat() if log.date else None,
         'resource_id': log.resource_id,
         'details':     log.details,
+        'fichier_nom': fichier_nom,
     }
 
 

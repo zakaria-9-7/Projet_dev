@@ -8,8 +8,10 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { FolderOpen, User } from "lucide-react";
 import API from "../api/auth";
 import AppLayout from "../components/AppLayout";
+import { formatRelativeTime } from '../utils/formatTime';
 
 // ── Design tokens (fidèle au prototype : blanc/cyan/gris) ─────────
 const C = {
@@ -88,7 +90,8 @@ export default function SharedWithMe() {
     const owner = (f.proprietaire_nom || "").toLowerCase();
     if (searchOwner && !owner.includes(searchOwner.toLowerCase())) return false;
     if (filtreDates === "today") {
-      const d = new Date(f.date_creation);
+      const iso = f.date_creation;
+      const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
       const now = new Date();
       if (d.toDateString() !== now.toDateString()) return false;
     }
@@ -202,9 +205,6 @@ export default function SharedWithMe() {
 
 function FichierRow({ fichier, isLast, onDownload, onShare }) {
   const perms = fichier.mes_permissions || {};
-  const activePerms = Object.entries(perms)
-    .filter(([, v]) => v)
-    .map(([k]) => k);
 
   return (
     <tr style={{ ...S.tr, borderBottom: isLast ? "none" : `1px solid ${C.line}` }}>
@@ -212,9 +212,22 @@ function FichierRow({ fichier, isLast, onDownload, onShare }) {
       <td style={S.td}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={S.fileIcon}>{fileIcon(fichier.nom)}</span>
-          <span style={{ fontWeight: 500, fontSize: 14, color: C.ink }}>
-            {fichier.nom}
-          </span>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontWeight: 500, fontSize: 14, color: C.ink }}>
+              {fichier.nom}
+            </span>
+            {fichier.source === 'espace' ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 rounded-full mt-1">
+                <FolderOpen className="w-3 h-3" />
+                {fichier.espace_nom || 'Espace'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 rounded-full mt-1">
+                <User className="w-3 h-3" />
+                Partage direct
+              </span>
+            )}
+          </div>
         </div>
       </td>
 
@@ -233,28 +246,19 @@ function FichierRow({ fichier, isLast, onDownload, onShare }) {
 
       {/* Date */}
       <td style={{ ...S.td, color: C.muted, fontSize: 13 }}>
-        {relativeDate(fichier.date_creation)}
+        {formatRelativeTime(fichier.date_creation)}
       </td>
 
-      {/* Permissions — badges fidèles au prototype */}
+      {/* Permissions — version compacte */}
       <td style={S.td}>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {activePerms.length === 0
-            ? <span style={{ color: C.muted, fontSize: 12 }}>Aucune</span>
-            : activePerms.map(p => {
-              const badge = PERM_BADGES[p];
-              if (!badge) return null;
-              return (
-                <span key={p} style={{
-                  ...S.permBadge,
-                  background: badge.color,
-                  color: badge.text,
-                }}>
-                  {badge.label}
-                </span>
-              );
-            })
-          }
+        <div className="flex flex-wrap gap-1">
+          {perms.lecture    && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Consulter</span>}
+          {perms.download   && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Télécharger</span>}
+          {perms.ecriture   && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Modifier</span>}
+          {perms.suppression && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Supprimer</span>}
+          {!perms.lecture && !perms.download && !perms.ecriture && !perms.suppression && (
+            <span style={{ color: C.muted, fontSize: 12 }}>Aucune</span>
+          )}
         </div>
       </td>
 
@@ -438,15 +442,6 @@ function fileIcon(nom) {
   return map[ext] || "📄";
 }
 
-function relativeDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso + 'Z'), now = new Date(), diff = (now - d) / 1000;
-  if (diff < 3600) return `Il y a ${Math.floor(diff/60)} min`;
-  if (diff < 86400) return `Il y a ${Math.floor(diff/3600)} heure${Math.floor(diff/3600) > 1 ? "s" : ""}`;
-  if (diff < 172800) return "Hier";
-  if (diff < 604800) return `Il y a ${Math.floor(diff/86400)} jours`;
-  return d.toLocaleDateString("fr-FR", { day:"2-digit", month:"short", year:"numeric" });
-}
 
 const AVATAR_COLORS = ["#00BCD4","#4CAF50","#FF9800","#9C27B0","#F44336","#2196F3","#009688"];
 function avatarColor(name) {

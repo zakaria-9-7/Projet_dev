@@ -8,6 +8,7 @@ from app.models.fichier import Fichier
 from app.models.version import VersionFichier
 from app.models.acl import ACL
 from app.models.user import User
+from app.models.espace import Espace
 from app.crypto import encrypt_file, decrypt_file
 from app.routes.acl import require_permission
 from app.acl_engine import grant_owner_permissions
@@ -61,6 +62,12 @@ def shared_with_me():
             if fichier is None or fichier.user_id == user_id:
                 continue
             proprietaire = User.query.get(fichier.user_id)
+            espace_nom = None
+            source = 'direct'
+            if fichier.espace_id:
+                source = 'espace'
+                esp = Espace.query.get(fichier.espace_id)
+                espace_nom = esp.nom if esp else None
             result.append({
                 'id':                fichier.id,
                 'nom':               fichier.nom,
@@ -68,6 +75,8 @@ def shared_with_me():
                 'date_creation':     fichier.date_creation.isoformat() if fichier.date_creation else None,
                 'proprietaire_nom':  proprietaire.nom   if proprietaire else None,
                 'proprietaire_email': proprietaire.email if proprietaire else None,
+                'source':            source,
+                'espace_nom':        espace_nom,
                 'mes_permissions': {
                     'lecture':     acl.lecture,
                     'ecriture':    acl.ecriture,
@@ -199,6 +208,22 @@ def upload_file():
 
         update_quota(user_id, file_size_mb, is_upload=True)
         log_action(user_id, 'upload', resource_id=fichier.id, statut='succes')
+
+        if espace_id:
+            from app.services.notifier import notifier_plusieurs
+            from app.models.membership import Membership as _MS
+            from app.models.espace import Espace as _ES
+            _esp = _ES.query.get(espace_id)
+            if _esp:
+                _dest = [m.user_id for m in _MS.query.filter_by(espace_id=espace_id).all()]
+                _dest.append(_esp.admin_id)
+                _dest = [uid for uid in set(_dest) if uid != g.user['id']]
+                notifier_plusieurs(
+                    _dest,
+                    'upload_espace',
+                    f'Nouveau fichier "{fichier.nom}" dans l espace "{_esp.nom}"',
+                    lien=f'/espace/{espace_id}'
+                )
 
         return jsonify({
             'id':           fichier.id,

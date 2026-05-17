@@ -18,7 +18,9 @@ def get_users():
     'nom': user.nom,
     'email': user.email,
     'role': user.role,
-    'statut': user.statut
+    'statut': user.statut,
+    'quota': user.quota,
+    'quota_utilise': user.quota_utilise,
 })
     return jsonify({'users': users, 'total': users1.total, 'page': users1.page, 'pages': users1.pages})
 
@@ -153,3 +155,145 @@ def update_user_role(user_id):
         user.role = new_role
         db.session.commit()
         return jsonify({'message': 'role modifié avec succès'}), 200
+
+
+@admin_global_bp.route('/admin/stats', methods=['GET'])
+@require_role('AdminGlobal')
+def admin_stats():
+    from app.models.fichier import Fichier
+    from app.models.espace import Espace
+    fichiers = Fichier.query.all()
+    total_mo = sum(f.taille or 0 for f in fichiers)  # taille stockée en Mo
+    total_go = total_mo / 1024
+    return jsonify({
+        'stockage_mo': round(total_mo, 2),
+        'stockage_go': round(total_go, 4),
+        'total_fichiers': len(fichiers),
+        'total_users': User.query.count(),
+        'total_espaces': Espace.query.count(),
+    }), 200
+
+
+@admin_global_bp.route('/admin/espaces', methods=['GET'])
+def admin_list_all_espaces():
+    from app.models.espace import Espace
+    from app.models.membership import Membership
+    from app.models.fichier import Fichier
+
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+    if g.user['role'] != 'AdminGlobal':
+        return jsonify({'error': 'Accès réservé à l administrateur global'}), 403
+
+    espaces = Espace.query.all()
+    result = []
+    for e in espaces:
+        admin = User.query.get(e.admin_id)
+        nb_membres = Membership.query.filter_by(espace_id=e.id).count()
+        nb_fichiers = Fichier.query.filter_by(espace_id=e.id).count()
+        result.append({
+            'id': e.id,
+            'nom': e.nom,
+            'admin_nom': admin.nom if admin else 'Inconnu',
+            'admin_email': admin.email if admin else None,
+            'nb_membres': nb_membres + 1,
+            'nb_fichiers': nb_fichiers,
+        })
+    return jsonify(result), 200
+
+
+@admin_global_bp.route('/admin/espaces/<int:espace_id>', methods=['DELETE'])
+def admin_delete_espace(espace_id):
+    from app.models.espace import Espace
+    from app.models.membership import Membership
+    from app.models.invitation import Invitation
+    from app.models.fichier import Fichier
+    from app.models.acl import ACL
+    from app.models.version import VersionFichier
+    import os as os_module
+
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+    if g.user['role'] != 'AdminGlobal':
+        return jsonify({'error': 'Accès réservé'}), 403
+
+    espace = Espace.query.get(espace_id)
+    if espace is None:
+        return jsonify({'error': 'Espace introuvable'}), 404
+
+    fichiers = Fichier.query.filter_by(espace_id=espace_id).all()
+    for f in fichiers:
+        if f.chemin and os_module.path.exists(f.chemin):
+            try:
+                os_module.remove(f.chemin)
+            except Exception:
+                pass
+        VersionFichier.query.filter_by(fichier_id=f.id).delete()
+        ACL.query.filter_by(fichier_id=f.id).delete()
+        db.session.delete(f)
+
+    Membership.query.filter_by(espace_id=espace_id).delete()
+    Invitation.query.filter_by(espace_id=espace_id).delete()
+    db.session.delete(espace)
+    db.session.commit()
+
+    return jsonify({'message': 'Espace supprimé'}), 200
+
+
+@admin_global_bp.route('/admin/fichiers', methods=['GET'])
+def admin_list_all_fichiers():
+    from app.models.fichier import Fichier
+    from app.models.espace import Espace
+
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+    if g.user['role'] != 'AdminGlobal':
+        return jsonify({'error': 'Accès réservé'}), 403
+
+    fichiers = Fichier.query.all()
+    result = []
+    for f in fichiers:
+        owner = User.query.get(f.user_id)
+        espace_nom = None
+        if f.espace_id:
+            esp = Espace.query.get(f.espace_id)
+            espace_nom = esp.nom if esp else None
+        result.append({
+            'id': f.id,
+            'nom': f.nom,
+            'taille': f.taille,
+            'owner_nom': owner.nom if owner else 'Inconnu',
+            'owner_email': owner.email if owner else None,
+            'espace_nom': espace_nom,
+            'date_creation': f.date_creation.isoformat() if f.date_creation else None,
+        })
+    return jsonify(result), 200
+
+
+@admin_global_bp.route('/admin/fichiers/<int:fichier_id>', methods=['DELETE'])
+def admin_delete_fichier(fichier_id):
+    from app.models.fichier import Fichier
+    from app.models.acl import ACL
+    from app.models.version import VersionFichier
+    import os as os_module
+
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+    if g.user['role'] != 'AdminGlobal':
+        return jsonify({'error': 'Accès réservé'}), 403
+
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+
+    if fichier.chemin and os_module.path.exists(fichier.chemin):
+        try:
+            os_module.remove(fichier.chemin)
+        except Exception:
+            pass
+    VersionFichier.query.filter_by(fichier_id=fichier_id).delete()
+    ACL.query.filter_by(fichier_id=fichier_id).delete()
+    db.session.delete(fichier)
+    db.session.commit()
+
+    return jsonify({'message': 'Fichier supprimé'}), 200

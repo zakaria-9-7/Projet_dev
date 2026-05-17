@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../api/auth";
+import { formatAction } from "../utils/formatAction";
+import { formatRelativeTime } from '../utils/formatTime';
 
 // ─── CONFIG ────────────────────────────────────────────────────
 const REFRESH_INTERVAL = 30000; // 30 secondes
@@ -264,15 +267,7 @@ const formatBytes = (bytes) => {
   return gb >= 1 ? `${gb.toFixed(1)} Go` : `${(bytes / (1024 ** 2)).toFixed(0)} Mo`;
 };
 
-const formatTime = (dateStr) => {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = Math.floor((now - d) / 1000);
-  if (diff < 60) return `il y a ${diff}s`;
-  if (diff < 3600) return `il y a ${Math.floor(diff / 60)}min`;
-  return `il y a ${Math.floor(diff / 3600)}h`;
-};
+
 
 // ─── HOOKS ─────────────────────────────────────────────────────
 const useDashboard = () => {
@@ -349,7 +344,7 @@ const LogRow = ({ log, index }) => (
     <span style={styles.logText}>
       <span style={{ color: "#e8eaf0" }}>{log.user_email}</span>
       {" — "}
-      {log.action}
+      {formatAction(log.action)}
     </span>
     <span style={styles.logTime}>{formatTime(log.date)}</span>
   </div>
@@ -367,12 +362,12 @@ const Shortcut = ({ icon, label, desc, onClick }) => (
 const AdminGlobal = ({ onNavigate }) => {
   const { metrics, logs, loading, countdown, refresh } = useDashboard();
   const [activeNav, setActiveNav] = useState("dashboard");
+  const navigate = useNavigate();
 
   const navItems = [
     { id: "dashboard", label: "TABLEAU DE BORD", icon: "▦" },
     { id: "users", label: "UTILISATEURS", icon: "◈" },
     { id: "espaces", label: "ESPACES", icon: "◉" },
-    { id: "acl", label: "PERMISSIONS ACL", icon: "◎" },
     { id: "logs", label: "JOURNAUX", icon: "◫" },
   ];
 
@@ -507,9 +502,9 @@ const AdminGlobal = ({ onNavigate }) => {
               />
               <Shortcut
                 icon="◉"
-                label="Gérer les espaces"
-                desc="Créer des espaces, attribuer des admins"
-                onClick={() => { setActiveNav("espaces"); onNavigate && onNavigate("espaces"); }}
+                label="Gestion des espaces"
+                desc="Superviser et modérer les espaces collaboratifs"
+                onClick={() => navigate('/admin-espaces-all')}
               />
               <Shortcut
                 icon="◫"
