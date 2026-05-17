@@ -268,8 +268,8 @@ export default function MyFiles() {
 			<div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
 				<div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
 					<div>
-						<h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Ajouter des fichiers</h2>
-						<p className="text-xs text-slate-400 mt-0.5">Ajoutez des fichiers à votre espace personnel</p>
+						<h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Téléverser des fichiers</h2>
+						<p className="text-xs text-slate-400 mt-0.5">Glissez ou sélectionnez vos fichiers</p>
 					</div>
 					<button
 						onClick={() => setShowUpload(false)}
