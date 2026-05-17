@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback } from "react";
 import { FolderOpen, User } from "lucide-react";
 import API from "../api/auth";
 import AppLayout from "../components/AppLayout";
-import { formatRelativeTime } from "../utils/formatTime";
+import { formatRelativeTime } from '../utils/formatTime';
 
 // ── Design tokens (fidèle au prototype : blanc/cyan/gris) ─────────
 const C = {
@@ -90,7 +90,8 @@ export default function SharedWithMe() {
     const owner = (f.proprietaire_nom || "").toLowerCase();
     if (searchOwner && !owner.includes(searchOwner.toLowerCase())) return false;
     if (filtreDates === "today") {
-      const d = new Date(f.date_creation);
+      const iso = f.date_creation;
+      const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
       const now = new Date();
       if (d.toDateString() !== now.toDateString()) return false;
     }

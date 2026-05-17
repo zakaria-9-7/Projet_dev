@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-
+import { formatRelativeTime as relativeDate } from '../utils/formatDate';
 // ── Design tokens (fidèle au prototype : blanc/cyan/gris) ─────────
 const C = {
   primary: "#00BCD4",      // cyan Transferly

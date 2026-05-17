@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api/auth";
 import { formatAction } from "../utils/formatAction";
+import { formatRelativeTime } from '../utils/formatTime';
 
 // ─── CONFIG ────────────────────────────────────────────────────
 const REFRESH_INTERVAL = 30000; // 30 secondes
@@ -266,15 +267,7 @@ const formatBytes = (bytes) => {
   return gb >= 1 ? `${gb.toFixed(1)} Go` : `${(bytes / (1024 ** 2)).toFixed(0)} Mo`;
 };
 
-const formatTime = (dateStr) => {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = Math.floor((now - d) / 1000);
-  if (diff < 60) return `il y a ${diff}s`;
-  if (diff < 3600) return `il y a ${Math.floor(diff / 60)}min`;
-  return `il y a ${Math.floor(diff / 3600)}h`;
-};
+
 
 // ─── HOOKS ─────────────────────────────────────────────────────
 const useDashboard = () => {
