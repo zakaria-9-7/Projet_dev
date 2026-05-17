@@ -254,6 +254,10 @@ def create_invitation(espace_id):
     frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
     invite_url = f"{frontend_url}/join/{invitation.token}"
 
+    if email:
+        from app.services.mailer import send_invitation_email
+        send_invitation_email(email, invite_url, espace.nom)
+
     from app.services.logger import log_action
     log_action(
         user_id=g.user['id'],

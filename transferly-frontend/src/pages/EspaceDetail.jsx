@@ -128,7 +128,7 @@ export default function EspaceDetail() {
     try {
       const res = await API.post(`/espaces/${espaceId}/invitations`, { email: inviteEmail.trim() });
       setInviteEmail('');
-      setInviteModal({ url: res.data.invite_url, email: res.data.email });
+      showToast(`Invitation envoyée à ${res.data.email} par email`);
       loadEspace();
     } catch (err) {
       showToast(err.response?.data?.error || 'Erreur invitation', 'error');
