@@ -20,15 +20,22 @@ function formatRelativeDate(iso) {
   return `Il y a ${Math.floor(diff / 86400)} jours`;
 }
 
+function formatSize(tailleMb) {
+  if (tailleMb == null) return '—';
+  const bytes = tailleMb * 1024 * 1024;
+  if (bytes < 1024) return `${Math.round(bytes)} o`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+  return `${tailleMb.toFixed(2)} Mo`;
+}
+
 function normalizeFile(f) {
   const ext = f.nom?.split('.').pop()?.toUpperCase() || 'FILE';
-  const size = f.taille != null ? `${Number(f.taille).toFixed(1)} MB` : '—';
   return {
     id: f.id,
     type: 'file',
     name: f.nom,
     ft: ext,
-    size,
+    size: formatSize(f.taille),
     date: formatRelativeDate(f.date_creation),
   };
 }
