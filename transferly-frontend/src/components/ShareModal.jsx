@@ -458,15 +458,8 @@ function fileIcon(nom) {
   return map[ext] || "📄";
 }
 
-function relativeDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso), now = new Date(), diff = (now - d) / 1000;
-  if (diff < 3600) return `Il y a ${Math.floor(diff/60)} min`;
-  if (diff < 86400) return `Il y a ${Math.floor(diff/3600)} heure${Math.floor(diff/3600) > 1 ? "s" : ""}`;
-  if (diff < 172800) return "Hier";
-  if (diff < 604800) return `Il y a ${Math.floor(diff/86400)} jours`;
-  return d.toLocaleDateString("fr-FR", { day:"2-digit", month:"short", year:"numeric" });
-}
+
+
 
 const AVATAR_COLORS = ["#00BCD4","#4CAF50","#FF9800","#9C27B0","#F44336","#2196F3","#009688"];
 function avatarColor(name) {
