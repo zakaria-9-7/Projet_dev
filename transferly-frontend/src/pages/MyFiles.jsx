@@ -9,7 +9,7 @@ import {
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
-import { ShareModal } from '../components/ShareModal';
+import { ShareModal } from './SharedWithMe';
 import UploadZone from '../components/UploadZone';
 
 function normalizeFile(f) {
