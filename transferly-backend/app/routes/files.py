@@ -45,6 +45,7 @@ def _serialize(f, user_id):
         'taille':       f.taille,
         'date_creation': f.date_creation.isoformat() if f.date_creation else None,
         'espace_id':    f.espace_id,
+        'folder_id':    f.folder_id,
         'est_partage':  est_partage,
     }
 
@@ -124,6 +125,7 @@ def upload_file():
 
         encrypted = encrypt_file(file_content)
         espace_id = request.form.get('espace_id', type=int)
+        folder_id = request.form.get('folder_id', type=int)
 
         if espace_id:
             from app.models.espace import Espace
@@ -151,6 +153,7 @@ def upload_file():
             taille=round(file_size_mb, 6),
             user_id=user_id,
             espace_id=espace_id,
+            folder_id=folder_id,
             chemin='',
         )
         db.session.add(fichier)
@@ -342,6 +345,7 @@ def list_files_in_espace(espace_id):
             'owner_id': f.user_id,
             'owner_nom': owner.nom if owner else None,
             'owner_email': owner.email if owner else None,
+            'folder_id': f.folder_id,
         })
     return jsonify(result), 200
 
