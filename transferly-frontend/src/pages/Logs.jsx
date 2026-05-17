@@ -3,6 +3,7 @@ import { Activity, Search, Filter, Download } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatAction } from '../utils/formatAction';
+import { formatRelativeTime } from '../utils/formatTime';
 
 function normalizeLog(l) {
   return {
@@ -10,7 +11,7 @@ function normalizeLog(l) {
     utilisateur: l.user_email ?? '—',
     action:      formatAction(l.action ?? ''),
     fichier:     l.fichier_nom || l.details || '—',
-    horodatage:  l.date ? new Date(l.date).toLocaleString('fr-FR') : '—',
+    horodatage:  l.date ? formatRelativeTime(l.date) : '—',
     statut:      l.statut === 'succes',
   };
 }
