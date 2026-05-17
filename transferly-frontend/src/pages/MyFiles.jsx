@@ -14,7 +14,12 @@ import UploadZone from '../components/UploadZone';
 
 function normalizeFile(f) {
   const ext = f.nom?.split('.').pop()?.toUpperCase() || 'FILE';
-  const size = f.taille != null ? `${Number(f.taille).toFixed(1)} MB` : '—';
+  const taille = Number(f.taille) || 0;
+  const size = f.taille != null
+    ? taille < 0.01
+      ? `${(taille * 1024).toFixed(0)} KB`
+      : `${taille.toFixed(1)} MB`
+    : '—';  
   return {
     id: f.id,
     type: 'file',
