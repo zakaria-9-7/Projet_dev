@@ -3,6 +3,7 @@ from app.extensions import db, bcrypt
 from app.models.user import User
 from app.models.otp import OTP
 from app.models.log import Log
+from app.services.mailer import send_otp_email
 import jwt, os, re, pyotp
 from datetime import datetime, timedelta
 
@@ -67,12 +68,17 @@ def login():
     db.session.add(otp_entry)
     db.session.commit()
 
-    print(f"[DEV] OTP pour {user.email} : {code}")
+    email_envoye = send_otp_email(user.email, code, user.nom)
+
+    if email_envoye:
+        print(f"[OTP] Email envoyé à {user.email}")
+    else:
+        print(f"[OTP FALLBACK] Email échoué. Code pour {user.email} : {code}")
 
     return jsonify({
-        'message': 'OTP généré',
+        'message': 'OTP envoyé',
         'user_id': user.id,
-        'otp_dev': code  # ⚠️ MODE DEV : on renvoie le code directement
+        'email_envoye': email_envoye
     }), 200
 
 
