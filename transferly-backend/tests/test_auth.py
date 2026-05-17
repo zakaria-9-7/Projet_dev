@@ -161,3 +161,78 @@ def test_blocage_apres_5_tentatives(client, app):
         'user_id': user_id, 'code': '000000'
     })
     assert res.status_code == 403
+
+
+# ── ZT-04 : Tests Reset Password ─────────────────────────────────
+
+def test_forgot_password_email_existant(client):
+    """Réponse 200 + message neutre quand l'email est connu."""
+    client.post('/register', json={
+        'nom': 'Salma', 'email': 'salma@test.com', 'password': 'password123'
+    })
+    res = client.post('/forgot-password', json={'email': 'salma@test.com'})
+    assert res.status_code == 200
+    assert 'message' in res.get_json()
+
+def test_forgot_password_email_inexistant(client):
+    """Réponse 200 + message neutre quand l'email est inconnu (pas de fuite d'info)."""
+    res = client.post('/forgot-password', json={'email': 'inconnu@test.com'})
+    assert res.status_code == 200
+    assert 'message' in res.get_json()
+
+def test_forgot_password_reponse_identique(client):
+    """Même réponse qu'email connu ou inconnu — pas d'oracle d'énumération."""
+    client.post('/register', json={
+        'nom': 'Salma', 'email': 'salma@test.com', 'password': 'password123'
+    })
+    res_connu = client.post('/forgot-password', json={'email': 'salma@test.com'})
+    res_inconnu = client.post('/forgot-password', json={'email': 'inconnu@test.com'})
+    assert res_connu.status_code == res_inconnu.status_code == 200
+    assert res_connu.get_json() == res_inconnu.get_json()
+
+def test_reset_password_token_valide(client, app):
+    """Reset avec token valide → 200 et le nouveau mot de passe fonctionne au login."""
+    client.post('/register', json={
+        'nom': 'Salma', 'email': 'salma@test.com', 'password': 'password123'
+    })
+    with app.app_context():
+        from app.routes.auth import _generate_reset_token
+        user = User.query.filter_by(email='salma@test.com').first()
+        token = _generate_reset_token(user.id, user.email)
+
+    res = client.post(f'/reset-password/{token}', json={'password': 'nouveaumdp123'})
+    assert res.status_code == 200
+
+    login_res = client.post('/login', json={
+        'email': 'salma@test.com', 'password': 'nouveaumdp123'
+    })
+    assert login_res.status_code == 200
+
+def test_reset_password_token_invalide(client):
+    """Token invalide/malformé → 400."""
+    res = client.post('/reset-password/ceci.n.estpasuntoken', json={'password': 'nouveaumdp123'})
+    assert res.status_code == 400
+
+def test_reset_password_token_inexistant(client):
+    """Token complètement aléatoire → 400."""
+    res = client.post('/reset-password/1234567890.999.aaabbbccc', json={'password': 'nouveaumdp123'})
+    assert res.status_code == 400
+
+def test_reset_password_token_expire(client, app):
+    """Token avec expiry dans le passé → 400 avec mention 'expir'."""
+    import time, hmac, hashlib, os
+
+    client.post('/register', json={
+        'nom': 'Salma', 'email': 'salma@test.com', 'password': 'password123'
+    })
+    with app.app_context():
+        user = User.query.filter_by(email='salma@test.com').first()
+        secret = os.getenv('SECRET_KEY', 'devsecret').encode()
+        expiry = int(time.time()) - 1  # déjà expiré
+        payload = f"{expiry}.{user.id}.{user.email}"
+        sig = hmac.new(secret, payload.encode(), hashlib.sha256).hexdigest()
+        token = f"{expiry}.{user.id}.{sig}"
+
+    res = client.post(f'/reset-password/{token}', json={'password': 'nouveaumdp123'})
+    assert res.status_code == 400
+    assert b'expir' in res.data
