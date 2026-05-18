@@ -45,9 +45,7 @@ function Field({ label, type = 'text', placeholder, value, onChange }) {
   );
 }
 
-function Toggle({ label, description, defaultChecked = false }) {
-  // TODO: persister les préférences de notification/confidentialité via API
-  const [on, setOn] = useState(defaultChecked);
+function Toggle({ label, description, checked, onChange }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <div>
@@ -55,10 +53,10 @@ function Toggle({ label, description, defaultChecked = false }) {
         {description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>}
       </div>
       <button
-        onClick={() => setOn(o => !o)}
-        className={`relative w-10 h-6 rounded-full transition-colors ${on ? 'bg-cyan-500' : 'bg-slate-200 dark:bg-slate-600'}`}
+        onClick={onChange}
+        className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 ${checked ? 'bg-cyan-500' : 'bg-slate-300 dark:bg-slate-600'}`}
       >
-        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-1'}`} />
+        <span className={`absolute top-[3px] left-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform duration-200 ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
       </button>
     </div>
   );
@@ -75,6 +73,14 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [prefs, setPrefs] = useState({
+    notif_partages: true,
+    notif_versions: true,
+    notif_connexions_suspectes: true,
+    notif_resume_hebdo: false,
+    confidentialite_profil_visible: true,
+    confidentialite_historique_connexion: true,
+  });
   const [quota, setQuota] = useState(null);
 
   useEffect(() => {
@@ -83,11 +89,25 @@ export default function Settings() {
       setEmail(r.data.email);
       setOriginalNom(r.data.nom);
       setOriginalEmail(r.data.email);
+      if (r.data.preferences) {
+        setPrefs(p => ({ ...p, ...r.data.preferences }));
+      }
     });
     API.get('/quota/me')
       .then(res => setQuota(res.data))
       .catch(err => console.error('quota err', err));
   }, []);
+
+  const handleToggle = async (key) => {
+    const newValue = !prefs[key];
+    setPrefs(p => ({ ...p, [key]: newValue }));
+    try {
+      await API.put('/me/preferences', { [key]: newValue });
+    } catch {
+      // Revert on failure
+      setPrefs(p => ({ ...p, [key]: !newValue }));
+    }
+  };
 
   const handleDeleteAccount = async () => {
     if (!window.confirm('⚠️ ATTENTION : Cette action est irréversible. Tous vos fichiers, partages et données seront définitivement supprimés. Confirmer ?')) return;
@@ -202,16 +222,16 @@ export default function Settings() {
 
         {/* Notifications */}
         <Section icon={Bell} title="Notifications">
-          <Toggle label="Partages reçus" description="Être notifié quand quelqu'un partage un fichier avec vous" defaultChecked />
-          <Toggle label="Nouvelles versions" description="Être notifié lors de la mise à jour d'un fichier partagé" defaultChecked />
-          <Toggle label="Connexions suspectes" description="Alerte en cas de connexion depuis un nouvel appareil" defaultChecked />
-          <Toggle label="Résumé hebdomadaire" description="Recevoir un rapport d'activité chaque semaine" />
+          <Toggle label="Partages reçus" description="Être notifié quand quelqu'un partage un fichier avec vous" checked={prefs.notif_partages} onChange={() => handleToggle('notif_partages')} />
+          <Toggle label="Nouvelles versions" description="Être notifié lors de la mise à jour d'un fichier partagé" checked={prefs.notif_versions} onChange={() => handleToggle('notif_versions')} />
+          <Toggle label="Connexions suspectes" description="Alerte en cas de connexion depuis un nouvel appareil" checked={prefs.notif_connexions_suspectes} onChange={() => handleToggle('notif_connexions_suspectes')} />
+          <Toggle label="Résumé hebdomadaire" description="Recevoir un rapport d'activité chaque semaine" checked={prefs.notif_resume_hebdo} onChange={() => handleToggle('notif_resume_hebdo')} />
         </Section>
 
         {/* Privacy */}
         <Section icon={Shield} title="Confidentialité">
-          <Toggle label="Profil visible" description="Permettre aux autres utilisateurs de vous trouver par e-mail" defaultChecked />
-          <Toggle label="Historique de connexion" description="Conserver l'historique de vos connexions (90 jours)" defaultChecked />
+          <Toggle label="Profil visible" description="Permettre aux autres utilisateurs de vous trouver par e-mail" checked={prefs.confidentialite_profil_visible} onChange={() => handleToggle('confidentialite_profil_visible')} />
+          <Toggle label="Historique de connexion" description="Conserver l'historique de vos connexions (90 jours)" checked={prefs.confidentialite_historique_connexion} onChange={() => handleToggle('confidentialite_historique_connexion')} />
         </Section>
 
         {/* Danger zone */}

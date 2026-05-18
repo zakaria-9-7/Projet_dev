@@ -11,6 +11,7 @@ class Fichier(db.Model):
     chemin = db.Column(db.String(500))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     espace_id = db.Column(db.Integer, db.ForeignKey('espaces.id'), nullable=True)
+    folder_id = db.Column(db.Integer, db.ForeignKey('folders.id'), nullable=True)
 
     versions = db.relationship('VersionFichier', backref='fichier', lazy=True, cascade='all, delete')
     acls = db.relationship('ACL', backref='fichier', lazy=True, cascade='all, delete')

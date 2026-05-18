@@ -28,9 +28,9 @@ def create_app():
     )
 
     app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
-    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
-    app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() in ['true', '1', 't']
-    app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').lower() in ['true', '1', 't']
+    app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 465))
+    app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'False').lower() in ['true', '1', 't']
+    app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'True').lower() in ['true', '1', 't']
     app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
     app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
     app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
@@ -54,9 +54,18 @@ def create_app():
     app.register_blueprint(notifications_bp)
 
     with app.app_context():
-        db.create_all()
-
         from app.models.user import User
+        from app.models.espace import Espace
+        from app.models.membership import Membership
+        from app.models.invitation import Invitation
+        from app.models.fichier import Fichier
+        from app.models.version import VersionFichier
+        from app.models.log import Log
+        from app.models.acl import ACL
+        from app.models.notification import Notification
+        from app.models.otp import OTP
+
+        db.create_all()
 
         admin_email = os.getenv('ADMIN_EMAIL', 'admin@transferly.local')
         admin_password = os.getenv('ADMIN_PASSWORD', 'TransferlyAdmin2026!')

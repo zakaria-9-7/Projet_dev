@@ -33,7 +33,8 @@ def get_versions(fichier_id):
             'numero_version':   v.numero_version,
             'date_modification': v.date_modification.isoformat() if v.date_modification else None,
             'description':      v.description,
-            'chemin':           v.chemin,   # utile pour debug
+            'sha256':           v.sha256,
+            'auteur_nom':       User.query.get(v.auteur_id).nom if v.auteur_id else None,
         }
         for v in versions
     ]

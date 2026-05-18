@@ -72,5 +72,6 @@ from app.models.version import VersionFichier
 from app.models.membership import Membership
 from app.models.invitation import Invitation
 from app.models.notification import Notification
+from app.models.folder import Folder
 
-__all__ = ['db', 'User', 'OTP', 'Espace', 'Fichier', 'ACL', 'Log', 'VersionFichier', 'Membership', 'Invitation', 'Notification']
+__all__ = ['db', 'User', 'OTP', 'Espace', 'Fichier', 'ACL', 'Log', 'VersionFichier', 'Membership', 'Invitation', 'Notification', 'Folder']
