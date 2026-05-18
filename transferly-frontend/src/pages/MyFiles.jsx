@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import {
-  Grid, List, UploadCloud,
+  Grid, List, UploadCloud, Eye,
   Folder, FileText, FileSpreadsheet, ImageIcon,
   FileIcon, MoreVertical, History, Download, Trash2, Share2, X,
 } from 'lucide-react';
@@ -11,6 +11,8 @@ import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
 import { ShareModal } from './SharedWithMe';
 import UploadZone from '../components/UploadZone';
+import FilePreviewModal from '../components/FilePreviewModal';
+
 
 function normalizeFile(f) {
   const ext = f.nom?.split('.').pop()?.toUpperCase() || 'FILE';
@@ -38,6 +40,7 @@ export default function MyFiles() {
   const [openMenu,  setOpenMenu]  = useState(null);
   const [shareFile,  setShareFile]  = useState(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
   const cardsRef = useRef([]);
   const navigate  = useNavigate();
 
@@ -213,6 +216,13 @@ export default function MyFiles() {
                       >
                         <History className="w-3.5 h-3.5" /> Historique
                       </button>
+
+                      <button
+                        onClick={() => { setOpenMenu(null); setPreviewFile(file); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Aperçu
+                      </button>
                       <button
                         onClick={() => { setOpenMenu(null); setShareFile(file); }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
@@ -259,6 +269,13 @@ export default function MyFiles() {
           ))}
         </div>
       )}
+  {previewFile && (
+    <FilePreviewModal
+      file={previewFile}
+      onClose={() => setPreviewFile(null)}
+      onDownload={() => { handleDownload(previewFile); setPreviewFile(null); }}
+    />
+  )}
 	{shareFile && (
 		<ShareModal
 			fichier={shareFile}
@@ -302,3 +319,33 @@ function FileTypeIcon({ file, listMode }) {
   if (file.ft === 'IMG')                  return <ImageIcon       className={`${base} text-slate-400`}  />;
   return                                         <FileIcon        className={`${base} text-slate-400`}  />;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
