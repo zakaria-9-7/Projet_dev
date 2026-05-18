@@ -264,7 +264,7 @@ const styles = {
 const formatBytes = (bytes) => {
   if (!bytes) return "0 KB";
   const mb = Number(bytes);
-  if (mb < 0.001) return `${(mb * 1024 * 1024).toFixed(0)} KB`;
+  if (mb < 0.0010) return `${(mb * 1024 * 1024).toFixed(0)} KB`;
   if (mb < 1) return `${(mb * 1024).toFixed(1)} KB`;
   if (mb < 1024) return `${mb.toFixed(1)} MB`;
   return `${(mb / 1024).toFixed(2)} GB`;
