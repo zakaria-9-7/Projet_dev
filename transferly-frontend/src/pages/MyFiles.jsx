@@ -14,20 +14,31 @@ import { formatRelativeTime } from '../utils/formatTime';
 import { ShareModal } from './SharedWithMe';
 import UploadZone from '../components/UploadZone';
 
+function formatRelativeDate(iso) {
+  if (!iso) return '—';
+  const diff = Math.floor((Date.now() - new Date(iso + 'Z')) / 1000);
+  if (diff < 3600)  return `Il y a ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} heure${Math.floor(diff / 3600) > 1 ? 's' : ''}`;
+  if (diff < 172800) return 'Hier';
+  return `Il y a ${Math.floor(diff / 86400)} jours`;
+}
+
+function formatSize(tailleMb) {
+  if (tailleMb == null) return '—';
+  const bytes = tailleMb * 1024 * 1024;
+  if (bytes < 1024) return `${Math.round(bytes)} o`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+  return `${tailleMb.toFixed(2)} Mo`;
+}
+
 function normalizeFile(f) {
   const ext = f.nom?.split('.').pop()?.toUpperCase() || 'FILE';
-  const taille = Number(f.taille) || 0;
-  const size = f.taille != null
-    ? taille < 0.01
-      ? `${(taille * 1024).toFixed(0)} KB`
-      : `${taille.toFixed(1)} MB`
-    : '—';  
   return {
     id: f.id,
     type: 'file',
     name: f.nom,
     ft: ext,
-    size,
+    size: formatSize(f.taille),
     date: formatRelativeTime(f.date_creation),
     folder_id: f.folder_id ?? null,
   };
