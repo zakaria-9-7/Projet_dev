@@ -7,6 +7,7 @@ import {
   Shield, Crown, User, HardDrive,
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
+import API from '../api/auth';
 
 /* ── Nav items per role ─────────────────────────── */
 const NAV_BY_ROLE = {
@@ -46,9 +47,9 @@ export default function AppLayout({ children }) {
   const navigate  = useNavigate();
   const location  = useLocation();
 
-  const role  = localStorage.getItem('role') || 'Utilisateur';
-  const nom   = localStorage.getItem('nom');
-  const email = localStorage.getItem('email');
+  const [nom,   setNom]   = useState(() => localStorage.getItem('nom')   || '');
+  const [email, setEmail] = useState(() => localStorage.getItem('email') || '');
+  const [role,  setRole]  = useState(() => localStorage.getItem('role')  || 'Utilisateur');
 
   const navItems  = NAV_BY_ROLE[role] ?? NAV_BY_ROLE.Utilisateur;
   const badge     = ROLE_BADGE[role]  ?? ROLE_BADGE.Utilisateur;
@@ -58,6 +59,19 @@ export default function AppLayout({ children }) {
     document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('darkMode', String(dark));
   }, [dark]);
+
+  useEffect(() => {
+    if (!email) {
+      API.get('/me')
+        .then(res => {
+          const { nom: n, email: e, role: r } = res.data;
+          if (n) { setNom(n);   localStorage.setItem('nom',   n); }
+          if (e) { setEmail(e); localStorage.setItem('email', e); }
+          if (r) { setRole(r);  localStorage.setItem('role',  r); }
+        })
+        .catch(() => {});
+    }
+  }, [email]);
 
   const getInitials = () => {
     if (nom) {
@@ -179,7 +193,15 @@ export default function AppLayout({ children }) {
 
             <NotificationBell />
 
-            <div className="relative ml-1.5" ref={profileRef}>
+            <div className="relative ml-1.5 flex items-center gap-2.5" ref={profileRef}>
+              <div className="hidden sm:flex flex-col items-end leading-tight">
+                <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate max-w-[150px]">
+                  {nom || email || '—'}
+                </span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  {badge.label}
+                </span>
+              </div>
               <button
                 onClick={() => setProfileOpen(o => !o)}
                 className="w-9 h-9 rounded-full bg-cyan-500 text-white flex items-center justify-center text-xs font-bold cursor-pointer select-none hover:opacity-90 transition ring-2 ring-white dark:ring-slate-950 shadow-md"
