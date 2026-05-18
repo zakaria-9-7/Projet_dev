@@ -75,7 +75,7 @@ function FileItem({ file, status, progress, error, onRemove }) {
   );
 }
 
-export default function UploadZone({ onSuccess }) {
+export default function UploadZone({ onSuccess, folderId }) {
   const [dragging, setDragging] = useState(false);
   const [queue, setQueue] = useState([]); // [{file, status, progress, error}]
   const [uploading, setUploading] = useState(false);
@@ -117,6 +117,7 @@ export default function UploadZone({ onSuccess }) {
       ));
       const fd = new FormData();
       fd.append('file', item.file);
+      if (folderId) fd.append('folder_id', folderId);
       try {
         await API.post('/files/', fd, {
           headers: { 'Content-Type': 'multipart/form-data' },

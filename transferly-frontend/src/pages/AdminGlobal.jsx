@@ -262,9 +262,12 @@ const styles = {
 
 // ─── UTILS ─────────────────────────────────────────────────────
 const formatBytes = (bytes) => {
-  if (!bytes) return "0 Go";
-  const gb = bytes / (1024 ** 3);
-  return gb >= 1 ? `${gb.toFixed(1)} Go` : `${(bytes / (1024 ** 2)).toFixed(0)} Mo`;
+  if (!bytes) return "0 KB";
+  const mb = Number(bytes);
+  if (mb < 0.0010) return `${(mb * 1024 * 1024).toFixed(0)} KB`;
+  if (mb < 1) return `${(mb * 1024).toFixed(1)} KB`;
+  if (mb < 1024) return `${mb.toFixed(1)} MB`;
+  return `${(mb / 1024).toFixed(2)} GB`;
 };
 
 
@@ -364,6 +367,21 @@ const AdminGlobal = ({ onNavigate }) => {
   const [activeNav, setActiveNav] = useState("dashboard");
   const navigate = useNavigate();
 
+  const [adminEmail, setAdminEmail] = useState(localStorage.getItem('email') || '');
+  const [adminRole,  setAdminRole]  = useState(localStorage.getItem('role')  || '');
+
+  useEffect(() => {
+    if (!adminEmail) {
+      API.get('/me')
+        .then(res => {
+          const { email, role } = res.data;
+          if (email) { setAdminEmail(email); localStorage.setItem('email', email); }
+          if (role)  { setAdminRole(role);   localStorage.setItem('role',  role);  }
+        })
+        .catch(() => {});
+    }
+  }, [adminEmail]);
+
   const navItems = [
     { id: "dashboard", label: "TABLEAU DE BORD", icon: "▦" },
     { id: "users", label: "UTILISATEURS", icon: "◈" },
@@ -417,9 +435,13 @@ const AdminGlobal = ({ onNavigate }) => {
             CONNECTÉ EN TANT QUE
           </div>
           <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>
-            {/* TODO : afficher g.user.email depuis le contexte auth */}
-            admin@transferly.ma
+            {adminEmail || '—'}
           </div>
+          {adminRole && (
+            <div style={{ fontSize: "10px", color: "#6b7280", marginTop: "2px" }}>
+              {adminRole}
+            </div>
+          )}
         </div>
       </aside>
 

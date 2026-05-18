@@ -4,7 +4,7 @@ import {
   Share2, LayoutDashboard, Files, Share2 as ShareIcon,
   History, Settings, LogOut, Search, Bell, Moon, Sun,
   ShieldCheck, Users, FolderOpen, Activity,
-  Shield, Crown, User,
+  Shield, Crown, User, HardDrive,
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -31,6 +31,7 @@ const NAV_BY_ROLE = {
     { to: '/admin-espaces-all',  icon: FolderOpen,      label: 'Tous les espaces'    },
     { to: '/admin-fichiers-all', icon: Files,           label: 'Tous les fichiers'   },
     { to: '/logs',               icon: Activity,        label: 'Journaux'            },
+    { to: '/admin-quotas',       icon: HardDrive,       label: 'Quotas'              },
   ],
 };
 
