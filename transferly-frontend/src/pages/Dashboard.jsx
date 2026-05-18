@@ -192,12 +192,25 @@ function AdminEspaceDashboard() {
   const [activityRows] = useState([]);
 
   useEffect(() => {
-    API.get('/admin/espaces').then(res => {
-      const myId = parseInt(localStorage.getItem('user_id'));
-      const myEspace = res.data.spaces?.find(e => e.admin_id === myId);
-      if (myEspace) setStats(s => ({ ...s, files: myEspace.files_count || 0 }));
-    }).catch(() => {});
-  }, []);
+  Promise.all([
+    API.get('/admin/espaces/mine').catch(() => ({ data: { spaces: [] } })),
+    API.get('/quota/me').catch(() => ({ data: {} })),
+  ]).then(([espacesRes, quotaRes]) => {
+    const e = espacesRes.data.spaces?.[0];
+    const quota = quotaRes.data;
+    const quotaUsed = quota.quota_utilise_mb || 0;
+    const quotaTotal = quota.quota_total_mb || 1;
+    const quotaPct = Math.round((quotaUsed / quotaTotal) * 100);
+    if (e) {
+      setStats({
+        members:  e.nb_membres  || 0,
+        files:    e.nb_fichiers || 0,
+        quotaPct: quotaPct,
+        acls:     e.nb_acls    || 0,
+      });
+    }
+  });
+}, []);
 
   const statCards = [
     { icon: Users,       bg: 'bg-blue-50 dark:bg-blue-900/20',    iconCls: 'text-blue-500',   label: "Membres de l'espace",  value: stats.members },
@@ -256,7 +269,9 @@ function UtilisateurDashboard() {
 
       setFiles((Array.isArray(filesData) ? filesData : []).slice(0, 5).map(f => ({
         ...f,
-        taille_fmt:  f.taille != null ? `${Number(f.taille).toFixed(1)} MB` : '—',
+        taille_fmt: f.taille != null
+  ? (Number(f.taille) < 0.01 ? `${(Number(f.taille) * 1024).toFixed(0)} KB` : `${Number(f.taille).toFixed(1)} MB`)
+  : '—',
         modifie:     formatRelativeTime(f.date_creation),
         partage_par: f.user_id === currentUserId ? 'Moi' : 'Autre',
       })));

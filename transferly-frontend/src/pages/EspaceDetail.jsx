@@ -399,7 +399,11 @@ export default function EspaceDetail() {
                         <FileText className="w-4 h-4 text-slate-400" /> {f.nom}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{f.owner_nom || f.owner_email}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{f.taille?.toFixed(1)} MB</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{(() => {
+  const t = Number(f.taille) || 0;
+  return t < 0.01 ? `${(t * 1024).toFixed(0)} KB` : `${t.toFixed(1)} MB`;
+})()}
+</td>
                       <td className="px-4 py-3 text-sm text-slate-500">{formatRelativeTime(f.date_creation)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
