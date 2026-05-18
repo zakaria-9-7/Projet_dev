@@ -48,6 +48,17 @@ def _admin_requis(f):
     return decorated
 
 
+def _auth_requis(f):
+    """Exige uniquement une authentification valide, quel que soit le rôle."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        user = _get_user()
+        if user is None:
+            return jsonify({"error": "Non authentifié"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+
 def _gere_ce_fichier(user, fichier_id: int) -> bool:
     """Vérifie qu'un AdminEspace gère le fichier donné."""
     if user.role == "AdminGlobal":
@@ -77,7 +88,7 @@ def _gere_ce_fichier(user, fichier_id: int) -> bool:
 # ─────────────────────────────────────────────
 
 @acl_bp.route("/fichier/<int:fichier_id>", methods=["GET"])
-@_admin_requis
+@_auth_requis
 def list_acl_fichier(fichier_id):
     user = _get_user()
     if not _gere_ce_fichier(user, fichier_id):
@@ -92,7 +103,7 @@ def list_acl_fichier(fichier_id):
 # ─────────────────────────────────────────────
 
 @acl_bp.route("/", methods=["GET"])
-@_admin_requis
+@_auth_requis
 def list_acl():
     user = _get_user()
 
@@ -113,7 +124,7 @@ def list_acl():
 # ─────────────────────────────────────────────
 
 @acl_bp.route("/", methods=["POST"])
-@_admin_requis
+@_auth_requis
 def create_acl():
     user = _get_user()
     data = request.get_json(silent=True)
@@ -178,7 +189,7 @@ def create_acl():
 # ─────────────────────────────────────────────
 
 @acl_bp.route("/<int:acl_id>", methods=["PUT"])
-@_admin_requis
+@_auth_requis
 def update_acl(acl_id):
     user = _get_user()
     data = request.get_json(silent=True)
@@ -213,7 +224,7 @@ def update_acl(acl_id):
 # ─────────────────────────────────────────────
 
 @acl_bp.route("/<int:acl_id>", methods=["DELETE"])
-@_admin_requis
+@_auth_requis
 def delete_acl(acl_id):
     user = _get_user()
 

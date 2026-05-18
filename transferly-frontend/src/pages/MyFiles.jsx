@@ -9,7 +9,6 @@ import {
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
-import { ShareModal } from './SharedWithMe';
 import UploadZone from '../components/UploadZone';
 
 function normalizeFile(f) {
@@ -31,15 +30,27 @@ function normalizeFile(f) {
 }
 
 export default function MyFiles() {
-  const [files,    setFiles]    = useState([]);
-  const [viewMode, setViewMode] = useState('grid');
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
-  const [openMenu,  setOpenMenu]  = useState(null);
-  const [shareFile,  setShareFile]  = useState(null);
-  const [showUpload, setShowUpload] = useState(false);
+  const [files,          setFiles]          = useState([]);
+  const [folders,        setFolders]        = useState([]);
+  const [currentFolder,  setCurrentFolder]  = useState(null);
+  const [folderPath,     setFolderPath]     = useState([]);
+  const [viewMode,       setViewMode]       = useState('grid');
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState(null);
+  const [openMenu,       setOpenMenu]       = useState(null);
+  const [openFolderMenu, setOpenFolderMenu] = useState(null);
+  const [shareFile,      setShareFile]      = useState(null);
+  const [showUpload,     setShowUpload]     = useState(false);
+  const [toast,          setToast]          = useState(null);
+  const [moveFile,       setMoveFile]       = useState(null);
+  const [allFolders,     setAllFolders]     = useState([]);
   const cardsRef = useRef([]);
   const navigate  = useNavigate();
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const fetchFiles = () => {
     setLoading(true);
@@ -106,6 +117,17 @@ export default function MyFiles() {
 
   return (
     <AppLayout>
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          padding: '12px 20px', borderRadius: 8,
+          background: toast.type === 'error' ? '#F44336' : '#4CAF50',
+          color: '#fff', fontWeight: 600, fontSize: 14,
+          boxShadow: '0 4px 16px rgba(0,0,0,.15)',
+        }}>
+          {toast.type === 'error' ? '✕' : '✓'} {toast.msg}
+        </div>
+      )}
       {/* Header row */}
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
@@ -259,13 +281,16 @@ export default function MyFiles() {
           ))}
         </div>
       )}
-	{shareFile && (
-		<ShareModal
-			fichier={shareFile}
-			onClose={() => setShareFile(null)}
-			onSuccess={(msg) => { alert(msg); setShareFile(null); }}
-		/>
-	)}
+      {shareFile && (
+        <ShareModal
+          fichier={shareFile}
+          onClose={() => setShareFile(null)}
+          onSuccess={(msg, type) => {
+            showToast(msg, type);
+            if (!type || type === 'success') { setShareFile(null); fetchFiles(); }
+          }}
+        />
+      )}
 
 	{/* Upload modal */}
 	{showUpload && (
@@ -301,4 +326,186 @@ function FileTypeIcon({ file, listMode }) {
   if (file.ft === 'XLS')                  return <FileSpreadsheet className={`${base} text-slate-400`}  />;
   if (file.ft === 'IMG')                  return <ImageIcon       className={`${base} text-slate-400`}  />;
   return                                         <FileIcon        className={`${base} text-slate-400`}  />;
+}
+
+const SHARE_PERMS = [
+  { key: 'lecture',     label: 'Lecture' },
+  { key: 'download',    label: 'Téléchargement' },
+  { key: 'ecriture',    label: 'Écriture' },
+  { key: 'partage',     label: 'Partage' },
+  { key: 'suppression', label: 'Suppression' },
+];
+
+function ShareModal({ fichier, onClose, onSuccess }) {
+  const [search,      setSearch]      = useState('');
+  const [results,     setResults]     = useState([]);
+  const [selected,    setSelected]    = useState(null);
+  const [loadingU,    setLoadingU]    = useState(false);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [perms,       setPerms]       = useState({
+    lecture: true, download: true, ecriture: false, suppression: false, partage: false,
+  });
+
+  useEffect(() => {
+    if (search.length < 2) { setResults([]); return; }
+    const t = setTimeout(async () => {
+      setLoadingU(true);
+      try {
+        const res = await API.get(`/users/search?q=${encodeURIComponent(search)}`);
+        setResults(res.data);
+      } catch { setResults([]); }
+      finally { setLoadingU(false); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const submit = async () => {
+    if (!selected || submitting) return;
+    setSubmitting(true);
+    try {
+      await API.post('/acl/', {
+        user_id:     selected.id,
+        fichier_id:  fichier.id,
+        lecture:     perms.lecture,
+        ecriture:    perms.ecriture,
+        download:    perms.download,
+        partage:     perms.partage,
+        suppression: perms.suppression,
+      });
+      onSuccess?.('Fichier partagé avec succès');
+    } catch (e) {
+      if (e.response?.status === 409) {
+        onSuccess?.('Ce fichier est déjà partagé avec cet utilisateur', 'error');
+      } else {
+        onSuccess?.(e.response?.data?.error || 'Erreur lors du partage', 'error');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 truncate pr-4">
+            Partager &laquo;&nbsp;{fichier.name}&nbsp;&raquo;
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Recherche utilisateur */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">
+              Destinataire
+            </label>
+            <div className="relative">
+              <input
+                className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 outline-none focus:border-cyan-400 transition"
+                placeholder="Rechercher un utilisateur…"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setSelected(null); }}
+                autoFocus
+              />
+              {search.length >= 2 && !selected && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-10 max-h-44 overflow-y-auto">
+                  {loadingU && (
+                    <div className="px-4 py-3 text-xs text-slate-400 text-center">Recherche…</div>
+                  )}
+                  {!loadingU && results.length === 0 && (
+                    <div className="px-4 py-3 text-xs text-slate-400 text-center">Aucun résultat</div>
+                  )}
+                  {results.map(u => (
+                    <button
+                      key={u.id}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-cyan-50 dark:hover:bg-cyan-900/20 border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors"
+                      onClick={() => { setSelected(u); setSearch(u.nom); setResults([]); }}
+                    >
+                      <div className="w-7 h-7 rounded-full bg-cyan-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        {u.nom[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">{u.nom}</div>
+                        <div className="text-xs text-slate-400">{u.email}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {selected && (
+              <div className="flex items-center gap-3 mt-2 px-3 py-2.5 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-700 rounded-lg">
+                <div className="w-7 h-7 rounded-full bg-cyan-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  {selected.nom[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selected.nom}</div>
+                  <div className="text-xs text-slate-400">{selected.email}</div>
+                </div>
+                <button
+                  className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 text-lg leading-none"
+                  onClick={() => { setSelected(null); setSearch(''); }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Permissions */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">
+              Permissions
+            </label>
+            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+              {SHARE_PERMS.map(({ key, label }) => (
+                <label key={key} className="flex items-center justify-between py-2.5 cursor-pointer select-none">
+                  <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={perms[key]}
+                    onClick={() => setPerms(p => ({ ...p, [key]: !p[key] }))}
+                    className={`relative w-10 h-6 rounded-full transition-colors ${perms[key] ? 'bg-cyan-500' : 'bg-slate-200 dark:bg-slate-600'}`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${perms[key] ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </button>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-700">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={submit}
+            disabled={!selected || submitting}
+            className="px-5 py-2 text-sm font-semibold text-white bg-cyan-500 hover:bg-cyan-600 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Envoi…' : 'Partager'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

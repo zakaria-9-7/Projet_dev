@@ -217,6 +217,21 @@ def list_users_for_acl():
     users = User.query.filter(User.id != g.user['id']).all()
     return jsonify([{'id': u.id, 'nom': u.nom, 'email': u.email, 'role': u.role} for u in users]), 200
 
+
+@admin_espace_bp.route('/users/search', methods=['GET'])
+def search_users():
+    from flask import g, jsonify, request
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 2:
+        return jsonify([]), 200
+    results = User.query.filter(
+        (User.nom.ilike(f'%{q}%')) | (User.email.ilike(f'%{q}%')),
+        User.id != g.user['id']
+    ).limit(10).all()
+    return jsonify([{'id': u.id, 'nom': u.nom, 'email': u.email} for u in results]), 200
+
 # ─── Créer une invitation par email ───────────────────────────────
 @admin_espace_bp.route('/espaces/<int:espace_id>/invitations', methods=['POST'])
 def create_invitation(espace_id):
