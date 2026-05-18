@@ -299,6 +299,7 @@ def get_me():
         'role': user.role,
         'quota': user.quota,
         'quota_utilise': user.quota_utilise,
+        'preferences': user.preferences,
     }), 200
 
 
@@ -357,3 +358,22 @@ def change_password():
     send_password_changed_email(user.email, user.nom)
 
     return jsonify({'message': 'Mot de passe modifié'}), 200
+
+
+# ── Préférences utilisateur ───────────────────────────────────────
+@auth_bp.route('/me/preferences', methods=['PUT'])
+def update_preferences():
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+    user = User.query.get(g.user['id'])
+    if not user:
+        return jsonify({'error': 'Introuvable'}), 404
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Données invalides'}), 400
+    # Merge incoming keys onto existing preferences (partial update supported)
+    current_prefs = user.preferences
+    current_prefs.update({k: v for k, v in data.items() if isinstance(v, bool)})
+    user.preferences = current_prefs
+    db.session.commit()
+    return jsonify({'message': 'Préférences mises à jour', 'preferences': user.preferences}), 200

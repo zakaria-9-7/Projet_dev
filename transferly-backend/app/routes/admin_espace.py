@@ -175,6 +175,9 @@ def delete_espace(espace_id):
 @admin_espace_bp.route('/admin/espaces/mine', methods=['GET'])
 def get_my_espace():
     from flask import g, jsonify
+    from app.models.membership import Membership
+    from app.models.fichier import Fichier
+    from app.models.acl import ACL
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
     if g.user['role'] not in ('AdminEspace', 'AdminGlobal'):
@@ -184,6 +187,11 @@ def get_my_espace():
     result = []
     for e in espaces:
         admin = User.query.get(e.admin_id)
+        nb_membres = Membership.query.filter_by(espace_id=e.id).count() + 1
+        nb_fichiers = Fichier.query.filter_by(espace_id=e.id).count()
+        nb_acls = ACL.query.filter(ACL.fichier_id.in_(
+            [f.id for f in Fichier.query.filter_by(espace_id=e.id).all()]
+        )).count()
         result.append({
             'id': e.id,
             'nom': e.nom,
@@ -191,6 +199,9 @@ def get_my_espace():
             'admin_nom': admin.nom if admin else None,
             'admin_email': admin.email if admin else None,
             'quota_used': e.quota,
+            'nb_membres': nb_membres,
+            'nb_fichiers': nb_fichiers,
+            'nb_acls': nb_acls,
         })
     return jsonify({'spaces': result}), 200
 

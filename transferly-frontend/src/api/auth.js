@@ -20,7 +20,7 @@ export const forgotPassword = (data) => API.post('/forgot-password', data);
 export const resetPassword = (token, data) => API.post(`/reset-password/${token}`, data);
 
 export const getFiles = () => API.get('/files/');
-export const uploadFile = (formData) => API.post('/files/upload', formData, {
+export const uploadFile = (formData) => API.post('/files/', formData, {
   headers: { 'Content-Type': 'multipart/form-data' },
 });
 export const downloadFile = (id) => API.get(`/files/${id}/download`, { responseType: 'blob' });

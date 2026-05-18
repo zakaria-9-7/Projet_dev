@@ -4,3 +4,6 @@ docs/
 .env
 transferly-backend/instance/
 *.db
+
+.env
+transferly-backend/.env

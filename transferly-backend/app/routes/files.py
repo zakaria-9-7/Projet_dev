@@ -45,6 +45,7 @@ def _serialize(f, user_id):
         'taille':       f.taille,
         'date_creation': f.date_creation.isoformat() if f.date_creation else None,
         'espace_id':    f.espace_id,
+        'folder_id':    f.folder_id,
         'est_partage':  est_partage,
     }
 
@@ -124,6 +125,7 @@ def upload_file():
 
         encrypted = encrypt_file(file_content)
         espace_id = request.form.get('espace_id', type=int)
+        folder_id = request.form.get('folder_id', type=int)
 
         if espace_id:
             from app.models.espace import Espace
@@ -151,6 +153,7 @@ def upload_file():
             taille=round(file_size_mb, 6),
             user_id=user_id,
             espace_id=espace_id,
+            folder_id=folder_id,
             chemin='',
         )
         db.session.add(fichier)
@@ -165,10 +168,13 @@ def upload_file():
 
         fichier.chemin = file_path
 
+        sha256_init = hashlib.sha256(file_content).hexdigest()
         version = VersionFichier(
             numero_version=1,
             description='Version initiale',
             chemin=file_path,
+            sha256=sha256_init,
+            auteur_id=user_id,
             fichier_id=fichier.id,
         )
         db.session.add(version)
@@ -342,6 +348,7 @@ def list_files_in_espace(espace_id):
             'owner_id': f.user_id,
             'owner_nom': owner.nom if owner else None,
             'owner_email': owner.email if owner else None,
+            'folder_id': f.folder_id,
         })
     return jsonify(result), 200
 
@@ -389,6 +396,8 @@ def update_file(fichier_id):
             numero_version=next_num,
             description=f'Mise à jour par user {user_id}',
             chemin=archive_path,
+            sha256=sha256,
+            auteur_id=user_id,
             fichier_id=fichier_id,
         )
         db.session.add(version)
