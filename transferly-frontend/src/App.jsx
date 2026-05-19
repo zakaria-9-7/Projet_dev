@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { NotificationProvider } from './context/NotificationContext';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -43,7 +44,8 @@ function NotFound() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <NotificationProvider>
+        <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -67,6 +69,7 @@ export default function App() {
         <Route path="/admin-fichiers-all" element={<PrivateRoute><AdminFichiersAll /></PrivateRoute>} />
         <Route path="/admin-quotas"       element={<PrivateRoute><AdminQuotas /></PrivateRoute>} />
       </Routes>
+      </NotificationProvider>
     </BrowserRouter>
   );
 }

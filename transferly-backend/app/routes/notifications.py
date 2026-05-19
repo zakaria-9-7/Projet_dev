@@ -1,6 +1,8 @@
-from flask import Blueprint, g, jsonify
+import queue
+from flask import Blueprint, g, jsonify, Response, stream_with_context, request
 from app.extensions import db
 from app.models.notification import Notification
+from app.services.sse_manager import register_queue, unregister_queue
 
 notifications_bp = Blueprint('notifications', __name__)
 
@@ -56,3 +58,66 @@ def marquer_tout_lu():
     Notification.query.filter_by(user_id=g.user['id'], lu=False).update({'lu': True})
     db.session.commit()
     return jsonify({'message': 'Toutes marquées comme lues'}), 200
+
+
+@notifications_bp.route('/notifications/stream', methods=['GET'])
+def sse_stream():
+    """
+    SSE endpoint — streams real-time notification events to the authenticated client.
+
+    Authentication: JWT supplied either via the standard `Authorization: Bearer <token>`
+    header (handled by middleware, g.user already set) OR via the `?token=<jwt>` query
+    parameter (needed because the browser's native EventSource API cannot send custom
+    headers).
+    """
+    import jwt as pyjwt
+    import os
+
+    # g.user is set by middleware when the Authorization header is present.
+    # For EventSource connections the token arrives as a query parameter instead.
+    if not hasattr(g, 'user') or g.user is None:
+        token = request.args.get('token', '')
+        if not token:
+            return jsonify({'error': 'Token manquant'}), 401
+        try:
+            payload = pyjwt.decode(
+                token,
+                os.getenv('SECRET_KEY', 'devsecret'),
+                algorithms=['HS256']
+            )
+            g.user = {
+                'id': payload['user_id'],
+                'role': payload['role'],
+                'email': payload.get('email'),
+            }
+        except pyjwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token expiré'}), 401
+        except pyjwt.InvalidTokenError:
+            return jsonify({'error': 'Token invalide'}), 401
+
+    user_id = g.user['id']
+
+    def event_stream():
+        q = register_queue(user_id)
+        try:
+            # Send retry hint once so the browser knows the reconnect interval
+            yield 'retry: 5000\n\n'
+            while True:
+                try:
+                    event = q.get(timeout=30)
+                    yield event
+                except queue.Empty:
+                    # Keep-alive comment to prevent proxy / browser timeout
+                    yield ': keep-alive\n\n'
+        finally:
+            unregister_queue(user_id, q)
+
+    return Response(
+        stream_with_context(event_stream()),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive',
+        }
+    )

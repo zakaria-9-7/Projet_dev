@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Check, FileUp, UserPlus, UserMinus, Mail, Share2, FolderOpen } from 'lucide-react';
-import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
+import { useNotifications } from '../context/NotificationContext';
 
 const ICONS = {
   upload_espace: FileUp,
@@ -16,29 +16,9 @@ const ICONS = {
 export default function NotificationBell() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [notifs, setNotifs] = useState([]);
-  const [count, setCount] = useState(0);
   const panelRef = useRef(null);
 
-  const loadCount = async () => {
-    try {
-      const res = await API.get('/notifications/non-lues');
-      setCount(res.data.count || 0);
-    } catch (e) { /* silencieux */ }
-  };
-
-  const loadNotifs = async () => {
-    try {
-      const res = await API.get('/notifications');
-      setNotifs(res.data);
-    } catch (e) { /* silencieux */ }
-  };
-
-  useEffect(() => {
-    loadCount();
-    const interval = setInterval(loadCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -50,29 +30,18 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
-  const handleOpen = () => {
-    const next = !open;
-    setOpen(next);
-    if (next) loadNotifs();
-  };
+  const handleOpen = () => setOpen(prev => !prev);
 
   const handleNotifClick = async (notif) => {
-    try {
-      if (!notif.lu) {
-        await API.put(`/notifications/${notif.id}/lu`);
-        setCount(c => Math.max(0, c - 1));
-      }
-    } catch (e) { /* silencieux */ }
+    if (!notif.lu) {
+      await markAsRead(notif.id);
+    }
     setOpen(false);
     if (notif.lien) navigate(notif.lien);
   };
 
   const handleToutLu = async () => {
-    try {
-      await API.put('/notifications/tout-lu');
-      setCount(0);
-      setNotifs(prev => prev.map(n => ({ ...n, lu: true })));
-    } catch (e) { /* silencieux */ }
+    await markAllAsRead();
   };
 
   return (
@@ -83,9 +52,9 @@ export default function NotificationBell() {
         title="Notifications"
       >
         <Bell className="w-5 h-5 text-slate-500 dark:text-slate-300" />
-        {count > 0 && (
+        {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-            {count > 9 ? '9+' : count}
+            {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
@@ -94,7 +63,7 @@ export default function NotificationBell() {
         <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Notifications</h3>
-            {count > 0 && (
+            {unreadCount > 0 && (
               <button
                 onClick={handleToutLu}
                 className="text-xs text-cyan-600 hover:text-cyan-700 flex items-center gap-1"
@@ -105,13 +74,13 @@ export default function NotificationBell() {
           </div>
 
           <div className="max-h-96 overflow-y-auto">
-            {notifs.length === 0 ? (
+            {notifications.length === 0 ? (
               <div className="py-10 text-center">
                 <Bell className="w-8 h-8 mx-auto text-slate-300 mb-2" />
                 <p className="text-sm text-slate-400">Aucune notification</p>
               </div>
             ) : (
-              notifs.map(n => {
+              notifications.map(n => {
                 const Icon = ICONS[n.type] || FolderOpen;
                 return (
                   <button

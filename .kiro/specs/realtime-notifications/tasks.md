@@ -51,7 +51,7 @@ Replace the 30-second polling loop with a Server-Sent Events (SSE) push channel.
 - [x] 3. Checkpoint — Ensure all `test_sse_manager.py` tests pass
   - Run `pytest tests/test_sse_manager.py` from `transferly-backend/`. Ensure all tests pass, ask the user if questions arise.
 
-- [~] 4. Modify `app/services/notifier.py` — hook `push_notification` into `creer_notification`
+- [x] 4. Modify `app/services/notifier.py` — hook `push_notification` into `creer_notification`
   - Add `from app.services.sse_manager import push_notification` at the top of `notifier.py`.
   - In `creer_notification`, after `db.session.commit()` succeeds, call `push_notification` with the six required fields (`id`, `type`, `message`, `lien`, `lu`, `date_creation.isoformat()`).
   - Wrap the `push_notification` call in its own try/except so that any SSE-layer error never prevents the function from returning normally.
@@ -59,7 +59,7 @@ Replace the 30-second polling loop with a Server-Sent Events (SSE) push channel.
   - _Requirements: 2.1, 2.2_
 
 - [ ] 5. Write tests for the modified `notifier.py`
-  - [~] 5.1 Write unit tests in `transferly-backend/tests/test_notifier.py`
+  - [x] 5.1 Write unit tests in `transferly-backend/tests/test_notifier.py`
     - Mock `push_notification` and `db.session`; verify `push_notification` is called with the correct payload after a successful commit.
     - Verify `push_notification` is NOT called when the DB commit raises (rollback path).
     - Verify that an exception raised inside `push_notification` does not propagate out of `creer_notification`.
@@ -72,7 +72,7 @@ Replace the 30-second polling loop with a Server-Sent Events (SSE) push channel.
     - **Property 1: SSE event payload completeness**
     - **Validates: Requirements 2.2**
 
-- [~] 6. Add `/notifications/stream` SSE route to `app/routes/notifications.py`
+- [x] 6. Add `/notifications/stream` SSE route to `app/routes/notifications.py`
   - Import `register_queue`, `unregister_queue` from `app.services.sse_manager`.
   - Add `from flask import Response, stream_with_context` to the imports.
   - Implement `sse_stream()` under `GET /notifications/stream`:
@@ -84,7 +84,7 @@ Replace the 30-second polling loop with a Server-Sent Events (SSE) push channel.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 6.4_
 
 - [ ] 7. Write integration tests for the SSE stream endpoint
-  - [~] 7.1 Write integration tests in `transferly-backend/tests/test_sse_stream.py`
+  - [x] 7.1 Write integration tests in `transferly-backend/tests/test_sse_stream.py`
     - Test that `GET /notifications/stream` with a valid JWT returns `Content-Type: text/event-stream`, `Cache-Control: no-cache`, and `X-Accel-Buffering: no` headers.
     - Test that `GET /notifications/stream` with a missing or invalid JWT returns HTTP 401.
     - Test that calling `push_notification(user_id, payload)` after connecting causes the event to appear in the stream response.
@@ -100,7 +100,7 @@ Replace the 30-second polling loop with a Server-Sent Events (SSE) push channel.
 - [~] 8. Checkpoint — Ensure all backend tests pass
   - Run `pytest` from `transferly-backend/`. Ensure all tests pass, ask the user if questions arise.
 
-- [~] 9. Create `src/context/NotificationContext.jsx`
+- [x] 9. Create `src/context/NotificationContext.jsx`
   - Create `transferly-frontend/src/context/NotificationContext.jsx`.
   - Define `NotificationContext` with `React.createContext`.
   - Implement `NotificationProvider` component:
@@ -116,7 +116,7 @@ Replace the 30-second polling loop with a Server-Sent Events (SSE) push channel.
   - Export `useNotifications` convenience hook: `() => useContext(NotificationContext)`.
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.6_
 
-- [~] 10. Modify `src/components/NotificationBell.jsx` — consume NotificationContext
+- [x] 10. Modify `src/components/NotificationBell.jsx` — consume NotificationContext
   - Remove the `useState` declarations for `notifs` and `count`.
   - Remove the `useEffect` that sets up `loadCount` and `setInterval`.
   - Remove the `loadCount` and `loadNotifs` functions.
@@ -128,7 +128,7 @@ Replace the 30-second polling loop with a Server-Sent Events (SSE) push channel.
   - Keep all JSX rendering logic (badge, dropdown, icons) unchanged.
   - _Requirements: 4.4, 4.5, 2.3, 2.4_
 
-- [~] 11. Modify `src/App.jsx` — wrap router with `NotificationProvider`
+- [x] 11. Modify `src/App.jsx` — wrap router with `NotificationProvider`
   - Import `{ NotificationProvider }` from `./context/NotificationContext`.
   - Wrap the `<BrowserRouter>` (or its contents) with `<NotificationProvider>` so the context is available to all routes.
   - No other changes to routing or page components.
