@@ -269,7 +269,43 @@ def download_file(fichier_id):
         log_action(user_id, 'download', resource_id=fichier_id, statut='echec', details=str(e))
         return jsonify({'error': str(e)}), 500
 
+@files_bp.route('/<int:fichier_id>/preview', methods=['GET'])
+@require_permission('lecture')
+def preview_file(fichier_id):
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+    if not fichier.chemin or not os.path.exists(fichier.chemin):
+        return jsonify({'error': 'Fichier absent'}), 404
 
+    ext = fichier.nom.rsplit('.', 1)[-1].lower() if '.' in fichier.nom else ''
+    mime_map = {
+        'pdf': 'application/pdf',
+        'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+        'gif': 'image/gif', 'webp': 'image/webp',
+        'txt': 'text/plain', 'md': 'text/plain',
+        'html': 'text/html', 'css': 'text/css',
+        'js': 'application/javascript',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'csv': 'text/csv',
+    }
+    mime = mime_map.get(ext, 'application/octet-stream')
+
+    try:
+        with open(fichier.chemin, 'rb') as fp:
+            encrypted = fp.read()
+        decrypted = decrypt_file(encrypted)
+        return send_file(
+            io.BytesIO(decrypted),
+            mimetype=mime,
+            as_attachment=False,
+            download_name=fichier.nom,
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+    
 # ── DELETE /files/<fichier_id> ────────────────────────────────────
 @files_bp.route('/<int:fichier_id>', methods=['DELETE'])
 @require_permission('suppression')
@@ -432,3 +468,33 @@ def update_file(fichier_id):
         return jsonify({'error': str(e)}), 500
     finally:
         lock.release()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
