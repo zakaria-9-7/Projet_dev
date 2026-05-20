@@ -105,6 +105,21 @@ def list_files():
         return jsonify({'error': str(e)}), 500
 
 
+# ── GET /files/<fichier_id> ───────────────────────────────────────
+@files_bp.route('/<int:fichier_id>', methods=['GET'])
+@require_permission('lecture')
+def get_file(fichier_id):
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+    return jsonify({
+        'id':           fichier.id,
+        'nom':          fichier.nom,
+        'taille':       fichier.taille,
+        'date_creation': fichier.date_creation.isoformat() if fichier.date_creation else None,
+    }), 200
+
+
 # ── POST /files/ ──────────────────────────────────────────────────
 @files_bp.route('/', methods=['POST'])
 def upload_file():

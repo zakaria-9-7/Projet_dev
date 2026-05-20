@@ -10,7 +10,9 @@ function getExt(nom) {
   return (nom || '').split('.').pop().toLowerCase();
 }
 
-export default function FilePreviewModal({ file, onClose, onDownload }) {
+// previewUrl: optional override for the fetch URL (used for version previews).
+// When provided, it replaces the default /files/${file.id}/preview path.
+export default function FilePreviewModal({ file, onClose, onDownload, previewUrl }) {
   const [url, setUrl]       = useState(null);
   const [text, setText]     = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,26 +21,44 @@ export default function FilePreviewModal({ file, onClose, onDownload }) {
   const ext = getExt(file.nom || file.name);
 
   useEffect(() => {
+    const fetchUrl = previewUrl || `/files/${file.id}/preview`;
+    let objectUrl = null;
+
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
         if (TEXT_EXTS.includes(ext)) {
-          const res = await API.get(`/files/${file.id}/preview`, { responseType: 'text' });
+          const res = await API.get(fetchUrl, { responseType: 'text' });
           setText(res.data);
         } else {
-          const res = await API.get(`/files/${file.id}/preview`, { responseType: 'blob' });
-          setUrl(URL.createObjectURL(res.data));
+          const res = await API.get(fetchUrl, { responseType: 'blob' });
+          objectUrl = URL.createObjectURL(res.data);
+          setUrl(objectUrl);
         }
       } catch (e) {
-        setError(e.response?.data?.error || 'Impossible de prévisualiser ce fichier');
+        // When responseType is 'blob', error response data is a Blob — parse it to get the message
+        let message = 'Impossible de prévisualiser ce fichier';
+        if (e.response?.data instanceof Blob) {
+          try {
+            const text = await e.response.data.text();
+            const json = JSON.parse(text);
+            if (json.error) message = json.error;
+          } catch {
+            // blob wasn't JSON — keep the default message
+          }
+        } else if (e.response?.data?.error) {
+          message = e.response.data.error;
+        }
+        setError(message);
       } finally {
         setLoading(false);
       }
     };
+
     load();
-    return () => { if (url) URL.revokeObjectURL(url); };
-  }, [file.id]);
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [file.id, previewUrl]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">

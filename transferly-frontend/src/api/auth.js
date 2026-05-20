@@ -20,6 +20,7 @@ export const forgotPassword = (data) => API.post('/forgot-password', data);
 export const resetPassword = (token, data) => API.post(`/reset-password/${token}`, data);
 
 export const getFiles = () => API.get('/files/');
+export const getFile = (id) => API.get(`/files/${id}`);
 export const uploadFile = (formData) => API.post('/files/', formData, {
   headers: { 'Content-Type': 'multipart/form-data' },
 });
@@ -28,5 +29,7 @@ export const deleteFile = (id) => API.delete(`/files/${id}`);
 export const getLogs = () => API.get('/logs/');
 export const getVersions = (fileId) => API.get(`/files/${fileId}/versions`);
 export const restoreVersion = (fileId, n) => API.post(`/files/${fileId}/versions/${n}/restore`);
+export const getVersionPreview = (fileId, num) => API.get(`/files/${fileId}/versions/${num}/preview`, { responseType: 'blob' });
+export const getVersionDownload = (fileId, num) => API.get(`/files/${fileId}/versions/${num}/download`, { responseType: 'blob' });
 
 export default API;

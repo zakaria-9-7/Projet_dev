@@ -97,7 +97,7 @@ Replace the 30-second polling loop with a Server-Sent Events (SSE) push channel.
     - **Property 7: Mark-all-read completeness**
     - **Validates: Requirements 5.3**
 
-- [~] 8. Checkpoint — Ensure all backend tests pass
+- [ ] 8. Checkpoint — Ensure all backend tests pass
   - Run `pytest` from `transferly-backend/`. Ensure all tests pass, ask the user if questions arise.
 
 - [x] 9. Create `src/context/NotificationContext.jsx`
@@ -162,7 +162,7 @@ Replace the 30-second polling loop with a Server-Sent Events (SSE) push channel.
     - **Property 3: Frontend state update on received event**
     - **Validates: Requirements 2.3, 2.4**
 
-- [~] 13. Final checkpoint — Ensure all tests pass
+- [ ] 13. Final checkpoint — Ensure all tests pass
   - Run `pytest` from `transferly-backend/` and `vitest --run` from `transferly-frontend/`. Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

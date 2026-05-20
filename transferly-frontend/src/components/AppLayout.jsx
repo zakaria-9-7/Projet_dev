@@ -7,6 +7,7 @@ import {
   Shield, Crown, User, HardDrive,
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
+import CommandPalette from './CommandPalette';
 
 /* ── Nav items per role ─────────────────────────── */
 const NAV_BY_ROLE = {
@@ -43,6 +44,7 @@ const ROLE_BADGE = {
 
 export default function AppLayout({ children }) {
   const [dark, setDark] = useState(() => localStorage.getItem('darkMode') === 'true');
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const navigate  = useNavigate();
   const location  = useLocation();
 
@@ -58,6 +60,18 @@ export default function AppLayout({ children }) {
     document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('darkMode', String(dark));
   }, [dark]);
+
+  // Ctrl+K / Cmd+K opens the command palette
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen(o => !o);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   const getInitials = () => {
     if (nom) {
@@ -159,14 +173,17 @@ export default function AppLayout({ children }) {
 
         {/* TOPBAR */}
         <header className="h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur border-b border-slate-100 dark:border-slate-800 flex items-center px-6 gap-4 sticky top-0 z-10">
-          <div className="relative flex-1 max-w-lg">
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="relative flex-1 max-w-lg flex items-center gap-2.5 pl-10 pr-4 py-2 border border-transparent rounded-xl text-sm bg-slate-50 dark:bg-slate-800 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-200 dark:hover:border-slate-600 transition text-left cursor-text"
+            title="Rechercher (Ctrl+K)"
+          >
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Rechercher des fichiers..."
-              className="w-full pl-10 pr-4 py-2 border border-transparent rounded-xl text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:bg-white dark:focus:bg-slate-700 focus:border-cyan-200 dark:focus:border-cyan-700 transition"
-            />
-          </div>
+            <span className="flex-1 text-slate-400">Rechercher des fichiers, espaces…</span>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600 shrink-0">
+              Ctrl K
+            </kbd>
+          </button>
 
           <div className="ml-auto flex items-center gap-1">
             <button
@@ -218,6 +235,9 @@ export default function AppLayout({ children }) {
           {children}
         </main>
       </div>
+
+      {/* ── COMMAND PALETTE ── */}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 }

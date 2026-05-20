@@ -2,10 +2,11 @@
 // NE-06 — Historique des versions d'un fichier
 // Design system Transferly (blanc/bleu, sidebar, cards)
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import API from '../api/auth';
+import API, { getFile, getVersionPreview, getVersionDownload } from '../api/auth';
 import AppLayout from '../components/AppLayout';
+import FilePreviewModal from '../components/FilePreviewModal';
 
 // ─── Icons (subset) ──────────────────────────────────────────
 const Icon = ({ name, size = 16, color = 'currentColor' }) => {
@@ -29,60 +30,62 @@ const Icon = ({ name, size = 16, color = 'currentColor' }) => {
 // ─── Restore Confirmation Modal ───────────────────────────────
 function RestoreModal({ version, onConfirm, onCancel, loading }) {
   return (
-    <>
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.3)',
+      backdropFilter: 'blur(4px)', zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
       <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.3)',
-        backdropFilter: 'blur(4px)', zIndex: 1000,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#fff', borderRadius: 16, padding: '32px',
+        width: 400, boxShadow: '0 20px 60px rgba(0,0,0,.2)',
       }}>
         <div style={{
-          background: '#fff', borderRadius: 16, padding: '32px',
-          width: 400, boxShadow: '0 20px 60px rgba(0,0,0,.2)',
+          width: 48, height: 48, borderRadius: 12,
+          background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginBottom: 16,
         }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 12,
-            background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            marginBottom: 16,
-          }}>
-            <Icon name="versions" size={22} color="#ea580c" />
-          </div>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1a1a2e', margin: '0 0 8px' }}>
-            Restaurer la version {version.numero_version} ?
-          </h3>
-          <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.6, margin: '0 0 24px' }}>
-            La version courante sera archivée et la <strong>v{version.numero_version}</strong> deviendra la version active du fichier.
-            Cette action est réversible.
-          </p>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button
-              onClick={onCancel}
-              style={{
-                padding: '9px 20px', borderRadius: 9, border: '1.5px solid #e2e8f0',
-                background: '#fff', color: '#475569', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
-              }}>
-              Annuler
-            </button>
-            <button
-              onClick={onConfirm}
-              disabled={loading}
-              style={{
-                padding: '9px 20px', borderRadius: 9, border: 'none',
-                background: loading ? '#93c5fd' : '#2563eb',
-                color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-              {loading ? 'Restauration...' : 'Confirmer la restauration'}
-            </button>
-          </div>
+          <Icon name="versions" size={22} color="#ea580c" />
+        </div>
+        <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1a1a2e', margin: '0 0 8px' }}>
+          Restaurer la version {version.numero_version} ?
+        </h3>
+        <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.6, margin: '0 0 24px' }}>
+          La version courante sera archivée et la <strong>v{version.numero_version}</strong> deviendra la version active du fichier.
+          Cette action est réversible.
+        </p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: '9px 20px', borderRadius: 9, border: '1.5px solid #e2e8f0',
+              background: '#fff', color: '#475569', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
+            }}>
+            Annuler
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            style={{
+              padding: '9px 20px', borderRadius: 9, border: 'none',
+              background: loading ? '#93c5fd' : '#2563eb',
+              color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+            {loading ? 'Restauration...' : 'Confirmer la restauration'}
+          </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
 // ─── Version Row ──────────────────────────────────────────────
-function VersionRow({ v, onRestoreClick, isLatest }) {
+function VersionRow({ v, onRestoreClick, onPreviewClick, onDownloadClick, isLatest, permissions }) {
   const [hov, setHov] = useState(false);
+
+  const canRestore  = permissions?.can_restore  ?? true;
+  const canPreview  = permissions?.can_preview  ?? false;
+  const canDownload = permissions?.can_download ?? false;
 
   return (
     <div
@@ -90,7 +93,7 @@ function VersionRow({ v, onRestoreClick, isLatest }) {
       onMouseLeave={() => setHov(false)}
       style={{
         display: 'grid',
-        gridTemplateColumns: '110px 1fr 160px',
+        gridTemplateColumns: '110px 1fr 1fr',
         gap: 16, padding: '16px 24px',
         background: isLatest ? '#f0f9ff' : (hov ? '#fafbfd' : '#fff'),
         borderBottom: '1px solid #f1f5f9',
@@ -126,8 +129,8 @@ function VersionRow({ v, onRestoreClick, isLatest }) {
         )}
       </div>
 
-      {/* Action */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+      {/* Actions */}
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         {isLatest ? (
           <span style={{
             padding: '6px 14px', borderRadius: 8,
@@ -138,19 +141,59 @@ function VersionRow({ v, onRestoreClick, isLatest }) {
             <Icon name="check" size={12} color="#16a34a" /> Courante
           </span>
         ) : (
-          <button
-            onClick={() => onRestoreClick(v)}
-            style={{
-              padding: '7px 16px', borderRadius: 8, border: 'none',
-              background: '#2563eb', color: '#fff',
-              fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              transition: 'background .15s, transform .1s',
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'none'; }}>
-            <Icon name="versions" size={12} color="#fff" /> Restaurer
-          </button>
+          <>
+            {canPreview && (
+              <button
+                onClick={() => onPreviewClick(v)}
+                style={{
+                  padding: '7px 14px', borderRadius: 8, border: '1.5px solid #e2e8f0',
+                  background: '#fff', color: '#475569',
+                  fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                  transition: 'background .15s, border-color .15s',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
+                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+                Prévisualiser
+              </button>
+            )}
+            {canDownload && (
+              <button
+                onClick={() => onDownloadClick(v)}
+                style={{
+                  padding: '7px 14px', borderRadius: 8, border: '1.5px solid #e2e8f0',
+                  background: '#fff', color: '#475569',
+                  fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                  transition: 'background .15s, border-color .15s',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
+                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Télécharger
+              </button>
+            )}
+            {canRestore && (
+              <button
+                onClick={() => onRestoreClick(v)}
+                style={{
+                  padding: '7px 16px', borderRadius: 8, border: 'none',
+                  background: '#2563eb', color: '#fff',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  transition: 'background .15s, transform .1s',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'none'; }}>
+                <Icon name="versions" size={12} color="#fff" /> Restaurer
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -164,38 +207,71 @@ export default function FileVersions() {
   const navigate = useNavigate();
 
   const [versions, setVersions] = useState([]);
+  const [permissions, setPermissions] = useState(null);
   const [fileName, setFileName] = useState('Document sans nom');
   const [loading, setLoading] = useState(true);
   const [restoreTarget, setRestoreTarget] = useState(null);
   const [restoring, setRestoring] = useState(false);
+  // previewTarget: the VersionFichier row the user wants to preview, or null
+  const [previewTarget, setPreviewTarget] = useState(null);
   const [toast, setToast] = useState(null);
+
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const fetchVersions = () => {
+    return API.get(`/files/${fileId}/versions/`)
+      .then(res => {
+        // Backend returns { versions: [...], permissions: {...} }
+        // or a plain array for backwards compatibility
+        if (Array.isArray(res.data)) {
+          setVersions(res.data);
+        } else {
+          setVersions(res.data.versions ?? []);
+          setPermissions(res.data.permissions ?? null);
+        }
+      })
+      .catch(err => console.error(err));
+  };
 
   useEffect(() => {
     if (!fileId) { setLoading(false); return; }
-    API.get(`/files/${fileId}/versions/`)
-      .then(res => setVersions(res.data))
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
-    API.get('/files/').then(r => {
-      const f = (r.data.files || r.data).find(x => x.id === parseInt(fileId));
-      if (f) setFileName(f.nom);
-    });
+    fetchVersions().finally(() => setLoading(false));
+    getFile(fileId)
+      .then(r => setFileName(r.data.nom))
+      .catch(() => setFileName('Document sans nom'));
   }, [fileId]);
 
   const handleRestoreConfirm = async () => {
     setRestoring(true);
     try {
       await API.post(`/files/${fileId}/versions/${restoreTarget.numero_version}/restore`);
-      const fresh = await API.get(`/files/${fileId}/versions/`);
-      setVersions(fresh.data);
-      setToast({ type: 'success', message: `Version v${restoreTarget.numero_version} restaurée avec succès.` });
-      setTimeout(() => setToast(null), 3500);
+      await fetchVersions();
+      showToast('success', `Version v${restoreTarget.numero_version} restaurée avec succès.`);
     } catch (err) {
-      setToast({ type: 'error', message: 'Erreur lors de la restauration.' });
-      setTimeout(() => setToast(null), 3500);
+      showToast('error', err.response?.data?.error || 'Erreur lors de la restauration.');
     } finally {
       setRestoring(false);
       setRestoreTarget(null);
+    }
+  };
+
+  // Trigger a browser file download for a specific version
+  const handleVersionDownload = async (v) => {
+    try {
+      const res = await getVersionDownload(fileId, v.numero_version);
+      const blobUrl = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName || `version_${v.numero_version}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      showToast('error', err.response?.data?.error || 'Erreur lors du téléchargement.');
     }
   };
 
@@ -277,12 +353,12 @@ export default function FileVersions() {
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '110px 1fr 160px',
+            gridTemplateColumns: '110px 1fr 1fr',
             gap: 16, padding: '12px 24px',
             borderBottom: '1.5px solid #f1f5f9',
             background: '#fafbfd',
           }}>
-            {['Version', 'Date de modification', 'Action'].map((h, i) => (
+            {['Version', 'Date de modification', 'Actions'].map((h, i) => (
               <span key={h} style={{
                 fontSize: 11, fontWeight: 600, color: '#94a3b8',
                 textTransform: 'uppercase', letterSpacing: '.08em',
@@ -301,7 +377,10 @@ export default function FileVersions() {
                 key={v.id}
                 v={v}
                 isLatest={i === 0}
+                permissions={permissions}
                 onRestoreClick={setRestoreTarget}
+                onPreviewClick={setPreviewTarget}
+                onDownloadClick={handleVersionDownload}
               />
             ))
           )}
@@ -326,6 +405,16 @@ export default function FileVersions() {
           loading={restoring}
           onConfirm={handleRestoreConfirm}
           onCancel={() => !restoring && setRestoreTarget(null)}
+        />
+      )}
+
+      {/* ── Version Preview Modal ── */}
+      {previewTarget && (
+        <FilePreviewModal
+          file={{ id: fileId, nom: fileName }}
+          previewUrl={`/files/${fileId}/versions/${previewTarget.numero_version}/preview`}
+          onClose={() => setPreviewTarget(null)}
+          onDownload={() => handleVersionDownload(previewTarget)}
         />
       )}
 
