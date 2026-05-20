@@ -10,7 +10,7 @@ from app.models.acl import ACL
 from app.routes.acl import require_permission
 from app.services.logger import log_action
 from app.crypto import decrypt_file
-from app.routes.files import get_file_lock
+from app.routes.files import get_file_lock, _is_editable
 
 versions_bp = Blueprint('versions', __name__, url_prefix='/files/<int:fichier_id>/versions')
 
