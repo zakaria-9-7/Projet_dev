@@ -8,10 +8,12 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { FolderOpen, User } from "lucide-react";
 import API from "../api/auth";
 import AppLayout from "../components/AppLayout";
 import { formatRelativeTime } from '../utils/formatTime';
+import { isEditable } from '../utils/fileType';
 
 // ── Design tokens (fidèle au prototype : blanc/cyan/gris) ─────────
 const C = {
@@ -42,6 +44,7 @@ const PERM_BADGES = {
 
 
 export default function SharedWithMe() {
+  const navigate = useNavigate();
   const [fichiers, setFichiers]         = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
@@ -182,6 +185,8 @@ export default function SharedWithMe() {
                   isLast={i === affichés.length - 1}
                   onDownload={() => handleDownload(f)}
                   onShare={() => setShareModal(f)}
+                  onEdit={() => navigate(`/editor?fileId=${f.id}`)}
+                  onApercu={() => navigate(`/editor?fileId=${f.id}&mode=read`)}
                 />
               ))}
             </tbody>
@@ -203,7 +208,7 @@ export default function SharedWithMe() {
 
 // ── Ligne tableau ─────────────────────────────────────────────────
 
-function FichierRow({ fichier, isLast, onDownload, onShare }) {
+function FichierRow({ fichier, isLast, onDownload, onShare, onEdit, onApercu }) {
   const perms = fichier.mes_permissions || {};
 
   return (
@@ -265,6 +270,29 @@ function FichierRow({ fichier, isLast, onDownload, onShare }) {
       {/* Actions */}
       <td style={{ ...S.td, textAlign: "right" }}>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          {isEditable(fichier.nom) && (
+            <button
+              style={{ ...S.actionIconBtn, color: "#1565C0", borderColor: "#BBDEFB" }}
+              onClick={onApercu}
+              title="Aperçu (lecture seule)"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          )}
+          {isEditable(fichier.nom) && perms.ecriture && (
+            <button
+              style={{ ...S.actionIconBtn, color: "#0097A7", borderColor: "#B2EBF2" }}
+              onClick={onEdit}
+              title="Éditer"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+          )}
           {perms.download && (
             <button style={S.actionIconBtn} onClick={onDownload} title="Télécharger">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
