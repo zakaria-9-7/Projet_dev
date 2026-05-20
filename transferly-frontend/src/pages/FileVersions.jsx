@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import API from '../api/auth';
 import AppLayout from '../components/AppLayout';
+import { isEditable } from '../utils/fileType';
 
 // ─── Icons (subset) ──────────────────────────────────────────
 const Icon = ({ name, size = 16, color = 'currentColor' }) => {
@@ -21,6 +22,8 @@ const Icon = ({ name, size = 16, color = 'currentColor' }) => {
     bell: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
     check: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg>,
     info: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+    eye: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+    close: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
   };
   return icons[name] || null;
 };
@@ -80,8 +83,115 @@ function RestoreModal({ version, onConfirm, onCancel, loading }) {
   );
 }
 
+// ─── Preview Modal ────────────────────────────────────────────
+function PreviewModal({ preview, onClose, onRestoreClick }) {
+  // preview = { numero, content, loading, versionObj, isLatest }
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)',
+      backdropFilter: 'blur(4px)', zIndex: 1100,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '24px',
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 16,
+        width: '100%', maxWidth: 760,
+        boxShadow: '0 24px 64px rgba(0,0,0,.22)',
+        display: 'flex', flexDirection: 'column',
+        maxHeight: '90vh', overflow: 'hidden',
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '20px 24px', borderBottom: '1px solid #f1f5f9',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 9,
+              background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Icon name="eye" size={18} color="#3b82f6" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>
+                Aperçu de la version v{preview.numero}
+              </h3>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Lecture seule</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: 6, borderRadius: 6, color: '#94a3b8',
+            }}>
+            <Icon name="close" size={18} color="#94a3b8" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
+          {preview.loading ? (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', height: 200, gap: 12, color: '#94a3b8',
+            }}>
+              <div style={{
+                width: 32, height: 32, border: '3px solid #e2e8f0',
+                borderTopColor: '#3b82f6', borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite',
+              }} />
+              <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+              Chargement…
+            </div>
+          ) : (
+            <pre style={{
+              margin: 0, padding: '20px 24px',
+              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+              fontSize: 13, lineHeight: 1.7, color: '#1e293b',
+              background: '#fafafa',
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              maxHeight: '60vh', overflowY: 'auto',
+            }}>
+              {preview.content}
+            </pre>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          display: 'flex', justifyContent: 'flex-end', gap: 10,
+          padding: '16px 24px', borderTop: '1px solid #f1f5f9',
+        }}>
+          {!preview.isLatest && (
+            <button
+              onClick={() => { onClose(); onRestoreClick(preview.versionObj); }}
+              style={{
+                padding: '9px 18px', borderRadius: 9, border: 'none',
+                background: '#2563eb', color: '#fff',
+                fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 7,
+              }}>
+              <Icon name="versions" size={13} color="#fff" /> Restaurer cette version
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            style={{
+              padding: '9px 20px', borderRadius: 9,
+              border: '1.5px solid #e2e8f0', background: '#fff',
+              color: '#475569', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
+            }}>
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Version Row ──────────────────────────────────────────────
-function VersionRow({ v, onRestoreClick, isLatest }) {
+function VersionRow({ v, onRestoreClick, onPreviewClick, canPreview, isLatest }) {
   const [hov, setHov] = useState(false);
 
   return (
@@ -127,7 +237,23 @@ function VersionRow({ v, onRestoreClick, isLatest }) {
       </div>
 
       {/* Action */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+        {canPreview && (
+          <button
+            onClick={() => onPreviewClick(v, isLatest)}
+            title="Aperçu de cette version"
+            style={{
+              padding: '6px 14px', borderRadius: 8,
+              border: '1.5px solid #e2e8f0', background: '#f8fafc',
+              color: '#475569', fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              transition: 'background .12s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+            onMouseLeave={e => e.currentTarget.style.background = '#f8fafc'}>
+            <Icon name="eye" size={12} color="#64748b" /> Voir
+          </button>
+        )}
         {isLatest ? (
           <span style={{
             padding: '6px 14px', borderRadius: 8,
@@ -169,6 +295,7 @@ export default function FileVersions() {
   const [restoreTarget, setRestoreTarget] = useState(null);
   const [restoring, setRestoring] = useState(false);
   const [toast, setToast] = useState(null);
+  const [previewVersion, setPreviewVersion] = useState(null);
 
   useEffect(() => {
     if (!fileId) { setLoading(false); return; }
@@ -181,6 +308,25 @@ export default function FileVersions() {
       if (f) setFileName(f.nom);
     });
   }, [fileId]);
+
+  const handlePreviewClick = async (v, isLatest) => {
+    setPreviewVersion({ numero: v.numero_version, content: '', loading: true, versionObj: v, isLatest });
+    try {
+      const res = await API.get(`/files/${fileId}/versions/${v.numero_version}/content`);
+      setPreviewVersion(prev => prev && prev.numero === v.numero_version
+        ? { ...prev, content: res.data.content, loading: false }
+        : prev
+      );
+    } catch (err) {
+      setPreviewVersion(null);
+      const status = err.response?.status;
+      let msg = err.response?.data?.error || 'Erreur lors du chargement de la version.';
+      if (status === 415) msg = 'Ce type de fichier n\'est pas éditable.';
+      else if (status === 404) msg = 'Version introuvable.';
+      setToast({ type: 'error', message: msg });
+      setTimeout(() => setToast(null), 3500);
+    }
+  };
 
   const handleRestoreConfirm = async () => {
     setRestoring(true);
@@ -302,6 +448,8 @@ export default function FileVersions() {
                 v={v}
                 isLatest={i === 0}
                 onRestoreClick={setRestoreTarget}
+                onPreviewClick={handlePreviewClick}
+                canPreview={isEditable(fileName)}
               />
             ))
           )}
@@ -326,6 +474,15 @@ export default function FileVersions() {
           loading={restoring}
           onConfirm={handleRestoreConfirm}
           onCancel={() => !restoring && setRestoreTarget(null)}
+        />
+      )}
+
+      {/* ── Preview Modal ── */}
+      {previewVersion && (
+        <PreviewModal
+          preview={previewVersion}
+          onClose={() => setPreviewVersion(null)}
+          onRestoreClick={setRestoreTarget}
         />
       )}
 

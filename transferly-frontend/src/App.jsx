@@ -21,6 +21,7 @@ import JoinEspace     from './pages/JoinEspace';
 import AdminEspacesAll  from './pages/AdminEspacesAll';
 import AdminFichiersAll from './pages/AdminFichiersAll';
 import AdminQuotas      from './pages/AdminQuotas';
+import FileEditor       from './pages/FileEditor';
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -66,6 +67,7 @@ export default function App() {
         <Route path="/admin-espaces-all"  element={<PrivateRoute><AdminEspacesAll /></PrivateRoute>} />
         <Route path="/admin-fichiers-all" element={<PrivateRoute><AdminFichiersAll /></PrivateRoute>} />
         <Route path="/admin-quotas"       element={<PrivateRoute><AdminQuotas /></PrivateRoute>} />
+        <Route path="/editor"             element={<PrivateRoute><FileEditor /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
   );

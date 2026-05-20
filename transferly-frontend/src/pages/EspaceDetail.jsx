@@ -3,11 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   FolderOpen, Users, Mail, Settings, Trash2, Edit2, ArrowLeft,
-  UploadCloud, Download, FileText, Link2, Copy, UserMinus, LogOut as ExitIcon, Shield, History,
+  UploadCloud, Download, FileText, Link2, Copy, UserMinus, LogOut as ExitIcon, Shield, History, FilePen, Eye,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
+import { isEditable } from '../utils/fileType';
 
 export default function EspaceDetail() {
   const { espaceId } = useParams();
@@ -428,6 +429,24 @@ export default function EspaceDetail() {
                           >
                             <Shield className="w-4 h-4" />
                           </button>
+                          {isEditable(f.nom) && (
+                            <button
+                              onClick={() => navigate(`/editor?fileId=${f.id}&mode=read`)}
+                              className="p-1.5 text-slate-400 hover:text-blue-500 rounded"
+                              title="Aperçu (lecture seule)"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
+                          {isEditable(f.nom) && (isAdmin || f.owner_id === currentUserId) && (
+                            <button
+                              onClick={() => navigate(`/editor?fileId=${f.id}`)}
+                              className="p-1.5 text-slate-400 hover:text-cyan-500 rounded"
+                              title="Éditer"
+                            >
+                              <FilePen className="w-4 h-4" />
+                            </button>
+                          )}
                           {(isAdmin || f.owner_id === currentUserId) && (
                             <button
                               onClick={() => handleDeleteFile(f.id, f.nom)}

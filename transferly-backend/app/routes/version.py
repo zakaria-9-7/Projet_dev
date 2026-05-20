@@ -8,8 +8,48 @@ from app.models.user import User
 from app.routes.acl import require_permission
 from app.services.logger import log_action
 from app.crypto import decrypt_file
+from app.routes.files import _is_editable
 
 versions_bp = Blueprint('versions', __name__, url_prefix='/files/<int:fichier_id>/versions')
+
+
+# ── GET /files/<fichier_id>/versions/<numero_version>/content ────
+@versions_bp.route('/<int:numero_version>/content', methods=['GET'])
+@require_permission('lecture')
+def get_version_content(fichier_id, numero_version):
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+
+    version = VersionFichier.query.filter_by(
+        fichier_id=fichier_id,
+        numero_version=numero_version,
+    ).first()
+    if version is None:
+        return jsonify({'error': f'Version {numero_version} introuvable'}), 404
+
+    if not _is_editable(fichier):
+        return jsonify({'error': 'Type de fichier non éditable'}), 415
+
+    if not version.chemin or not os.path.exists(version.chemin):
+        return jsonify({'error': 'Binaire de la version absent du disque'}), 404
+
+    try:
+        with open(version.chemin, 'rb') as fp:
+            encrypted = fp.read()
+        decrypted = decrypt_file(encrypted)
+        try:
+            text = decrypted.decode('utf-8')
+        except UnicodeDecodeError:
+            return jsonify({'error': 'Type de fichier non éditable'}), 415
+        return jsonify({
+            'content':         text,
+            'numero_version':  numero_version,
+            'nom':             fichier.nom,
+        }), 200
+    except Exception as e:
+        print(f'ERROR GET /files/{fichier_id}/versions/{numero_version}/content: {e}')
+        return jsonify({'error': str(e)}), 500
 
 
 # ── GET /files/<fichier_id>/versions/ ────────────────────────────

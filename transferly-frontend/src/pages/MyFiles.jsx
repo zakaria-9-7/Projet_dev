@@ -4,11 +4,12 @@ import { gsap } from 'gsap';
 import {
   Grid, List, UploadCloud, Eye,
   Folder, FileText, FileSpreadsheet, ImageIcon,
-  FileIcon, MoreVertical, History, Download, Trash2, Share2, X,
+  FileIcon, MoreVertical, History, Download, Trash2, Share2, X, FilePen,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
+import { isEditable } from '../utils/fileType';
 import UploadZone from '../components/UploadZone';
 import FilePreviewModal from '../components/FilePreviewModal';
 
@@ -238,7 +239,22 @@ export default function MyFiles() {
                       >
                         <History className="w-3.5 h-3.5" /> Historique
                       </button>
-
+                      {isEditable(file.name) && (
+                        <button
+                          onClick={() => { setOpenMenu(null); navigate(`/editor?fileId=${file.id}`); }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
+                        >
+                          <FilePen className="w-3.5 h-3.5" /> Éditer
+                        </button>
+                      )}
+                      {isEditable(file.name) && (
+                        <button
+                          onClick={() => { setOpenMenu(null); navigate(`/editor?fileId=${file.id}&mode=read`); }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Aperçu
+                        </button>
+                      )}
                       <button
                         onClick={() => { setOpenMenu(null); setPreviewFile(file); }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
