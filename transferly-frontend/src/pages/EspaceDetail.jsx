@@ -396,7 +396,12 @@ export default function EspaceDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {fichiers.map(f => (
+                  {fichiers.map(f => {
+                    const isOwner = f.owner_id === currentUserId;
+                    const perms = (isOwner || isAdmin)
+                      ? { lecture: true, download: true, ecriture: true, partage: true, suppression: true }
+                      : (f.mes_permissions || { lecture: false, download: false, ecriture: false, partage: false, suppression: false });
+                    return (
                     <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
                         <FileText className="w-4 h-4 text-slate-400" /> {f.nom}
@@ -410,6 +415,7 @@ export default function EspaceDetail() {
                       <td className="px-4 py-3 text-sm text-slate-500">{formatRelativeTime(f.date_creation)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
+                          {perms.download && (
                           <button
                             onClick={() => handleDownload(f)}
                             className="p-1.5 text-slate-400 hover:text-cyan-500 rounded"
@@ -417,6 +423,8 @@ export default function EspaceDetail() {
                           >
                             <Download className="w-4 h-4" />
                           </button>
+                          )}
+                          {perms.lecture && (
                           <button
                             onClick={() => navigate(`/versions?fileId=${f.id}`)}
                             className="p-1.5 text-slate-400 hover:text-amber-500 rounded"
@@ -424,6 +432,8 @@ export default function EspaceDetail() {
                           >
                             <History className="w-4 h-4" />
                           </button>
+                          )}
+                          {(isAdmin || isOwner) && (
                           <button
                             onClick={() => openAclModal(f)}
                             className="p-1.5 text-slate-400 hover:text-violet-500 rounded"
@@ -431,6 +441,8 @@ export default function EspaceDetail() {
                           >
                             <Shield className="w-4 h-4" />
                           </button>
+                          )}
+                          {perms.lecture && (
                           <button
                             onClick={() => setPreviewFile(f)}
                             className="p-1.5 text-slate-400 hover:text-blue-500 rounded"
@@ -438,7 +450,8 @@ export default function EspaceDetail() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          {isEditable(f.nom) && (isAdmin || f.owner_id === currentUserId) && (
+                          )}
+                          {isEditable(f.nom) && perms.ecriture && (
                             <button
                               onClick={() => navigate(`/editor?fileId=${f.id}`)}
                               className="p-1.5 text-slate-400 hover:text-cyan-500 rounded"
@@ -447,7 +460,7 @@ export default function EspaceDetail() {
                               <FilePen className="w-4 h-4" />
                             </button>
                           )}
-                          {(isAdmin || f.owner_id === currentUserId) && (
+                          {perms.suppression && (
                             <button
                               onClick={() => handleDeleteFile(f.id, f.nom)}
                               className="p-1.5 text-slate-400 hover:text-red-500 rounded"
@@ -459,7 +472,8 @@ export default function EspaceDetail() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
