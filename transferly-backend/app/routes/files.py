@@ -269,6 +269,48 @@ def download_file(fichier_id):
         log_action(user_id, 'download', resource_id=fichier_id, statut='echec', details=str(e))
         return jsonify({'error': str(e)}), 500
 
+# ── GET /files/<fichier_id>/content ──────────────────────────────
+# Returns the current file content as decoded UTF-8 text (for the in-browser editor).
+# Requires lecture permission. Returns 415 if the file is not a text type.
+_TEXT_EXTS = {
+    'txt', 'md', 'html', 'css', 'js', 'jsx', 'ts', 'tsx',
+    'csv', 'json', 'py', 'xml', 'yaml', 'yml', 'sh', 'ini',
+    'cfg', 'log', 'env', 'java', 'c', 'cpp', 'h', 'hpp',
+    'rb', 'go', 'rs', 'php', 'sql', 'scss', 'sass', 'htm',
+}
+
+@files_bp.route('/<int:fichier_id>/content', methods=['GET'])
+@require_permission('lecture')
+def get_file_content(fichier_id):
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+
+    ext = _ext(fichier.nom)
+    if ext not in _TEXT_EXTS:
+        return jsonify({'error': 'Type de fichier non éditable'}), 415
+
+    if not fichier.chemin or not os.path.exists(fichier.chemin):
+        return jsonify({'error': 'Binaire chiffré absent du disque'}), 404
+
+    try:
+        with open(fichier.chemin, 'rb') as fp:
+            encrypted = fp.read()
+        decrypted = decrypt_file(encrypted)
+        try:
+            text = decrypted.decode('utf-8')
+        except UnicodeDecodeError:
+            return jsonify({'error': 'Type de fichier non éditable'}), 415
+        return jsonify({
+            'content': text,
+            'nom':     fichier.nom,
+            'taille':  fichier.taille,
+        }), 200
+    except Exception as e:
+        print(f'ERROR GET /files/{fichier_id}/content: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
 @files_bp.route('/<int:fichier_id>/preview', methods=['GET'])
 @require_permission('lecture')
 def preview_file(fichier_id):
@@ -400,7 +442,21 @@ def update_file(fichier_id):
 
     try:
         uploaded = request.files.get('file')
-        if not uploaded:
+        json_body = request.get_json(silent=True, force=True) if not uploaded else None
+
+        # Accept either a multipart file upload or a JSON { content } body
+        if uploaded:
+            new_content = uploaded.read()
+        elif json_body and 'content' in json_body:
+            text_content = json_body['content']
+            fichier_check = Fichier.query.get(fichier_id)
+            if fichier_check is None:
+                return jsonify({'error': 'Fichier introuvable'}), 404
+            ext = fichier_check.nom.rsplit('.', 1)[-1].lower() if '.' in fichier_check.nom else ''
+            if ext not in _TEXT_EXTS:
+                return jsonify({'error': 'Type de fichier non éditable'}), 415
+            new_content = text_content.encode('utf-8')
+        else:
             return jsonify({'error': 'Champ file manquant'}), 400
 
         fichier = Fichier.query.get(fichier_id)
