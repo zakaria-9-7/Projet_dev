@@ -7,13 +7,6 @@ from app.models.user import User
 from app.extensions import db, bcrypt
 
 
-# Correspondance input JSON → valeur stockée en base
-_ROLE_MAP = {
-    "utilisateur": "Utilisateur",
-    "admin_espace": "AdminEspace",
-}
-
-
 def _generate_temp_password(length=12):
     """Génère un mot de passe aléatoire avec majuscules, minuscules, chiffres et 1 spécial."""
     specials = "!@#$%&*"
@@ -61,14 +54,9 @@ def create_user():
 
     email = data.get('email', '').strip()
     nom = data.get('nom', '').strip()
-    role_input = data.get('role', '').strip().lower()
 
-    if not email or not nom or not role_input:
-        return jsonify({'error': 'Champs manquants (email, nom, role)'}), 400
-
-    role = _ROLE_MAP.get(role_input)
-    if role is None:
-        return jsonify({'error': 'Rôle invalide. Valeurs acceptées : utilisateur, admin_espace'}), 400
+    if not email or not nom:
+        return jsonify({'error': 'Champs manquants (email, nom)'}), 400
 
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Adresse email déjà utilisée'}), 409
@@ -79,7 +67,7 @@ def create_user():
     new_user = User(
         email=email,
         nom=nom,
-        role=role,
+        role='Utilisateur',
         password=hashed,
         must_reset_password=True,
     )

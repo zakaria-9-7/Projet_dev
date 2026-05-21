@@ -51,9 +51,17 @@ export default function OTP() {
       localStorage.setItem('role',  res.data.role);
       if (res.data.nom)   localStorage.setItem('nom',   res.data.nom);
       if (res.data.email) localStorage.setItem('email', res.data.email);
-      localStorage.removeItem('email_pending');
-      localStorage.removeItem('password_pending');
-      navigate('/dashboard');
+
+      if (res.data.must_reset_password) {
+        localStorage.setItem('must_reset_password', 'true');
+        // Garder password_pending pour pré-remplir le champ sur /force-reset-password
+        navigate('/force-reset-password');
+      } else {
+        localStorage.removeItem('must_reset_password');
+        localStorage.removeItem('email_pending');
+        localStorage.removeItem('password_pending');
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Code incorrect');
       setDigits(['', '', '', '', '', '']);

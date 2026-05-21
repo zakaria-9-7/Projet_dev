@@ -360,6 +360,7 @@ def change_password():
     if len(new) < 8:
         return jsonify({'error': 'Mot de passe trop court (min 8 caractères)'}), 400
     user.password = bcrypt.generate_password_hash(new).decode('utf-8')
+    user.must_reset_password = False
     db.session.commit()
 
     send_password_changed_email(user.email, user.nom)

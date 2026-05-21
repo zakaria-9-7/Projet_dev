@@ -86,7 +86,8 @@ def _create_standard_user(app):
 
 
 # ══════════════════════════════════════════════════════════════════
-# CAS 1 : AdminGlobal crée un user → 201, user en base, must_reset_password=True
+# CAS 1 : AdminGlobal crée un user → 201, user en base avec
+#          role=Utilisateur et must_reset_password=True
 # ══════════════════════════════════════════════════════════════════
 
 def test_admin_cree_user_succes(client, app):
@@ -95,7 +96,7 @@ def test_admin_cree_user_succes(client, app):
     res = client.post(
         "/admin/users",
         headers=_h(admin_token),
-        json={"email": "nouveau@test.com", "nom": "Nouvel Utilisateur", "role": "utilisateur"},
+        json={"email": "nouveau@test.com", "nom": "Nouvel Utilisateur"},
     )
     assert res.status_code == 201
 
@@ -112,6 +113,7 @@ def test_admin_cree_user_succes(client, app):
         from app.models.user import User
         user = User.query.filter_by(email="nouveau@test.com").first()
         assert user is not None
+        assert user.role == "Utilisateur"
         assert user.must_reset_password is True
 
 
@@ -125,30 +127,38 @@ def test_admin_cree_user_email_existant(client, app):
     client.post(
         "/admin/users",
         headers=_h(admin_token),
-        json={"email": "doublon@test.com", "nom": "Premier", "role": "utilisateur"},
+        json={"email": "doublon@test.com", "nom": "Premier"},
     )
 
     res = client.post(
         "/admin/users",
         headers=_h(admin_token),
-        json={"email": "doublon@test.com", "nom": "Doublon", "role": "utilisateur"},
+        json={"email": "doublon@test.com", "nom": "Doublon"},
     )
     assert res.status_code == 409
 
 
 # ══════════════════════════════════════════════════════════════════
-# CAS 3 : role="admin_global" → 400 (interdit via cet endpoint)
+# CAS 3 : Envoyer un champ "role" dans le payload est ignoré —
+#          le compte est toujours créé avec role=Utilisateur
 # ══════════════════════════════════════════════════════════════════
 
-def test_admin_cree_user_role_admin_global_rejete(client, app):
+def test_role_dans_payload_est_ignore(client, app):
     _, admin_token = _create_admin(app)
 
+    # On envoie "admin_global" comme rôle : doit être ignoré
     res = client.post(
         "/admin/users",
         headers=_h(admin_token),
-        json={"email": "superadmin@test.com", "nom": "Super Admin", "role": "admin_global"},
+        json={"email": "ignored_role@test.com", "nom": "Test Role", "role": "admin_global"},
     )
-    assert res.status_code == 400
+    assert res.status_code == 201
+    assert res.get_json()["role"] == "Utilisateur"
+
+    with app.app_context():
+        from app.models.user import User
+        user = User.query.filter_by(email="ignored_role@test.com").first()
+        assert user.role == "Utilisateur"
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -161,7 +171,7 @@ def test_utilisateur_standard_ne_peut_pas_creer(client, app):
     res = client.post(
         "/admin/users",
         headers=_h(user_token),
-        json={"email": "cible@test.com", "nom": "Cible", "role": "utilisateur"},
+        json={"email": "cible@test.com", "nom": "Cible"},
     )
     assert res.status_code == 403
 
@@ -173,7 +183,7 @@ def test_utilisateur_standard_ne_peut_pas_creer(client, app):
 def test_non_authentifie_ne_peut_pas_creer(client, app):
     res = client.post(
         "/admin/users",
-        json={"email": "cible@test.com", "nom": "Cible", "role": "utilisateur"},
+        json={"email": "cible@test.com", "nom": "Cible"},
     )
     assert res.status_code == 401
 
@@ -185,16 +195,14 @@ def test_non_authentifie_ne_peut_pas_creer(client, app):
 def test_login_user_fraichement_cree_must_reset(client, app):
     _, admin_token = _create_admin(app)
 
-    # L'admin crée l'utilisateur
     create_res = client.post(
         "/admin/users",
         headers=_h(admin_token),
-        json={"email": "reset_user@test.com", "nom": "Reset User", "role": "utilisateur"},
+        json={"email": "reset_user@test.com", "nom": "Reset User"},
     )
     assert create_res.status_code == 201
     temp_password = create_res.get_json()["temporary_password"]
 
-    # Connexion avec le mot de passe temporaire
     login_res = client.post("/login", json={
         "email": "reset_user@test.com",
         "password": temp_password,
@@ -202,14 +210,12 @@ def test_login_user_fraichement_cree_must_reset(client, app):
     assert login_res.status_code == 200
     user_id = login_res.get_json()["user_id"]
 
-    # Récupérer l'OTP en base
     with app.app_context():
         from app.models.otp import OTP
         otp = OTP.query.filter_by(user_id=user_id).first()
         assert otp is not None
         code = otp.code
 
-    # Vérification OTP → JWT
     verify_res = client.post("/mfa/verify", json={"user_id": user_id, "code": code})
     assert verify_res.status_code == 200
 
@@ -223,7 +229,6 @@ def test_login_user_fraichement_cree_must_reset(client, app):
 # ══════════════════════════════════════════════════════════════════
 
 def test_reset_password_efface_flag_must_reset(client, app):
-    # Créer directement un user avec must_reset_password=True
     with app.app_context():
         from app.models.user import User
         hashed = bcrypt.generate_password_hash("TempPass1!").decode("utf-8")
@@ -241,11 +246,9 @@ def test_reset_password_efface_flag_must_reset(client, app):
         from app.routes.auth import _generate_reset_token
         token = _generate_reset_token(uid, "reset_test@test.com")
 
-    # Reset du mot de passe
     res = client.post(f"/reset-password/{token}", json={"password": "NouveauMdp1!"})
     assert res.status_code == 200
 
-    # Vérifier en base que must_reset_password est passé à False
     with app.app_context():
         from app.models.user import User
         user = User.query.get(uid)
@@ -262,12 +265,12 @@ def test_mots_de_passe_temporaires_differents(client, app):
     res1 = client.post(
         "/admin/users",
         headers=_h(admin_token),
-        json={"email": "user1@test.com", "nom": "User Un", "role": "utilisateur"},
+        json={"email": "user1@test.com", "nom": "User Un"},
     )
     res2 = client.post(
         "/admin/users",
         headers=_h(admin_token),
-        json={"email": "user2@test.com", "nom": "User Deux", "role": "utilisateur"},
+        json={"email": "user2@test.com", "nom": "User Deux"},
     )
     assert res1.status_code == 201
     assert res2.status_code == 201
