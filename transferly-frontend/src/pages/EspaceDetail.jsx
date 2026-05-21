@@ -6,6 +6,7 @@ import {
   UploadCloud, Download, FileText, Link2, Copy, UserMinus, LogOut as ExitIcon, Shield, History, FilePen, Eye,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
+import FilePreviewModal from '../components/FilePreviewModal';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
 import { isEditable } from '../utils/fileType';
@@ -28,6 +29,7 @@ export default function EspaceDetail() {
   const [uploadPolicy, setUploadPolicy] = useState('tous');
   const [uploadAutorises, setUploadAutorises] = useState([]);
   const [aclModal, setAclModal] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
 
   const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
   const isAdmin = espace && espace.admin_id === currentUserId;
@@ -429,15 +431,13 @@ export default function EspaceDetail() {
                           >
                             <Shield className="w-4 h-4" />
                           </button>
-                          {isEditable(f.nom) && (
-                            <button
-                              onClick={() => navigate(`/editor?fileId=${f.id}&mode=read`)}
-                              className="p-1.5 text-slate-400 hover:text-blue-500 rounded"
-                              title="Aperçu (lecture seule)"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => setPreviewFile(f)}
+                            className="p-1.5 text-slate-400 hover:text-blue-500 rounded"
+                            title="Aperçu"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                           {isEditable(f.nom) && (isAdmin || f.owner_id === currentUserId) && (
                             <button
                               onClick={() => navigate(`/editor?fileId=${f.id}`)}
@@ -754,6 +754,13 @@ export default function EspaceDetail() {
             </div>
           </div>
         </div>
+      )}
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+          onDownload={() => { handleDownload(previewFile); setPreviewFile(null); }}
+        />
       )}
     </AppLayout>
   );
