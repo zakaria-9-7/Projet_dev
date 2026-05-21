@@ -247,14 +247,6 @@ export default function MyFiles() {
                           <FilePen className="w-3.5 h-3.5" /> Éditer
                         </button>
                       )}
-                      {isEditable(file.name) && (
-                        <button
-                          onClick={() => { setOpenMenu(null); navigate(`/editor?fileId=${file.id}&mode=read`); }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                        >
-                          <Eye className="w-3.5 h-3.5" /> Aperçu
-                        </button>
-                      )}
                       <button
                         onClick={() => { setOpenMenu(null); setPreviewFile(file); }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
