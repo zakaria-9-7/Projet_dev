@@ -121,6 +121,32 @@ Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement notr
         return False
 
 
+def send_temp_password_email(to_email: str, nom: str, temp_password: str):
+    try:
+        nom_display = nom or to_email
+        body = f"""Bonjour {nom_display},
+
+Votre compte Transferly a été créé par un administrateur.
+
+Vos identifiants de connexion :
+  Adresse e-mail    : {to_email}
+  Mot de passe temporaire : {temp_password}
+
+À votre première connexion, vous devrez obligatoirement changer ce mot de passe avant d'accéder à l'application.
+
+— L'équipe Transferly"""
+        msg = Message(
+            subject="Transferly — Bienvenue, votre compte a été créé",
+            recipients=[to_email],
+            body=body,
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        current_app.logger.error(f"Erreur envoi compte temporaire à {to_email}: {e}")
+        return False
+
+
 def send_account_deleted_email(to_email: str, nom: str = None):
     try:
         nom_display = nom or to_email
