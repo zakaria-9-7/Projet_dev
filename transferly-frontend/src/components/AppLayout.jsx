@@ -29,7 +29,7 @@ const NAV_BY_ROLE = {
     { to: '/files',              icon: Files,           label: 'Mes fichiers'        },
     { to: '/admin-espace',       icon: FolderOpen,      label: 'Mes espaces'         },
     { to: '/shared',             icon: ShareIcon,       label: 'Partagés avec moi'  },
-    { to: '/admin-users',        icon: Users,           label: 'Utilisateurs'        },
+    { to: '/admin-users',        icon: Users,           label: 'Gestion des utilisateurs' },
     { to: '/admin-espaces-all',  icon: FolderOpen,      label: 'Tous les espaces'    },
     { to: '/admin-fichiers-all', icon: Files,           label: 'Tous les fichiers'   },
     { to: '/logs',               icon: Activity,        label: 'Journaux'            },

@@ -1,7 +1,29 @@
+import secrets
+import string
+
 from flask import Blueprint, request, jsonify, g
 from app.decorators import require_role
 from app.models.user import User
 from app.extensions import db, bcrypt
+
+
+def _generate_temp_password(length=12):
+    """Génère un mot de passe aléatoire avec majuscules, minuscules, chiffres et 1 spécial."""
+    specials = "!@#$%&*"
+    alphabet = string.ascii_letters + string.digits + specials
+    pwd = [
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.digits),
+        secrets.choice(specials),
+    ]
+    for _ in range(length - 4):
+        pwd.append(secrets.choice(alphabet))
+    # Mélange cryptographiquement sûr (Fisher-Yates avec secrets.randbelow)
+    for i in range(len(pwd) - 1, 0, -1):
+        j = secrets.randbelow(i + 1)
+        pwd[i], pwd[j] = pwd[j], pwd[i]
+    return ''.join(pwd)
 
 admin_global_bp = Blueprint('admin_global', __name__)
 
@@ -28,25 +50,45 @@ def get_users():
 @admin_global_bp.route('/admin/users', methods=['POST'])
 @require_role('AdminGlobal')
 def create_user():
-    try :
-      data = request.get_json()
-      email = data['email']
-      name = data['nom']
-      role = data['role']
-      password = data['password']
-      if User.query.filter_by(email=email).first() is None :
-        if role in ['AdminGlobal', 'AdminEspace', 'Utilisateur']:
-          password = bcrypt.generate_password_hash(password).decode('utf-8')
-          new_user = User(email=email, nom=name, role=role, password=password)
-          db.session.add(new_user)
-          db.session.commit()
-          return jsonify({'message' : 'Utilisateur créé avec succès'}), 201
-        else :
-          return jsonify({'error' : 'rôle invalide'}), 400
-      else :
-        return jsonify({'error' : 'adresse déjà utilisé'}), 409
-    except Exception as e :
-      return jsonify({'error' : 'Champ(s) manquant(s)'}), 400
+    data = request.get_json(silent=True) or {}
+
+    email = data.get('email', '').strip()
+    nom = data.get('nom', '').strip()
+
+    if not email or not nom:
+        return jsonify({'error': 'Champs manquants (email, nom)'}), 400
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': 'Adresse email déjà utilisée'}), 409
+
+    temp_password = _generate_temp_password()
+    hashed = bcrypt.generate_password_hash(temp_password).decode('utf-8')
+
+    new_user = User(
+        email=email,
+        nom=nom,
+        role='Utilisateur',
+        password=hashed,
+        must_reset_password=True,
+    )
+    db.session.add(new_user)
+    db.session.commit()
+
+    from app.services.mailer import send_temp_password_email
+    email_envoye = send_temp_password_email(email, nom, temp_password)
+    if email_envoye:
+        print(f"[ADMIN] Email de bienvenue envoyé à {email}")
+    else:
+        print(f"[ADMIN FALLBACK] Envoi email échoué. Mot de passe temporaire pour {email} : {temp_password}")
+
+    return jsonify({
+        'id': new_user.id,
+        'email': new_user.email,
+        'nom': new_user.nom,
+        'role': new_user.role,
+        'temporary_password': temp_password,
+        'email_sent': email_envoye,
+    }), 201
 
 @admin_global_bp.route('/admin/users/<int:user_id>', methods=['PUT'])
 @require_role('AdminGlobal')

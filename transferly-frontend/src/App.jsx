@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { NotificationProvider } from './context/NotificationContext';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -21,12 +21,20 @@ import EspaceDetail   from './pages/EspaceDetail';
 import JoinEspace     from './pages/JoinEspace';
 import AdminEspacesAll  from './pages/AdminEspacesAll';
 import AdminFichiersAll from './pages/AdminFichiersAll';
-import AdminQuotas      from './pages/AdminQuotas';
-import FileEditor       from './pages/FileEditor';
+import AdminQuotas          from './pages/AdminQuotas';
+import FileEditor            from './pages/FileEditor';
+import ForceResetPassword    from './pages/ForceResetPassword';
 
 function PrivateRoute({ children }) {
-  const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/login" />;
+  const token     = localStorage.getItem('token');
+  const mustReset = localStorage.getItem('must_reset_password') === 'true';
+  const location  = useLocation();
+
+  if (!token) return <Navigate to="/login" />;
+  if (mustReset && location.pathname !== '/force-reset-password') {
+    return <Navigate to="/force-reset-password" replace />;
+  }
+  return children;
 }
 
 function NotFound() {
@@ -69,7 +77,8 @@ export default function App() {
         <Route path="/admin-espaces-all"  element={<PrivateRoute><AdminEspacesAll /></PrivateRoute>} />
         <Route path="/admin-fichiers-all" element={<PrivateRoute><AdminFichiersAll /></PrivateRoute>} />
         <Route path="/admin-quotas"       element={<PrivateRoute><AdminQuotas /></PrivateRoute>} />
-        <Route path="/editor"             element={<PrivateRoute><FileEditor /></PrivateRoute>} />
+        <Route path="/editor"               element={<PrivateRoute><FileEditor /></PrivateRoute>} />
+        <Route path="/force-reset-password" element={<PrivateRoute><ForceResetPassword /></PrivateRoute>} />
       </Routes>
       </NotificationProvider>
     </BrowserRouter>
