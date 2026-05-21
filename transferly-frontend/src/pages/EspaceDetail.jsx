@@ -717,7 +717,6 @@ export default function EspaceDetail() {
                     <th className="text-center py-2 px-2 text-xs font-semibold text-slate-500 uppercase">Lecture</th>
                     <th className="text-center py-2 px-2 text-xs font-semibold text-slate-500 uppercase">Téléch.</th>
                     <th className="text-center py-2 px-2 text-xs font-semibold text-slate-500 uppercase">Écriture</th>
-                    <th className="text-center py-2 px-2 text-xs font-semibold text-slate-500 uppercase">Suppr.</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -740,7 +739,7 @@ export default function EspaceDetail() {
                             </div>
                           </div>
                         </td>
-                        {['lecture', 'download', 'ecriture', 'suppression'].map(perm => (
+                        {['lecture', 'download', 'ecriture'].map(perm => (
                           <td key={perm} className="text-center py-2 px-2">
                             <input
                               type="checkbox"
