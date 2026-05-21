@@ -436,6 +436,28 @@ def list_files_in_espace(espace_id):
     result = []
     for f in fichiers:
         owner = User.query.get(f.user_id)
+        is_owner_or_admin = (f.user_id == user_id) or is_admin_espace or is_admin_global
+        if is_owner_or_admin:
+            mes_permissions = {
+                'lecture': True, 'ecriture': True, 'upload': True,
+                'download': True, 'suppression': True, 'partage': True,
+            }
+        else:
+            acl = ACL.query.filter_by(user_id=user_id, fichier_id=f.id).first()
+            if acl:
+                mes_permissions = {
+                    'lecture':     acl.lecture,
+                    'ecriture':    acl.ecriture,
+                    'upload':      acl.upload,
+                    'download':    acl.download,
+                    'suppression': acl.suppression,
+                    'partage':     acl.partage,
+                }
+            else:
+                mes_permissions = {
+                    'lecture': False, 'ecriture': False, 'upload': False,
+                    'download': False, 'suppression': False, 'partage': False,
+                }
         result.append({
             'id': f.id,
             'nom': f.nom,
@@ -445,6 +467,7 @@ def list_files_in_espace(espace_id):
             'owner_nom': owner.nom if owner else None,
             'owner_email': owner.email if owner else None,
             'folder_id': f.folder_id,
+            'mes_permissions': mes_permissions,
         })
     return jsonify(result), 200
 

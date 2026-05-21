@@ -87,9 +87,9 @@ export default function SharedWithMe() {
   // Filtrage selon le prototype
   const affichés = fichiers.filter(f => {
     const perms = f.mes_permissions || {};
-    if (filtrePerms === "lecture"  && !perms.lecture)  return false;
-    if (filtrePerms === "ecriture" && !perms.ecriture) return false;
-    if (filtrePerms === "partage"  && !perms.partage)  return false;
+    if (filtrePerms === "lecture"      && !perms.lecture)   return false;
+    if (filtrePerms === "download"     && !perms.download)  return false;
+    if (filtrePerms === "ecriture"     && !perms.ecriture)  return false;
     const owner = (f.proprietaire_nom || "").toLowerCase();
     if (searchOwner && !owner.includes(searchOwner.toLowerCase())) return false;
     if (filtreDates === "today") {
@@ -132,8 +132,8 @@ export default function SharedWithMe() {
         >
           <option value="all">Toutes les permissions</option>
           <option value="lecture">Lecture</option>
+          <option value="download">Téléchargement</option>
           <option value="ecriture">Écriture</option>
-          <option value="partage">Partage</option>
         </select>
 
         {/* Filtre dates */}
@@ -260,8 +260,7 @@ function FichierRow({ fichier, isLast, onDownload, onShare, onEdit, onApercu }) 
           {perms.lecture    && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Consulter</span>}
           {perms.download   && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Télécharger</span>}
           {perms.ecriture   && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Modifier</span>}
-          {perms.suppression && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Supprimer</span>}
-          {!perms.lecture && !perms.download && !perms.ecriture && !perms.suppression && (
+          {!perms.lecture && !perms.download && !perms.ecriture && (
             <span style={{ color: C.muted, fontSize: 12 }}>Aucune</span>
           )}
         </div>
@@ -395,7 +394,7 @@ export function ShareModal({ fichier, onClose, onSuccess }) {
         {/* Permissions */}
         <div style={SM.section}>
           <div style={SM.label}>Permissions</div>
-          {Object.entries(PERM_BADGES).filter(([k]) => k !== "upload" && k !== "suppression").map(([key, badge]) => (
+          {Object.entries(PERM_BADGES).filter(([k]) => k !== "upload" && k !== "suppression" && k !== "partage").map(([key, badge]) => (
             <label key={key} style={SM.permRow}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ ...SM.permChip, background: badge.color, color: badge.text }}>

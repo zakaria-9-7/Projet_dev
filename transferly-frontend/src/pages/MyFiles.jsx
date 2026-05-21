@@ -247,14 +247,6 @@ export default function MyFiles() {
                           <FilePen className="w-3.5 h-3.5" /> Éditer
                         </button>
                       )}
-                      {isEditable(file.name) && (
-                        <button
-                          onClick={() => { setOpenMenu(null); navigate(`/editor?fileId=${file.id}&mode=read`); }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                        >
-                          <Eye className="w-3.5 h-3.5" /> Aperçu
-                        </button>
-                      )}
                       <button
                         onClick={() => { setOpenMenu(null); setPreviewFile(file); }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
@@ -362,11 +354,9 @@ function FileTypeIcon({ file, listMode }) {
 }
 
 const SHARE_PERMS = [
-  { key: 'lecture',     label: 'Lecture' },
-  { key: 'download',    label: 'Téléchargement' },
-  { key: 'ecriture',    label: 'Écriture' },
-  { key: 'partage',     label: 'Partage' },
-  { key: 'suppression', label: 'Suppression' },
+  { key: 'lecture',  label: 'Lecture' },
+  { key: 'download', label: 'Téléchargement' },
+  { key: 'ecriture', label: 'Écriture' },
 ];
 
 function ShareModal({ fichier, onClose, onSuccess }) {
@@ -376,7 +366,7 @@ function ShareModal({ fichier, onClose, onSuccess }) {
   const [loadingU,    setLoadingU]    = useState(false);
   const [submitting,  setSubmitting]  = useState(false);
   const [perms,       setPerms]       = useState({
-    lecture: true, download: true, ecriture: false, suppression: false, partage: false,
+    lecture: true, download: true, ecriture: false,
   });
 
   useEffect(() => {
@@ -402,8 +392,9 @@ function ShareModal({ fichier, onClose, onSuccess }) {
         lecture:     perms.lecture,
         ecriture:    perms.ecriture,
         download:    perms.download,
-        partage:     perms.partage,
-        suppression: perms.suppression,
+        partage:     false,
+        suppression: false,
+        upload:      false,
       });
       onSuccess?.('Fichier partagé avec succès');
     } catch (e) {
