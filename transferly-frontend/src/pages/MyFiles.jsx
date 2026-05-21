@@ -354,11 +354,9 @@ function FileTypeIcon({ file, listMode }) {
 }
 
 const SHARE_PERMS = [
-  { key: 'lecture',     label: 'Lecture' },
-  { key: 'download',    label: 'Téléchargement' },
-  { key: 'ecriture',    label: 'Écriture' },
-  { key: 'partage',     label: 'Partage' },
-  { key: 'suppression', label: 'Suppression' },
+  { key: 'lecture',  label: 'Lecture' },
+  { key: 'download', label: 'Téléchargement' },
+  { key: 'ecriture', label: 'Écriture' },
 ];
 
 function ShareModal({ fichier, onClose, onSuccess }) {
@@ -368,7 +366,7 @@ function ShareModal({ fichier, onClose, onSuccess }) {
   const [loadingU,    setLoadingU]    = useState(false);
   const [submitting,  setSubmitting]  = useState(false);
   const [perms,       setPerms]       = useState({
-    lecture: true, download: true, ecriture: false, suppression: false, partage: false,
+    lecture: true, download: true, ecriture: false,
   });
 
   useEffect(() => {
@@ -394,8 +392,9 @@ function ShareModal({ fichier, onClose, onSuccess }) {
         lecture:     perms.lecture,
         ecriture:    perms.ecriture,
         download:    perms.download,
-        partage:     perms.partage,
-        suppression: perms.suppression,
+        partage:     false,
+        suppression: false,
+        upload:      false,
       });
       onSuccess?.('Fichier partagé avec succès');
     } catch (e) {
