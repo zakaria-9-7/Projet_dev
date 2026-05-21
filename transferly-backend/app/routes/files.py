@@ -25,19 +25,6 @@ ALLOWED_EXTENSIONS = {
     'txt', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'csv', 'md',
 }
 
-EDITABLE_EXTENSIONS = {
-    'txt', 'md', 'csv', 'json', 'xml', 'yaml', 'yml', 'log', 'ini', 'env',
-    'py', 'java', 'c', 'cpp', 'h', 'hpp', 'js', 'ts', 'jsx', 'tsx',
-    'html', 'htm', 'css', 'scss', 'sass', 'sql', 'rb', 'go', 'rs', 'php',
-}
-
-
-def _is_editable(fichier):
-    if not fichier or not fichier.nom:
-        return False
-    ext = fichier.nom.rsplit('.', 1)[-1].lower() if '.' in fichier.nom else ''
-    return ext in EDITABLE_EXTENSIONS
-
 
 def get_file_lock(file_id):
     with lock_mutex:
@@ -116,21 +103,6 @@ def list_files():
     except Exception as e:
         print(f'ERROR GET /files/: {e}')
         return jsonify({'error': str(e)}), 500
-
-
-# ── GET /files/<fichier_id> ───────────────────────────────────────
-@files_bp.route('/<int:fichier_id>', methods=['GET'])
-@require_permission('lecture')
-def get_file(fichier_id):
-    fichier = Fichier.query.get(fichier_id)
-    if fichier is None:
-        return jsonify({'error': 'Fichier introuvable'}), 404
-    return jsonify({
-        'id':           fichier.id,
-        'nom':          fichier.nom,
-        'taille':       fichier.taille,
-        'date_creation': fichier.date_creation.isoformat() if fichier.date_creation else None,
-    }), 200
 
 
 # ── POST /files/ ──────────────────────────────────────────────────
@@ -332,40 +304,8 @@ def preview_file(fichier_id):
         )
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
-# ── GET /files/<fichier_id>/content ──────────────────────────────
-@files_bp.route('/<int:fichier_id>/content', methods=['GET'])
-@require_permission('lecture')
-def get_file_content(fichier_id):
-    user_id = g.user['id']
-    fichier = Fichier.query.get(fichier_id)
-    if fichier is None:
-        return jsonify({'error': 'Fichier introuvable'}), 404
-    if not _is_editable(fichier):
-        return jsonify({'error': 'Type de fichier non éditable'}), 415
-    if not fichier.chemin or not os.path.exists(fichier.chemin):
-        return jsonify({'error': 'Binaire chiffré absent du disque'}), 404
-
-    try:
-        with open(fichier.chemin, 'rb') as fp:
-            encrypted = fp.read()
-        decrypted = decrypt_file(encrypted)
-        try:
-            text = decrypted.decode('utf-8')
-        except UnicodeDecodeError:
-            return jsonify({'error': 'Type de fichier non éditable'}), 415
-        return jsonify({
-            'content': text,
-            'nom':     fichier.nom,
-            'taille':  fichier.taille,
-            'editable': True,
-        }), 200
-    except Exception as e:
-        print(f'ERROR GET /files/{fichier_id}/content: {e}')
-        return jsonify({'error': str(e)}), 500
-
-
+    
+    
 # ── DELETE /files/<fichier_id> ────────────────────────────────────
 @files_bp.route('/<int:fichier_id>', methods=['DELETE'])
 @require_permission('suppression')
@@ -436,28 +376,6 @@ def list_files_in_espace(espace_id):
     result = []
     for f in fichiers:
         owner = User.query.get(f.user_id)
-        is_owner_or_admin = (f.user_id == user_id) or is_admin_espace or is_admin_global
-        if is_owner_or_admin:
-            mes_permissions = {
-                'lecture': True, 'ecriture': True, 'upload': True,
-                'download': True, 'suppression': True, 'partage': True,
-            }
-        else:
-            acl = ACL.query.filter_by(user_id=user_id, fichier_id=f.id).first()
-            if acl:
-                mes_permissions = {
-                    'lecture':     acl.lecture,
-                    'ecriture':    acl.ecriture,
-                    'upload':      acl.upload,
-                    'download':    acl.download,
-                    'suppression': acl.suppression,
-                    'partage':     acl.partage,
-                }
-            else:
-                mes_permissions = {
-                    'lecture': False, 'ecriture': False, 'upload': False,
-                    'download': False, 'suppression': False, 'partage': False,
-                }
         result.append({
             'id': f.id,
             'nom': f.nom,
@@ -467,7 +385,6 @@ def list_files_in_espace(espace_id):
             'owner_nom': owner.nom if owner else None,
             'owner_email': owner.email if owner else None,
             'folder_id': f.folder_id,
-            'mes_permissions': mes_permissions,
         })
     return jsonify(result), 200
 
@@ -482,23 +399,15 @@ def update_file(fichier_id):
         return jsonify({'error': 'Fichier en cours de modification par un autre utilisateur'}), 423
 
     try:
+        uploaded = request.files.get('file')
+        if not uploaded:
+            return jsonify({'error': 'Champ file manquant'}), 400
+
         fichier = Fichier.query.get(fichier_id)
         if fichier is None:
             return jsonify({'error': 'Fichier introuvable'}), 404
 
-        # Mode B : JSON avec champ 'content'
-        if request.is_json and 'content' in (request.get_json(silent=True, force=True) or {}):
-            data = request.get_json()
-            if not _is_editable(fichier):
-                return jsonify({'error': 'Type de fichier non éditable'}), 415
-            new_content = data['content'].encode('utf-8')
-        else:
-            # Mode A : FormData avec champ 'file'
-            uploaded = request.files.get('file')
-            if not uploaded:
-                return jsonify({'error': 'Champ file manquant'}), 400
-            new_content = uploaded.read()
-
+        new_content  = uploaded.read()
         new_size_mb  = len(new_content) / (1024 * 1024)
         old_size_mb  = fichier.taille or 0.0
         sha256       = hashlib.sha256(new_content).hexdigest()
@@ -559,33 +468,3 @@ def update_file(fichier_id):
         return jsonify({'error': str(e)}), 500
     finally:
         lock.release()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

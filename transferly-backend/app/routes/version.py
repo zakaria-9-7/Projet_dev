@@ -10,7 +10,17 @@ from app.models.acl import ACL
 from app.routes.acl import require_permission
 from app.services.logger import log_action
 from app.crypto import decrypt_file
-from app.routes.files import get_file_lock, _is_editable
+from app.routes.files import get_file_lock
+
+# Text-editable extensions (replaces the removed _is_editable from files.py)
+_TEXT_EXTS = {'txt', 'md', 'html', 'css', 'js', 'jsx', 'ts', 'tsx',
+              'csv', 'json', 'py', 'xml', 'yaml', 'yml', 'sh', 'ini', 'cfg'}
+
+def _is_editable(fichier):
+    if not fichier or not fichier.nom:
+        return False
+    ext = fichier.nom.rsplit('.', 1)[-1].lower() if '.' in fichier.nom else ''
+    return ext in _TEXT_EXTS
 
 
 versions_bp = Blueprint('versions', __name__, url_prefix='/files/<int:fichier_id>/versions')
