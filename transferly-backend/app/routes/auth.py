@@ -131,7 +131,13 @@ def verify_otp():
     db.session.add(log)
     db.session.commit()
 
-    return jsonify({'token': token, 'role': user.role, 'nom': user.nom, 'email': user.email}), 200
+    return jsonify({
+        'token': token,
+        'role': user.role,
+        'nom': user.nom,
+        'email': user.email,
+        'must_reset_password': user.must_reset_password,
+    }), 200
 
 
 # ── SD-04 : Logout ───────────────────────────────────────────────
@@ -269,6 +275,7 @@ def reset_password(token):
         return jsonify({'error': 'Utilisateur introuvable'}), 404
 
     user.password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+    user.must_reset_password = False
 
     if user.statut == 'bloque':
         user.statut = 'actif'
@@ -353,6 +360,7 @@ def change_password():
     if len(new) < 8:
         return jsonify({'error': 'Mot de passe trop court (min 8 caractères)'}), 400
     user.password = bcrypt.generate_password_hash(new).decode('utf-8')
+    user.must_reset_password = False
     db.session.commit()
 
     send_password_changed_email(user.email, user.nom)
