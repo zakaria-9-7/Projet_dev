@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { FileText, Trash2, FolderOpen, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, Trash2, FolderOpen, User, FilePen, History } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
+import { isEditable } from '../utils/fileType';
 
 export default function AdminFichiersAll() {
   const [fichiers, setFichiers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const navigate = useNavigate();
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -94,13 +97,31 @@ export default function AdminFichiersAll() {
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-500">{formatRelativeTime(f.date_creation)}</td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleDelete(f.id, f.nom)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 rounded"
-                      title="Supprimer ce fichier (modération)"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {isEditable(f.nom) && (
+                        <button
+                          onClick={() => navigate(`/editor?fileId=${f.id}`)}
+                          className="p-1.5 text-slate-400 hover:text-cyan-500 rounded"
+                          title="Éditer"
+                        >
+                          <FilePen className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => navigate(`/versions?fileId=${f.id}`)}
+                        className="p-1.5 text-slate-400 hover:text-violet-500 rounded"
+                        title="Historique des versions"
+                      >
+                        <History className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(f.id, f.nom)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 rounded"
+                        title="Supprimer ce fichier (modération)"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
