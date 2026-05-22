@@ -94,12 +94,41 @@ def shared_with_me():
 
 
 # ── GET /files/ ───────────────────────────────────────────────────
+# Returns the user's own files + files directly shared with them (not via espace).
 @files_bp.route('/', methods=['GET'])
 def list_files():
     user_id = g.user['id']
     try:
-        fichiers = Fichier.query.filter_by(user_id=user_id).all()
-        return jsonify({'files': [_serialize(f, user_id) for f in fichiers]}), 200
+        # Own files
+        own = Fichier.query.filter_by(user_id=user_id).all()
+        result = [_serialize(f, user_id) for f in own]
+
+        # Files shared directly with this user (not their own, not via espace)
+        acls = ACL.query.filter_by(user_id=user_id).all()
+        for acl in acls:
+            fichier = Fichier.query.get(acl.fichier_id)
+            if fichier is None or fichier.user_id == user_id or fichier.espace_id:
+                continue  # skip own files and espace files
+            proprietaire = User.query.get(fichier.user_id)
+            result.append({
+                'id':            fichier.id,
+                'nom':           fichier.nom,
+                'taille':        fichier.taille,
+                'date_creation': fichier.date_creation.isoformat() if fichier.date_creation else None,
+                'espace_id':     fichier.espace_id,
+                'folder_id':     fichier.folder_id,
+                'est_partage':   True,
+                'shared_by':     proprietaire.nom if proprietaire else None,
+                'mes_permissions': {
+                    'lecture':     acl.lecture,
+                    'ecriture':    acl.ecriture,
+                    'download':    acl.download,
+                    'suppression': acl.suppression,
+                    'partage':     acl.partage,
+                },
+            })
+
+        return jsonify({'files': result}), 200
     except Exception as e:
         print(f'ERROR GET /files/: {e}')
         return jsonify({'error': str(e)}), 500

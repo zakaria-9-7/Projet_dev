@@ -29,6 +29,10 @@ function normalizeFile(f) {
     ft: ext,
     size,
     date: formatRelativeTime(f.date_creation),
+    est_partage: f.est_partage || false,
+    shared_by: f.shared_by || null,
+    // permissions: present for shared files, null for own files (owner has all)
+    perms: f.mes_permissions || null,
   };
 }
 
@@ -221,25 +225,32 @@ export default function MyFiles() {
                       className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-10 py-1"
                       onClick={e => e.stopPropagation()}
                     >
-                      <button
-                        onClick={() => { setOpenMenu(null); handleDownload(file); }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                      >
-                        <Download className="w-3.5 h-3.5" /> Télécharger
-                      </button>
-                      <button
-                        onClick={() => handleDelete(file.id)}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Supprimer
-                      </button>
+                      {/* Download — shown if owner or has download perm */}
+                      {(!file.perms || file.perms.download) && (
+                        <button
+                          onClick={() => { setOpenMenu(null); handleDownload(file); }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Télécharger
+                        </button>
+                      )}
+                      {/* Delete — shown if owner or has suppression perm */}
+                      {(!file.perms || file.perms.suppression) && (
+                        <button
+                          onClick={() => handleDelete(file.id)}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Supprimer
+                        </button>
+                      )}
                       <button
                         onClick={() => { setOpenMenu(null); navigate(`/versions?fileId=${file.id}`); }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                       >
                         <History className="w-3.5 h-3.5" /> Historique
                       </button>
-                      {isEditable(file.name) && (
+                      {/* Edit — shown if owner or has ecriture perm */}
+                      {isEditable(file.name) && (!file.perms || file.perms.ecriture) && (
                         <button
                           onClick={() => { setOpenMenu(null); navigate(`/editor?fileId=${file.id}`); }}
                           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
@@ -247,18 +258,24 @@ export default function MyFiles() {
                           <FilePen className="w-3.5 h-3.5" /> Éditer
                         </button>
                       )}
-                      <button
-                        onClick={() => { setOpenMenu(null); setPreviewFile(file); }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Aperçu
-                      </button>
-                      <button
-                        onClick={() => { setOpenMenu(null); setShareFile(file); }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                      >
-                        <Share2 className="w-3.5 h-3.5" /> Partager
-                      </button>
+                      {/* Preview — shown if owner or has lecture perm */}
+                      {(!file.perms || file.perms.lecture) && (
+                        <button
+                          onClick={() => { setOpenMenu(null); setPreviewFile(file); }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Aperçu
+                        </button>
+                      )}
+                      {/* Share — shown if owner or has partage perm */}
+                      {(!file.perms || file.perms.partage) && (
+                        <button
+                          onClick={() => { setOpenMenu(null); setShareFile(file); }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        >
+                          <Share2 className="w-3.5 h-3.5" /> Partager
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -276,11 +293,16 @@ export default function MyFiles() {
                 {file.type === 'folder' ? (
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{file.count} fichiers</p>
                 ) : (
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span className="text-xs text-slate-500 dark:text-slate-400">{file.size}</span>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded">
                       {file.ft}
                     </span>
+                    {file.shared_by && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 rounded" title={`Partagé par ${file.shared_by}`}>
+                        Partagé
+                      </span>
+                    )}
                   </div>
                 )}
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{file.date}</p>
