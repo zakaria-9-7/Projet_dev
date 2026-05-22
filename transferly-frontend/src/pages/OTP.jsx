@@ -1,19 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { Share2, ShieldCheck } from 'lucide-react';
 import { verifyOTP, login } from '../api/auth';
+import CicadaProtective from '../components/CicadaProtective';
+import './Login.css';
 
 export default function OTP() {
-  const [digits, setDigits] = useState(['', '', '', '', '', '']);
-  const [error,  setError]  = useState('');
-  const [timer,  setTimer]  = useState(300);
+  const [code,      setCode]      = useState('');
+  const [error,     setError]     = useState('');
+  const [timer,     setTimer]     = useState(300);
   const [resending, setResending] = useState(false);
   const navigate = useNavigate();
-  const refs = useRef([]);
+  const inputRef = useRef(null);
 
   useEffect(() => {
-    refs.current[0]?.focus();
+    inputRef.current?.focus();
     const interval = setInterval(() => {
       setTimer(t => {
         if (t <= 1) { clearInterval(interval); navigate('/login'); }
@@ -26,24 +26,15 @@ export default function OTP() {
   const formatTime = (s) =>
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  const handleChange = (val, i) => {
+  const handleChange = (val) => {
     if (!/^\d*$/.test(val)) return;
-    const next = [...digits];
-    next[i] = val.slice(-1);
-    setDigits(next);
-    if (val && i < 5) refs.current[i + 1]?.focus();
-  };
-
-  const handleKeyDown = (e, i) => {
-    if (e.key === 'Backspace' && !digits[i] && i > 0) {
-      refs.current[i - 1]?.focus();
-    }
+    setCode(val.slice(0, 6));
+    setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const code = digits.join('');
-    if (code.length < 6) { setError('Entrez les 6 chiffres'); return; }
+    if (code.length < 6) { setError('Entrez les 6 chiffres.'); return; }
     const user_id = localStorage.getItem('user_id');
     try {
       const res = await verifyOTP({ user_id: parseInt(user_id), code });
@@ -63,145 +54,243 @@ export default function OTP() {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Code incorrect');
-      setDigits(['', '', '', '', '', '']);
-      refs.current[0]?.focus();
+      setError(err.response?.data?.error || 'Code incorrect. Essaie encore.');
+      setCode('');
+      inputRef.current?.focus();
     }
   };
 
+  const handleResend = async () => {
+    const email    = localStorage.getItem('email_pending');
+    const password = localStorage.getItem('password_pending');
+    if (!email || !password) { navigate('/login'); return; }
+    setResending(true);
+    try {
+      const res = await login({ email, password });
+      localStorage.setItem('user_id', res.data.user_id);
+      setTimer(300);
+      setCode('');
+      setError('');
+      inputRef.current?.focus();
+    } catch {
+      navigate('/login');
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const timerUrgent = timer < 30;
+
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
-      style={{ background: '#0a0a0f' }}
+      className="login-page"
+      style={{
+        minHeight:      '100vh',
+        background:     'var(--wings-bg)',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        padding:        '48px 16px',
+      }}
     >
-      {/* Glow effects */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="login-grid" />
+      <div className="login-halo-blue" />
+      <div className="login-glow-gold" />
 
-      {/* Grid texture */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
-          `,
-          backgroundSize: '48px 48px',
-        }}
-      />
+      <div style={{ width: '100%', maxWidth: 440, position: 'relative', zIndex: 1 }}>
 
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-sm bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-8 text-center"
-      >
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-7">
+        {/* Cigale + halo focal */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, position: 'relative' }}>
           <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #06b6d4, #a78bfa)' }}
-          >
-            <Share2 className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className="font-bold text-white text-sm tracking-tight">Transferly</span>
+            style={{
+              position:     'absolute',
+              top:          '50%',
+              left:         '50%',
+              transform:    'translate(-50%, -50%)',
+              width:        240,
+              height:       240,
+              borderRadius: '50%',
+              background:   'radial-gradient(circle, rgba(79,139,255,0.18) 0%, transparent 70%)',
+              filter:       'blur(30px)',
+              pointerEvents:'none',
+            }}
+          />
+          <CicadaProtective size={180} />
         </div>
 
-        {/* Shield icon */}
-        <div
-          className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
-          style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)' }}
+        {/* Header */}
+        <h1
+          style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontSize:   38,
+            fontWeight: 400,
+            color:      'var(--wings-text)',
+            textAlign:  'center',
+            margin:     '24px 0 0',
+            lineHeight: 1.15,
+          }}
         >
-          <ShieldCheck className="w-7 h-7" style={{ color: '#06b6d4' }} />
-        </div>
+          Un code, et tu décolles.
+        </h1>
+        <p
+          style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontStyle:  'italic',
+            fontSize:   14,
+            color:      'var(--wings-text-muted)',
+            textAlign:  'center',
+            margin:     '8px 0 32px',
+          }}
+        >
+          On vient de t'envoyer un code à 6 chiffres.
+        </p>
 
-        <h2 className="text-xl font-extrabold text-white mb-2">Vérification en deux étapes</h2>
-        <p className="text-slate-400 text-sm mb-6">Entrez le code envoyé à votre adresse email</p>
+        {/* Card */}
+        <div
+          style={{
+            background:   'var(--wings-surface)',
+            border:       '1px solid var(--wings-border)',
+            borderRadius: 20,
+            padding:      '32px 28px',
+          }}
+        >
+          {/* Message d'erreur */}
+          {error && (
+            <div
+              style={{
+                padding:      '12px 16px',
+                borderRadius: 10,
+                marginBottom: 20,
+                fontSize:     13,
+                background:   'rgba(239,68,68,0.08)',
+                border:       '1px solid rgba(239,68,68,0.25)',
+                color:        '#f87171',
+              }}
+            >
+              {error}
+            </div>
+          )}
 
-        {error && (
-          <div
-            className="px-4 py-3 rounded-lg mb-5 text-sm"
-            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}
-          >
-            {error}
-          </div>
-        )}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-        <form onSubmit={handleSubmit}>
-          {/* OTP boxes */}
-          <div className="flex gap-2.5 justify-center mb-5">
-            {digits.map((d, i) => (
-              <motion.input
-                key={i}
-                ref={el => (refs.current[i] = el)}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.07, duration: 0.3 }}
+            {/* Champ code */}
+            <div>
+              <label
+                htmlFor="otp-code"
+                style={{
+                  display:       'block',
+                  fontFamily:    'monospace',
+                  fontSize:      11,
+                  fontWeight:    700,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color:         'var(--wings-gold)',
+                  marginBottom:  8,
+                }}
+              >
+                Code de vérification
+              </label>
+              <input
+                ref={inputRef}
+                id="otp-code"
                 type="text"
                 inputMode="numeric"
-                maxLength={1}
-                value={d}
-                onChange={e => handleChange(e.target.value, i)}
-                onKeyDown={e => handleKeyDown(e, i)}
-                className="w-12 h-14 text-center text-xl font-bold rounded-xl text-white transition-all outline-none focus:ring-2"
+                maxLength={6}
+                value={code}
+                onChange={e => handleChange(e.target.value)}
+                placeholder="• • • • • •"
+                autoComplete="one-time-code"
                 style={{
-                  background: d ? 'rgba(6,182,212,0.1)' : 'rgba(255,255,255,0.05)',
-                  border: d ? '1px solid rgba(6,182,212,0.5)' : '1px solid rgba(255,255,255,0.1)',
-                  '--tw-ring-color': 'rgba(6,182,212,0.4)',
+                  width:         '100%',
+                  boxSizing:     'border-box',
+                  padding:       '16px',
+                  borderRadius:  12,
+                  border:        `1px solid ${code.length === 6 ? 'var(--wings-blue)' : 'var(--wings-border)'}`,
+                  background:    'var(--wings-surface)',
+                  color:         'var(--wings-text)',
+                  fontSize:      24,
+                  fontFamily:    'monospace',
+                  fontWeight:    700,
+                  letterSpacing: '0.5em',
+                  textAlign:     'center',
+                  outline:       'none',
+                  transition:    'border-color 0.2s ease, box-shadow 0.2s ease',
+                  boxShadow:     code.length === 6 ? '0 0 0 3px rgba(79,139,255,0.15)' : 'none',
                 }}
               />
-            ))}
-          </div>
+            </div>
 
-          <p className="text-slate-400 text-sm mb-5">
-            Code expire dans :{' '}
-            <span
-              className="font-bold"
-              style={{ color: timer < 30 ? '#f87171' : '#06b6d4' }}
+            {/* Timer */}
+            <p
+              style={{
+                textAlign:  'center',
+                fontSize:   13,
+                color:      'var(--wings-text-muted)',
+                margin:     0,
+              }}
             >
-              {formatTime(timer)}
-            </span>
+              Code valide encore{' '}
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color:      timerUrgent ? '#f87171' : 'var(--wings-blue)',
+                }}
+              >
+                {formatTime(timer)}
+              </span>
+            </p>
+
+            <button
+              type="submit"
+              disabled={code.length < 6}
+              style={{
+                width:        '100%',
+                padding:      '14px 24px',
+                borderRadius: 9999,
+                border:       'none',
+                background:   'var(--wings-blue)',
+                color:        '#ffffff',
+                fontSize:     14,
+                fontWeight:   500,
+                fontFamily:   'inherit',
+                cursor:       code.length < 6 ? 'not-allowed' : 'pointer',
+                opacity:      code.length < 6 ? 0.5 : 1,
+                transition:   'background 0.2s ease, opacity 0.2s ease',
+                marginTop:    4,
+              }}
+              onMouseEnter={e => { if (code.length === 6) e.currentTarget.style.background = 'var(--wings-blue-dark)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--wings-blue)'; }}
+            >
+              Vérifier →
+            </button>
+          </form>
+
+          {/* Renvoyer */}
+          <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--wings-text-muted)' }}>
+            Pas reçu ?{' '}
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending}
+              style={{
+                background:     'none',
+                border:         'none',
+                cursor:         resending ? 'not-allowed' : 'pointer',
+                fontSize:       13,
+                color:          'var(--wings-text-muted)',
+                textDecoration: 'underline',
+                fontFamily:     'inherit',
+                opacity:        resending ? 0.5 : 1,
+                padding:        0,
+              }}
+            >
+              {resending ? 'Envoi...' : 'Renvoyer le code.'}
+            </button>
           </p>
+        </div>
 
-          <button
-            type="submit"
-            className="w-full py-3 rounded-lg text-sm font-semibold transition-all mb-4 hover:brightness-110"
-            style={{
-              background: '#06b6d4',
-              color: '#0a0a0f',
-              boxShadow: '0 0 24px rgba(6,182,212,0.3)',
-            }}
-          >
-            Valider le code
-          </button>
-        </form>
-
-        <button
-          onClick={async () => {
-            const email = localStorage.getItem('email_pending');
-            const password = localStorage.getItem('password_pending');
-            if (!email || !password) { navigate('/login'); return; }
-            setResending(true);
-            try {
-              const res = await login({ email, password });
-              localStorage.setItem('user_id', res.data.user_id);
-              setTimer(300);
-              setDigits(['', '', '', '', '', '']);
-              setError('');
-              refs.current[0]?.focus();
-            } catch {
-              navigate('/login');
-            } finally {
-              setResending(false);
-            }
-          }}
-          disabled={resending}
-          className="text-sm font-medium transition-colors disabled:opacity-50"
-          style={{ color: '#06b6d4', background: 'none', border: 'none', cursor: 'pointer' }}
-        >
-          {resending ? 'Envoi...' : 'Renvoyer le code'}
-        </button>
-      </motion.div>
+      </div>
     </div>
   );
 }
