@@ -62,6 +62,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
 
+        <Route path="/app" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/files" element={<PrivateRoute><MyFiles /></PrivateRoute>} />
         <Route path="/shared" element={<PrivateRoute><SharedWithMe /></PrivateRoute>} />
