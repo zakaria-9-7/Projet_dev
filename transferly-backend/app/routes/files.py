@@ -169,9 +169,10 @@ def upload_file():
         fichier.chemin = file_path
 
         sha256_init = hashlib.sha256(file_content).hexdigest()
+        auteur_init = User.query.get(user_id)
         version = VersionFichier(
             numero_version=1,
-            description='Version initiale',
+            description=f'Version initiale — {auteur_init.nom if auteur_init else "utilisateur"}',
             chemin=file_path,
             sha256=sha256_init,
             auteur_id=user_id,
@@ -468,6 +469,27 @@ def update_file(fichier_id):
         sha256       = hashlib.sha256(new_content).hexdigest()
         owner_id     = fichier.user_id
 
+        # ── No-op check: if content is identical to current file, skip versioning ──
+        if fichier.chemin and os.path.exists(fichier.chemin):
+            try:
+                with open(fichier.chemin, 'rb') as fp:
+                    current_sha256 = hashlib.sha256(decrypt_file(fp.read())).hexdigest()
+                if current_sha256 == sha256:
+                    return jsonify({
+                        'message':        'Aucune modification détectée, version inchangée',
+                        'sha256':         sha256,
+                        'numero_version': (
+                            db.session.query(db.func.max(VersionFichier.numero_version))
+                            .filter_by(fichier_id=fichier_id).scalar()
+                        ) or 1,
+                    }), 200
+            except Exception:
+                pass  # if we can't read/decrypt, proceed with the update
+
+        # Resolve author name for the version description
+        auteur = User.query.get(user_id)
+        auteur_nom = auteur.nom if auteur else f'user {user_id}'
+
         # Prochain numéro de version
         max_version = (
             db.session.query(db.func.max(VersionFichier.numero_version))
@@ -485,7 +507,7 @@ def update_file(fichier_id):
 
         version = VersionFichier(
             numero_version=next_num,
-            description=f'Mise à jour par user {user_id}',
+            description=f'Modifié par {auteur_nom}',
             chemin=archive_path,
             sha256=sha256,
             auteur_id=user_id,
