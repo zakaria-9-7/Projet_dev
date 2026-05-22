@@ -127,7 +127,7 @@ export default function CicadaHero() {
           {/* Boutons */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
             <Link
-              to="/login"
+              to="/register"
               style={{
                 padding:        '12px 32px',
                 borderRadius:   9999,

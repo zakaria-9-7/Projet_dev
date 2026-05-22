@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'motion/react';
 import { NotificationProvider } from './context/NotificationContext';
+import PageTransition from './components/PageTransition';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -50,14 +52,15 @@ function NotFound() {
   );
 }
 
-export default function App() {
+function AnimatedRoutes() {
+  const location = useLocation();
+
   return (
-    <BrowserRouter>
-      <NotificationProvider>
-        <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/"         element={<PageTransition><Landing /></PageTransition>} />
+        <Route path="/login"    element={<PageTransition><Login /></PageTransition>} />
+        <Route path="/register" element={<PageTransition><Register /></PageTransition>} />
         <Route path="/otp" element={<OTP />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
@@ -81,6 +84,15 @@ export default function App() {
         <Route path="/editor"               element={<PrivateRoute><FileEditor /></PrivateRoute>} />
         <Route path="/force-reset-password" element={<PrivateRoute><ForceResetPassword /></PrivateRoute>} />
       </Routes>
+    </AnimatePresence>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <NotificationProvider>
+        <AnimatedRoutes />
       </NotificationProvider>
     </BrowserRouter>
   );

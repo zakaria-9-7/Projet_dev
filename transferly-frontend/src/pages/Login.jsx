@@ -1,13 +1,60 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { Mail, Lock, Eye, EyeOff, Share2 } from 'lucide-react';
 import { login } from '../api/auth';
+import CicadaProtective from '../components/CicadaProtective';
+import './Login.css';
+
+const labelStyle = {
+  display:       'block',
+  fontFamily:    'monospace',
+  fontSize:      11,
+  fontWeight:    700,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  color:         'var(--wings-gold)',
+  marginBottom:  8,
+};
+
+const inputBase = {
+  width:       '100%',
+  boxSizing:   'border-box',
+  padding:     '12px 16px',
+  borderRadius: 12,
+  border:      '1px solid var(--wings-border)',
+  background:  'var(--wings-surface)',
+  color:       'var(--wings-text)',
+  fontSize:    14,
+  fontFamily:  'inherit',
+  outline:     'none',
+  transition:  'border-color 0.2s ease, box-shadow 0.2s ease',
+};
+
+const focusedExtra = {
+  borderColor: 'var(--wings-blue)',
+  boxShadow:   '0 0 0 3px rgba(79,139,255,0.15)',
+};
+
+function Field({ label, id, ...props }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div>
+      <label htmlFor={id} style={labelStyle}>{label}</label>
+      <input
+        id={id}
+        style={{ ...inputBase, ...(focused ? focusedExtra : {}) }}
+        onFocus={e => { setFocused(true); props.onFocus?.(e); }}
+        onBlur={e => { setFocused(false); props.onBlur?.(e); }}
+        {...props}
+      />
+    </div>
+  );
+}
 
 export default function Login() {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [showPwd,  setShowPwd]  = useState(false);
+  const [pwdFocus, setPwdFocus] = useState(false);
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
   const navigate = useNavigate();
@@ -19,8 +66,8 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await login({ email, password });
-      localStorage.setItem('user_id', res.data.user_id);
-      localStorage.setItem('email_pending', email);
+      localStorage.setItem('user_id',          res.data.user_id);
+      localStorage.setItem('email_pending',    email);
       localStorage.setItem('password_pending', password);
 
       if (res.data.otp_dev) {
@@ -37,123 +84,206 @@ export default function Login() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
-      style={{ background: '#0a0a0f' }}
+      className="login-page"
+      style={{
+        minHeight:      '100vh',
+        background:     'var(--wings-bg)',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        padding:        '48px 16px',
+      }}
     >
-      {/* Glow effects */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Éléments décoratifs de fond */}
+      <div className="login-grid" />
+      <div className="login-halo-blue" />
+      <div className="login-glow-gold" />
 
-      {/* Grid texture */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
-          `,
-          backgroundSize: '48px 48px',
-        }}
-      />
+      <div style={{ width: '100%', maxWidth: 440, position: 'relative', zIndex: 1 }}>
 
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-8"
-      >
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+        {/* Cigale + halo focal */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, position: 'relative' }}>
           <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #06b6d4, #a78bfa)' }}
-          >
-            <Share2 className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className="font-bold text-white text-sm tracking-tight">Transferly</span>
+            style={{
+              position:     'absolute',
+              top:          '50%',
+              left:         '50%',
+              transform:    'translate(-50%, -50%)',
+              width:        260,
+              height:       260,
+              borderRadius: '50%',
+              background:   'radial-gradient(circle, rgba(79,139,255,0.18) 0%, transparent 70%)',
+              filter:       'blur(30px)',
+              pointerEvents:'none',
+            }}
+          />
+          <CicadaProtective size={200} />
         </div>
 
-        <h2 className="text-2xl font-extrabold text-white mb-1 text-center">Bon retour</h2>
-        <p className="text-slate-400 text-sm mb-7 text-center">Vos cours et projets vous attendent.</p>
-
-        {error && (
-          <div
-            className="px-4 py-3 rounded-lg mb-5 text-sm"
-            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}
-          >
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Email */}
-          <div>
-            <label className="block text-xs font-semibold text-white/60 mb-2">Adresse email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
-              <input
-                type="email"
-                placeholder="exemple@transferly.ma"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition"
-              />
-            </div>
-          </div>
-
-          {/* Password */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-xs font-semibold text-white/60">Mot de passe</label>
-              <Link
-                to="/forgot-password"
-                className="text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
-              >
-                Mot de passe oublié ?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
-              <input
-                type={showPwd ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                className="w-full pl-10 pr-10 py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPwd(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-              >
-                {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-lg text-sm font-semibold transition-all mt-1 disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110"
-            style={{
-              background: '#06b6d4',
-              color: '#0a0a0f',
-              boxShadow: '0 0 24px rgba(6,182,212,0.3)',
-            }}
-          >
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </button>
-        </form>
-
-        <p className="text-center text-xs text-slate-600 mt-6">
-          Pas encore de compte ?{' '}
-          <Link to="/register" className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">
-            S'inscrire gratuitement
-          </Link>
+        {/* Header */}
+        <h1
+          style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontSize:   38,
+            fontWeight: 400,
+            color:      'var(--wings-text)',
+            textAlign:  'center',
+            margin:     '24px 0 0',
+            lineHeight: 1.15,
+          }}
+        >
+          Bon retour parmi nous.
+        </h1>
+        <p
+          style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontStyle:  'italic',
+            fontSize:   14,
+            color:      'var(--wings-text-muted)',
+            textAlign:  'center',
+            margin:     '8px 0 32px',
+          }}
+        >
+          La cigale t'attendait.
         </p>
-      </motion.div>
+
+        {/* Card */}
+        <div
+          style={{
+            background:   'var(--wings-surface)',
+            border:       '1px solid var(--wings-border)',
+            borderRadius: 20,
+            padding:      '32px 28px',
+          }}
+        >
+          {/* Message d'erreur */}
+          {error && (
+            <div
+              style={{
+                padding:      '12px 16px',
+                borderRadius: 10,
+                marginBottom: 20,
+                fontSize:     13,
+                background:   'rgba(239,68,68,0.08)',
+                border:       '1px solid rgba(239,68,68,0.25)',
+                color:        '#f87171',
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+            <Field
+              label="Email"
+              id="email"
+              type="email"
+              placeholder="nom@exemple.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+            />
+
+            {/* Mot de passe — avec lien "oublié" et toggle affichage */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                <label htmlFor="password" style={labelStyle}>Mot de passe</label>
+                <Link
+                  to="/forgot-password"
+                  style={{
+                    fontSize:       12,
+                    color:          'var(--wings-text-muted)',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Mot de passe oublié ?
+                </Link>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="password"
+                  type={showPwd ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onFocus={() => setPwdFocus(true)}
+                  onBlur={() => setPwdFocus(false)}
+                  required
+                  style={{
+                    ...inputBase,
+                    paddingRight: 64,
+                    ...(pwdFocus ? focusedExtra : {}),
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(v => !v)}
+                  style={{
+                    position:   'absolute',
+                    right:      12,
+                    top:        '50%',
+                    transform:  'translateY(-50%)',
+                    background: 'none',
+                    border:     'none',
+                    cursor:     'pointer',
+                    fontFamily: 'monospace',
+                    fontSize:   10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    color:      'var(--wings-text-muted)',
+                    padding:    '2px 4px',
+                    transition: 'color 0.2s ease',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; }}
+                >
+                  {showPwd ? 'CACHER' : 'VOIR'}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width:       '100%',
+                padding:     '14px 24px',
+                borderRadius: 9999,
+                border:      'none',
+                background:  'var(--wings-blue)',
+                color:       '#ffffff',
+                fontSize:    14,
+                fontWeight:  500,
+                fontFamily:  'inherit',
+                cursor:      loading ? 'not-allowed' : 'pointer',
+                opacity:     loading ? 0.6 : 1,
+                transition:  'background 0.2s ease, box-shadow 0.2s ease',
+                marginTop:   4,
+              }}
+              onMouseEnter={e => {
+                if (!loading) e.currentTarget.style.background = 'var(--wings-blue-dark)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'var(--wings-blue)';
+              }}
+            >
+              {loading ? 'Connexion...' : 'Se connecter →'}
+            </button>
+          </form>
+
+          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: 'var(--wings-text-muted)' }}>
+            Pas encore de compte ?{' '}
+            <Link
+              to="/register"
+              style={{ color: 'var(--wings-blue-pale)', textDecoration: 'underline' }}
+            >
+              S'inscrire.
+            </Link>
+          </p>
+        </div>
+
+      </div>
     </div>
   );
 }
