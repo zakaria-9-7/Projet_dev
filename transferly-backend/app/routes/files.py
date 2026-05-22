@@ -463,10 +463,6 @@ def update_file(fichier_id):
         if fichier is None:
             return jsonify({'error': 'Fichier introuvable'}), 404
 
-
-
-        new_content  = uploaded.read()
-
         new_size_mb  = len(new_content) / (1024 * 1024)
         old_size_mb  = fichier.taille or 0.0
         sha256       = hashlib.sha256(new_content).hexdigest()
