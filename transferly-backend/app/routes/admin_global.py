@@ -282,6 +282,74 @@ def admin_delete_espace(espace_id):
     return jsonify({'message': 'Espace supprimé'}), 200
 
 
+@admin_global_bp.route('/admin/espaces/<int:espace_id>/members', methods=['GET'])
+def admin_get_espace_members(espace_id):
+    from app.models.espace import Espace
+    from app.models.membership import Membership
+
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+    if g.user['role'] != 'AdminGlobal':
+        return jsonify({'error': 'Accès réservé'}), 403
+
+    espace = Espace.query.get(espace_id)
+    if espace is None:
+        return jsonify({'error': 'Espace introuvable'}), 404
+
+    admin = User.query.get(espace.admin_id)
+    members = []
+
+    # Admin of the espace
+    if admin:
+        members.append({
+            'id':       admin.id,
+            'nom':      admin.nom,
+            'email':    admin.email,
+            'is_admin': True,
+        })
+
+    # Regular members
+    for m in Membership.query.filter_by(espace_id=espace_id).all():
+        if m.user_id == espace.admin_id:
+            continue
+        u = User.query.get(m.user_id)
+        if u:
+            members.append({
+                'id':       u.id,
+                'nom':      u.nom,
+                'email':    u.email,
+                'is_admin': False,
+            })
+
+    return jsonify(members), 200
+
+
+@admin_global_bp.route('/admin/espaces/<int:espace_id>/members/<int:user_id>', methods=['DELETE'])
+def admin_remove_espace_member(espace_id, user_id):
+    from app.models.espace import Espace
+    from app.models.membership import Membership
+
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+    if g.user['role'] != 'AdminGlobal':
+        return jsonify({'error': 'Accès réservé'}), 403
+
+    espace = Espace.query.get(espace_id)
+    if espace is None:
+        return jsonify({'error': 'Espace introuvable'}), 404
+
+    if espace.admin_id == user_id:
+        return jsonify({'error': "Impossible de retirer l'administrateur de l'espace"}), 400
+
+    m = Membership.query.filter_by(espace_id=espace_id, user_id=user_id).first()
+    if m is None:
+        return jsonify({'error': 'Membre introuvable'}), 404
+
+    db.session.delete(m)
+    db.session.commit()
+    return jsonify({'message': 'Membre retiré'}), 200
+
+
 @admin_global_bp.route('/admin/fichiers', methods=['GET'])
 def admin_list_all_fichiers():
     from app.models.fichier import Fichier
