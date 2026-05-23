@@ -5,6 +5,7 @@ export function formatRelativeTime(dateStr) {
     normalized = dateStr + 'Z';
   }
   const date = new Date(normalized);
+  if (isNaN(date.getTime())) return dateStr;
   const diffSec = Math.floor((Date.now() - date) / 1000);
 
   // Horloge déréglée ou date future → afficher la date exacte
@@ -17,3 +18,4 @@ export function formatRelativeTime(dateStr) {
   if (diffSec < 2592000) { const j = Math.floor(diffSec / 86400); return `Il y a ${j} jour${j > 1 ? 's' : ''}`; }
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
+
