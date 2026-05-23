@@ -273,6 +273,34 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
 
 
+# ── GET /files/<fichier_id> ───────────────────────────────────────
+# Returns metadata for a single file. Accessible to the owner, any user with
+# an ACL entry on the file, and AdminGlobal.
+@files_bp.route('/<int:fichier_id>', methods=['GET'])
+def get_file(fichier_id):
+    user_id = g.user['id']
+    role    = g.user.get('role', '')
+
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+
+    # Access check: owner, AdminGlobal, or any ACL entry
+    is_owner  = fichier.user_id == user_id
+    is_admin  = role == 'AdminGlobal'
+    has_acl   = ACL.query.filter_by(user_id=user_id, fichier_id=fichier_id).first() is not None
+
+    if not (is_owner or is_admin or has_acl):
+        return jsonify({'error': 'Accès refusé'}), 403
+
+    return jsonify({
+        'id':            fichier.id,
+        'nom':           fichier.nom,
+        'taille':        fichier.taille,
+        'date_creation': fichier.date_creation.isoformat() if fichier.date_creation else None,
+    }), 200
+
+
 # ── GET /files/<fichier_id>/download ─────────────────────────────
 @files_bp.route('/<int:fichier_id>/download', methods=['GET'])
 @require_permission('download')
@@ -530,6 +558,9 @@ def update_file(fichier_id):
         # Archive l'ancien binaire sous un nom versionné
         archive_path = f'uploads/user_{owner_id}/{fichier_id}_v{max_version}.enc'
         if fichier.chemin and os.path.exists(fichier.chemin):
+            # On Windows os.rename fails if destination exists — remove it first
+            if os.path.exists(archive_path):
+                os.remove(archive_path)
             os.rename(fichier.chemin, archive_path)
         else:
             archive_path = fichier.chemin  # référence conservée même si absent

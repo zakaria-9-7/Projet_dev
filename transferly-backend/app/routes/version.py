@@ -153,6 +153,9 @@ def restore_version(fichier_id, numero_version):
 
         # 5. Archive le binaire courant
         if current_path and os.path.exists(current_path):
+            # On Windows os.rename fails if destination exists — remove it first
+            if os.path.exists(archive_path):
+                os.remove(archive_path)
             os.rename(current_path, archive_path)
         else:
             archive_path = current_path  # rien à déplacer, conserve la référence
