@@ -167,6 +167,14 @@ def upload_file():
             is_espace_admin = (espace_obj.admin_id == uid)
             policy = espace_obj.upload_policy or 'tous'
 
+            # Enforce espace quota if one is set (quota > 0 means limited)
+            if espace_obj.quota and espace_obj.quota > 0:
+                utilise_mb = sum(f.taille or 0 for f in Fichier.query.filter_by(espace_id=espace_id).all())
+                utilise_gb = utilise_mb / 1024.0
+                file_size_gb = file_size_mb / 1024.0
+                if utilise_gb + file_size_gb > espace_obj.quota:
+                    return jsonify({'error': f"Quota de l'espace dépassé ({espace_obj.quota:.2f} Go alloués)"}), 413
+
             if not is_espace_admin:
                 if policy == 'admin_seul':
                     return jsonify({'error': 'Seul l administrateur de l espace peut téléverser des fichiers'}), 403

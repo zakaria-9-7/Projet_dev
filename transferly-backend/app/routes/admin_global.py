@@ -166,6 +166,53 @@ def admin_update_quota(user_id):
     return jsonify({'message': 'Quota mis à jour', 'quota': user.quota}), 200
 
 
+# ── GET /admin/espaces/quotas ─────────────────────────────────────
+# Returns all espaces with their storage usage and quota.
+@admin_global_bp.route('/admin/espaces/quotas', methods=['GET'])
+@require_role('AdminGlobal')
+def admin_get_espace_quotas():
+    from app.models.espace import Espace
+    from app.models.fichier import Fichier
+
+    espaces = Espace.query.all()
+    result = []
+    for e in espaces:
+        admin = User.query.get(e.admin_id)
+        # Sum of file sizes (stored in MB) for all files in this espace
+        fichiers = Fichier.query.filter_by(espace_id=e.id).all()
+        utilise_mb = sum(f.taille or 0 for f in fichiers)
+        utilise_gb = utilise_mb / 1024.0
+        result.append({
+            'id':          e.id,
+            'nom':         e.nom,
+            'admin_nom':   admin.nom   if admin else 'Inconnu',
+            'admin_email': admin.email if admin else None,
+            'quota':       e.quota,        # GB, 0 = illimité
+            'quota_utilise': round(utilise_gb, 6),
+            'nb_fichiers': len(fichiers),
+        })
+    return jsonify(result), 200
+
+
+# ── PUT /admin/espaces/<id>/quota ─────────────────────────────────
+@admin_global_bp.route('/admin/espaces/<int:espace_id>/quota', methods=['PUT'])
+@require_role('AdminGlobal')
+def admin_update_espace_quota(espace_id):
+    from app.models.espace import Espace
+
+    espace = Espace.query.get(espace_id)
+    if espace is None:
+        return jsonify({'error': 'Espace introuvable'}), 404
+    data = request.get_json(silent=True) or {}
+    quota = data.get('quota')
+    if quota is None or float(quota) < 0:
+        return jsonify({'error': 'Quota invalide (doit être ≥ 0, 0 = illimité)'}), 400
+    espace.quota = float(quota)
+    db.session.commit()
+    return jsonify({'message': 'Quota espace mis à jour', 'quota': espace.quota}), 200
+
+
+
 @admin_global_bp.route('/admin/users/<int:user_id>/suspend', methods=['POST'])
 @require_role('AdminGlobal')
 def admin_suspend_user(user_id):
