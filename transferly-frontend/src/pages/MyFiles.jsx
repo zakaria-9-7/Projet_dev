@@ -5,8 +5,11 @@ import {
   Grid, List, UploadCloud, Eye,
   Folder, FileText, FileSpreadsheet, ImageIcon,
   FileIcon, MoreVertical, History, Download, Trash2, Share2, X, FilePen,
+  Move, ChevronRight,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
+import FolderTree from '../components/FolderTree';
+import MoveFileModal from '../components/MoveFileModal';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
 import { isEditable } from '../utils/fileType';
@@ -45,7 +48,7 @@ export default function MyFiles() {
   const [shareFile,      setShareFile]      = useState(null);
   const [showUpload,     setShowUpload]     = useState(false);
   const [toast,          setToast]          = useState(null);
-  const [moveFile,       setMoveFile]       = useState(null);
+  const [moveModal,      setMoveModal]      = useState({ open: false, file: null });
   const [allFolders,     setAllFolders]     = useState([]);
   const [previewFile,    setPreviewFile]    = useState(null);
   const cardsRef = useRef([]);
@@ -56,11 +59,13 @@ export default function MyFiles() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchFiles = () => {
+  const fetchFiles = (folderId) => {
     setLoading(true);
     setError(null);
-    API.get('/files/')
-      .then(res => setFiles((res.data.files || []).map(normalizeFile)))
+    // folder_id='' → racine (null en base), folder_id=X → dossier X
+    const params = { folder_id: folderId === null ? '' : folderId };
+    API.get('/files/', { params })
+      .then(res => setFiles((res.data.files || res.data || []).map(normalizeFile)))
       .catch(err => {
         setFiles([]);
         setError(err.response?.data?.error || 'Erreur lors du chargement des fichiers');
@@ -68,7 +73,39 @@ export default function MyFiles() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchFiles(); }, []);
+  // Rechargement fichiers à chaque changement de dossier courant
+  useEffect(() => { fetchFiles(currentFolder); }, [currentFolder]);
+
+  // Chargement des dossiers au mount
+  useEffect(() => {
+    API.get('/folders')
+      .then(res => setFolders(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setFolders([]));
+  }, []);
+
+  const handleCreateFolder = async (parentId) => {
+    const nom = prompt('Nom du dossier ?');
+    if (!nom?.trim()) return;
+    try {
+      const res = await API.post('/folders', { nom: nom.trim(), parent_id: parentId });
+      setFolders(prev => [...prev, res.data]);
+    } catch (e) {
+      alert(e.response?.data?.error || 'Erreur création dossier');
+    }
+  };
+
+  const buildBreadcrumb = () => {
+    if (currentFolder === null) return [{ id: null, nom: 'Racine' }];
+    const path = [];
+    let fid = currentFolder;
+    while (fid != null) {
+      const f = folders.find(x => x.id === fid);
+      if (!f) break;
+      path.unshift(f);
+      fid = f.parent_id;
+    }
+    return [{ id: null, nom: 'Racine' }, ...path];
+  };
 
   const handleUpload = () => setShowUpload(true);
 
@@ -88,18 +125,10 @@ export default function MyFiles() {
     if (!confirm('Supprimer ce fichier définitivement ?')) return;
     setOpenMenu(null);
     API.delete(`/files/${id}`)
-      .then(() => fetchFiles())
+      .then(() => fetchFiles(currentFolder))
       .catch(err => alert(err.response?.data?.error || 'Erreur suppression'));
   };
 
-  // TODO: activer quand /folders/ sera stable côté backend
-  // const handleNewFolder = async () => {
-  //   const nom = prompt('Nom du dossier ?');
-  //   if (!nom?.trim()) return;
-  //   API.post('/folders/', { nom: nom.trim(), espace_id: null })
-  //     .then(() => fetchFiles())
-  //     .catch(err => alert(err.response?.data?.error || 'Erreur création dossier'));
-  // };
 
   useEffect(() => {
     if (!openMenu) return;
@@ -132,11 +161,47 @@ export default function MyFiles() {
           {toast.type === 'error' ? '✕' : '✓'} {toast.msg}
         </div>
       )}
-      {/* Header row */}
+
+      {/* Layout flex : arborescence + grille */}
+      <div style={{ display: 'flex', margin: '-32px -40px', minHeight: 'calc(100% + 64px)' }}>
+        <FolderTree
+          folders={folders}
+          selectedFolderId={currentFolder}
+          onSelect={(id) => setCurrentFolder(id)}
+          onCreateFolder={handleCreateFolder}
+          onFolderCreated={(newFolder) => setFolders(prev => [...prev, newFolder])}
+          onFolderUpdated={(id, nom) => setFolders(prev => prev.map(f => f.id === id ? { ...f, nom } : f))}
+          onFolderDeleted={(id) => {
+            setFolders(prev => prev.filter(f => f.id !== id));
+            if (currentFolder === id) setCurrentFolder(null);
+          }}
+        />
+
+        {/* Contenu principal */}
+        <div style={{ flex: 1, padding: '24px 32px', overflowY: 'auto' }}>
+
+      {/* Breadcrumb + actions */}
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">Mes Fichiers</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Racine</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          {buildBreadcrumb().map((segment, i, arr) => (
+            <span key={segment.id ?? 'root'} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                onClick={() => setCurrentFolder(segment.id)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '13px',
+                  color: i === arr.length - 1 ? 'var(--wings-text)' : 'var(--wings-text-muted)',
+                  fontWeight: i === arr.length - 1 ? 500 : 400,
+                  padding: 0,
+                }}
+              >
+                {segment.nom}
+              </button>
+              {i < arr.length - 1 && (
+                <ChevronRight size={12} style={{ color: 'var(--wings-text-muted)', opacity: 0.5 }} />
+              )}
+            </span>
+          ))}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -259,6 +324,12 @@ export default function MyFiles() {
                       >
                         <Share2 className="w-3.5 h-3.5" /> Partager
                       </button>
+                      <button
+                        onClick={() => { setOpenMenu(null); setMoveModal({ open: true, file }); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      >
+                        <Move className="w-3.5 h-3.5" /> Déplacer vers…
+                      </button>
                     </div>
                   )}
                 </div>
@@ -334,12 +405,28 @@ export default function MyFiles() {
 					</button>
 				</div>
 				<div className="p-6">
-					<UploadZone onSuccess={() => { fetchFiles(); setShowUpload(false); }} />
+					<UploadZone folderId={currentFolder} onSuccess={() => { fetchFiles(currentFolder); setShowUpload(false); }} />
 				</div>
 			</div>
 		</div>
 	)}
 
+        </div>{/* fin contenu principal */}
+      </div>{/* fin layout flex */}
+
+      {moveModal.open && (
+        <MoveFileModal
+          isOpen={moveModal.open}
+          file={moveModal.file}
+          folders={folders}
+          currentFolderId={currentFolder}
+          onClose={() => setMoveModal({ open: false, file: null })}
+          onMoved={(newFolderId) => {
+            setFiles(prev => prev.filter(f => f.id !== moveModal.file.id));
+            setMoveModal({ open: false, file: null });
+          }}
+        />
+      )}
     </AppLayout>
   );
 }

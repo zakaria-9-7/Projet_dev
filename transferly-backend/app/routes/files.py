@@ -98,7 +98,11 @@ def shared_with_me():
 def list_files():
     user_id = g.user['id']
     try:
-        fichiers = Fichier.query.filter_by(user_id=user_id).all()
+        folder_id = request.args.get('folder_id', type=int)
+        query = Fichier.query.filter_by(user_id=user_id)
+        if 'folder_id' in request.args:
+            query = query.filter_by(folder_id=folder_id)
+        fichiers = query.all()
         return jsonify({'files': [_serialize(f, user_id) for f in fichiers]}), 200
     except Exception as e:
         print(f'ERROR GET /files/: {e}')

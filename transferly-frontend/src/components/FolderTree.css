@@ -1,0 +1,96 @@
+.ft-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--wings-text-muted);
+  transition: background 0.12s, color 0.12s;
+  user-select: none;
+}
+
+.ft-item:hover {
+  background: rgba(79, 139, 255, 0.05);
+  color: var(--wings-text);
+}
+
+.ft-item.active {
+  background: rgba(255, 193, 7, 0.08);
+  color: var(--wings-gold);
+}
+
+.ft-item .ft-add-btn {
+  opacity: 0;
+  transition: opacity 0.12s;
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  padding: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.ft-item:hover .ft-add-btn {
+  opacity: 1;
+}
+
+/* Kebab button */
+.ft-kebab-btn {
+  opacity: 0;
+  transition: opacity 0.12s;
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--wings-text-muted);
+  padding: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.ft-item:hover .ft-kebab-btn {
+  opacity: 1;
+}
+
+.ft-kebab-btn:hover {
+  background: rgba(79, 139, 255, 0.12) !important;
+  opacity: 1 !important;
+}
+
+/* Dropdown menu items */
+.ft-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--wings-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.1s, color 0.1s;
+}
+
+.ft-menu-item:hover {
+  background: rgba(79, 139, 255, 0.08);
+  color: var(--wings-text);
+}
+
+.ft-menu-item--danger {
+  color: var(--wings-gold);
+}
+
+.ft-menu-item--danger:hover {
+  background: rgba(255, 80, 80, 0.08) !important;
+  color: #ff7a7a !important;
+}
