@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FolderOpen, Users, FileText, Trash2, X, UserMinus, Crown, User } from 'lucide-react';
+import { HardDrive, Users, FileText, Trash2, X, UserMinus, Crown, User } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 
@@ -88,7 +88,7 @@ export default function AdminEspacesAll() {
             <div className="text-center py-12 text-slate-400">Chargement...</div>
           ) : espaces.length === 0 ? (
             <div className="bg-white dark:bg-slate-800 rounded-xl p-12 text-center border border-slate-200 dark:border-slate-700">
-              <FolderOpen className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <HardDrive className="w-12 h-12 mx-auto text-slate-300 mb-3" />
               <p className="text-slate-500">Aucun espace sur la plateforme</p>
             </div>
           ) : (
@@ -114,7 +114,7 @@ export default function AdminEspacesAll() {
                     >
                       <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
                         <span className="inline-flex items-center gap-2">
-                          <FolderOpen className="w-4 h-4 text-cyan-500" /> {e.nom}
+                          <HardDrive className="w-4 h-4 text-cyan-500" /> {e.nom}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
@@ -151,7 +151,7 @@ export default function AdminEspacesAll() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <FolderOpen className="w-4 h-4 text-cyan-500" />
+                  <HardDrive className="w-4 h-4 text-cyan-500" />
                   {selectedEspace.nom}
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">Membres de l'espace</p>
