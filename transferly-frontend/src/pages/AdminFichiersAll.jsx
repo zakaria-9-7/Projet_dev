@@ -5,12 +5,27 @@ import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
 import { getFileTypeColor, isEditable } from '../utils/fileType';
+import SearchBar from '../components/SearchBar';
+import { useDebounced } from '../hooks/useDebounced';
 
 export default function AdminFichiersAll() {
   const [fichiers, setFichiers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounced(searchTerm, 300);
   const navigate = useNavigate();
+
+  const filteredFiles = fichiers.filter(f => {
+    if (!debouncedSearch) return true;
+    const q = debouncedSearch.toLowerCase();
+    return (
+      (f.nom         || '').toLowerCase().includes(q) ||
+      (f.owner_nom   || '').toLowerCase().includes(q) ||
+      (f.owner_email || '').toLowerCase().includes(q) ||
+      (f.espace_nom  || '').toLowerCase().includes(q)
+    );
+  });
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -76,6 +91,12 @@ export default function AdminFichiersAll() {
           </p>
         </div>
 
+        <SearchBar
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Rechercher un fichier, un propriétaire…"
+        />
+
         {loading ? (
           <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
             Chargement…
@@ -98,7 +119,7 @@ export default function AdminFichiersAll() {
 
             {/* Lignes */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {fichiers.map(f => (
+              {filteredFiles.map(f => (
                 <div key={f.id} style={{
                   display: 'flex', alignItems: 'center',
                   background: 'var(--wings-surface)',

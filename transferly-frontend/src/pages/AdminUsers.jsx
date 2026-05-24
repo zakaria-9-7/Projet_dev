@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Search, Edit2, Trash2, ToggleLeft, ToggleRight, HardDrive,
+  Edit2, Trash2, ToggleLeft, ToggleRight, HardDrive,
   X, ChevronLeft, ChevronRight, UserPlus, Copy, Check,
   CheckCircle2, AlertTriangle, Clock,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
+import SearchBar from '../components/SearchBar';
+import { useDebounced } from '../hooks/useDebounced';
 
 const ROLE_LABELS = {
   Utilisateur: 'Utilisateur',
@@ -497,7 +499,8 @@ export default function AdminUsers() {
   const [users, setUsers]           = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
-  const [search, setSearch]         = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch             = useDebounced(searchTerm, 300);
   const [page, setPage]             = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -565,10 +568,15 @@ export default function AdminUsers() {
     fetchUsers(page);
   };
 
-  const visible = users.filter(u =>
-    (u.nom  ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    (u.email ?? '').toLowerCase().includes(search.toLowerCase())
-  );
+  const visible = users.filter(u => {
+    if (!debouncedSearch) return true;
+    const q = debouncedSearch.toLowerCase();
+    return (
+      (u.nom   || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.role  || '').toLowerCase().includes(q)
+    );
+  });
 
   const colHeaderStyle = {
     fontFamily: 'monospace',
@@ -610,31 +618,11 @@ export default function AdminUsers() {
         </div>
 
         {/* Recherche */}
-        <div style={{ position: 'relative', maxWidth: 340 }}>
-          <Search size={14} style={{
-            position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-            color: 'var(--wings-text-muted)', pointerEvents: 'none',
-          }} />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher un nom ou email…"
-            style={{
-              width: '100%',
-              padding: '10px 14px 10px 38px',
-              background: 'var(--wings-surface)',
-              border: '0.5px solid var(--wings-border)',
-              borderRadius: 12,
-              color: 'var(--wings-text)',
-              fontSize: 13,
-              outline: 'none',
-              boxSizing: 'border-box',
-            }}
-            onFocus={e => e.target.style.borderColor = 'var(--wings-blue)'}
-            onBlur={e => e.target.style.borderColor = 'var(--wings-border)'}
-          />
-        </div>
+        <SearchBar
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Rechercher un utilisateur, un email…"
+        />
 
         {error && (
           <div style={{

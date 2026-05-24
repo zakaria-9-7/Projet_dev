@@ -354,7 +354,7 @@ export default function EspaceDetail() {
         {/* Sous-barre : fil d'ariane + action */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <button
-            onClick={() => navigate('/espaces')}
+            onClick={() => navigate('/admin-espace')}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: 'transparent', border: 'none',

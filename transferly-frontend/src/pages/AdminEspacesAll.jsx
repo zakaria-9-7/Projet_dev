@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { FolderOpen, HardDrive, Users, FileText, Trash2, X, UserMinus, Crown, User } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
+import SearchBar from '../components/SearchBar';
+import { useDebounced } from '../hooks/useDebounced';
 
 export default function AdminEspacesAll() {
   const [espaces,        setEspaces]        = useState([]);
@@ -10,6 +12,18 @@ export default function AdminEspacesAll() {
   const [selectedEspace, setSelectedEspace] = useState(null);
   const [members,        setMembers]        = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [searchTerm,     setSearchTerm]     = useState('');
+  const debouncedSearch = useDebounced(searchTerm, 300);
+
+  const filteredEspaces = espaces.filter(e => {
+    if (!debouncedSearch) return true;
+    const q = debouncedSearch.toLowerCase();
+    return (
+      (e.nom         || '').toLowerCase().includes(q) ||
+      (e.admin_nom   || '').toLowerCase().includes(q) ||
+      (e.admin_email || '').toLowerCase().includes(q)
+    );
+  });
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -102,6 +116,12 @@ export default function AdminEspacesAll() {
           </p>
         </div>
 
+        <SearchBar
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Rechercher un espace, un administrateur…"
+        />
+
         <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
           {/* COLONNE GAUCHE : Liste des espaces */}
           <div style={{ flex: selectedEspace ? '0 0 55%' : '1 1 auto', minWidth: 0, transition: 'flex-basis 0.2s' }}>
@@ -127,7 +147,7 @@ export default function AdminEspacesAll() {
 
                 {/* Lignes */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {espaces.map(e => (
+                  {filteredEspaces.map(e => (
                     <div
                       key={e.id}
                       onClick={() => loadMembers(e)}

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { HardDrive, RefreshCw, X, CheckCircle2, FolderOpen } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
+import SearchBar from '../components/SearchBar';
+import { useDebounced } from '../hooks/useDebounced';
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -62,9 +64,11 @@ export default function AdminQuotas() {
   const [espaces, setEspaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
-  const [inputs,  setInputs]  = useState({});   // id → quota string
-  const [saving,  setSaving]  = useState({});
-  const [toast,   setToast]   = useState(null);
+  const [inputs,     setInputs]     = useState({});   // id → quota string
+  const [saving,     setSaving]     = useState({});
+  const [toast,      setToast]      = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounced(searchTerm, 300);
 
   const showToast = (message, type = 'success') => setToast({ message, type });
 
@@ -135,6 +139,25 @@ export default function AdminQuotas() {
 
   const fmt = (val) => `${(val ?? 0).toFixed(2)} Go`;
 
+  const filteredUsers = users.filter(u => {
+    if (!debouncedSearch) return true;
+    const q = debouncedSearch.toLowerCase();
+    return (
+      (u.nom   || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q)
+    );
+  });
+
+  const filteredEspaces = espaces.filter(e => {
+    if (!debouncedSearch) return true;
+    const q = debouncedSearch.toLowerCase();
+    return (
+      (e.nom         || '').toLowerCase().includes(q) ||
+      (e.admin_nom   || '').toLowerCase().includes(q) ||
+      (e.admin_email || '').toLowerCase().includes(q)
+    );
+  });
+
   const colHeaderStyle = {
     fontFamily: 'monospace',
     fontSize: '10px',
@@ -186,6 +209,13 @@ export default function AdminQuotas() {
             Actualiser
           </button>
         </div>
+
+        {/* Recherche */}
+        <SearchBar
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Rechercher un utilisateur ou un espace…"
+        />
 
         {/* Onglets */}
         <div style={{ display: 'flex', gap: 4, borderBottom: '0.5px solid var(--wings-border)', marginBottom: 16 }}>
@@ -250,7 +280,7 @@ export default function AdminQuotas() {
                 <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
                   Aucun utilisateur
                 </div>
-              ) : users.map(user => {
+              ) : filteredUsers.map(user => {
                 const pct = user.quota > 0 ? (user.quota_utilise / user.quota) * 100 : 0;
                 const inputBorderColor =
                   pct >= 90 ? 'rgba(229,115,115,0.5)' :
@@ -377,7 +407,7 @@ export default function AdminQuotas() {
                 <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
                   Aucun espace
                 </div>
-              ) : espaces.map(e => {
+              ) : filteredEspaces.map(e => {
                 const pct = e.quota > 0 ? (e.quota_utilise / e.quota) * 100 : 0;
                 const inputBorderColor =
                   pct >= 90 ? 'rgba(229,115,115,0.5)' :

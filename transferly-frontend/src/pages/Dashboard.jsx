@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, HardDrive, FileText, FolderOpen, AlertTriangle,
   Upload, Plus, ArrowRight, Download, Share,
 } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { colorFromName } from '../utils/colorFromName';
@@ -129,16 +130,23 @@ function AdminSection({ allUsers, adminFiles, espacesCount, navigate }) {
   const storageMb  = adminFiles.reduce((s, f) => s + (f.taille || 0), 0);
   const storageGo  = (storageMb / 1024).toFixed(2);
 
-  // Répartition des rôles
-  const roleCounts = allUsers.reduce((acc, u) => {
-    const r = u.role || 'Utilisateur';
-    acc[r] = (acc[r] || 0) + 1;
-    return acc;
-  }, {});
-  const ROLE_COLORS = ['var(--wings-gold)', 'var(--wings-blue)', '#c97b63', '#6b9b78', '#b07cce'];
-  const roleData = Object.entries(roleCounts).map(([label, value], i) => ({
-    label, value, color: ROLE_COLORS[i % ROLE_COLORS.length],
-  }));
+  // Répartition des types de fichiers
+  const fileTypeData = useMemo(() => {
+    const counts = {};
+    adminFiles.forEach(f => {
+      const ext = (f.nom || '').split('.').pop()?.toUpperCase() || 'AUTRE';
+      counts[ext] = (counts[ext] || 0) + 1;
+    });
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const top = sorted.slice(0, 6);
+    const otherCount = sorted.slice(6).reduce((sum, [, c]) => sum + c, 0);
+    if (otherCount > 0) top.push(['AUTRES', otherCount]);
+    return top.map(([type, count]) => ({
+      name: type,
+      value: count,
+      color: getFileTypeColor(`x.${type.toLowerCase()}`).color,
+    }));
+  }, [adminFiles]);
 
   // Alertes quota (>= 80%)
   const alerts = allUsers.filter(u => u.quota > 0 && (u.quota_utilise / u.quota) >= 0.8);
@@ -151,10 +159,10 @@ function AdminSection({ allUsers, adminFiles, espacesCount, navigate }) {
   ];
 
   const shortcuts = [
-    { to: '/admin/users',   Icon: Users,      label: 'Utilisateurs' },
-    { to: '/admin/espaces', Icon: FolderOpen, label: 'Espaces' },
-    { to: '/admin/files',   Icon: FileText,   label: 'Fichiers' },
-    { to: '/admin/quotas',  Icon: HardDrive,  label: 'Quotas' },
+    { to: '/admin-users',        Icon: Users,      label: 'Utilisateurs' },
+    { to: '/admin-espaces-all',  Icon: FolderOpen, label: 'Espaces' },
+    { to: '/admin-fichiers-all', Icon: FileText,   label: 'Fichiers' },
+    { to: '/admin-quotas',       Icon: HardDrive,  label: 'Quotas' },
   ];
 
   return (
@@ -171,13 +179,65 @@ function AdminSection({ allUsers, adminFiles, espacesCount, navigate }) {
         {adminCards.map(c => <StatCard key={c.label} {...c} />)}
       </div>
 
-      {/* Répartition rôles + Alertes quota */}
+      {/* Répartition fichiers + Alertes quota */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
         <div style={cardBase}>
-          <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 16 }}>
-            Répartition des rôles
-          </h3>
-          <DonutChart data={roleData} />
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: 'var(--wings-text)', fontWeight: 400, margin: 0 }}>
+              Répartition des fichiers
+            </h3>
+            <p style={{ fontSize: 11, color: 'var(--wings-text-muted)', fontStyle: 'italic', margin: '3px 0 0' }}>
+              Par type d'extension
+            </p>
+          </div>
+          {fileTypeData.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+              Aucun fichier sur la plateforme
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <ResponsiveContainer width="50%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={fileTypeData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {fileTypeData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--wings-surface)',
+                      border: '0.5px solid var(--wings-border)',
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                    formatter={(value, name) => [`${value} fichier${value > 1 ? 's' : ''}`, name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 16, flex: 1 }}>
+                {fileTypeData.map(({ name, value, color }) => {
+                  const total = fileTypeData.reduce((s, d) => s + d.value, 0);
+                  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+                  return (
+                    <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                      <span style={{ color: 'var(--wings-text)', fontWeight: 500, minWidth: 50 }}>{name}</span>
+                      <span style={{ color: 'var(--wings-text)', fontFamily: 'monospace' }}>{value}</span>
+                      <span style={{ color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 11 }}>({pct}%)</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{ ...cardBase, border: '0.5px solid rgba(229,115,115,0.3)' }}>
@@ -494,45 +554,6 @@ function UserSection({ email, myFiles, myEspaces, sharedWithMe, quota, navigate 
         </div>
       </div>
 
-      {/* Actions rapides */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <button
-          onClick={() => navigate('/files')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 20px', background: 'var(--wings-blue)',
-            border: 'none', borderRadius: 999,
-            color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-          }}
-        >
-          <Upload size={13} />
-          Téléverser un fichier
-        </button>
-        <button
-          onClick={() => navigate('/espaces')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 20px', background: 'transparent',
-            border: '0.5px solid var(--wings-border)', borderRadius: 999,
-            color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-          }}
-        >
-          <Plus size={13} />
-          Créer un espace
-        </button>
-        <button
-          onClick={() => navigate('/shared')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 20px', background: 'transparent',
-            border: '0.5px solid var(--wings-border)', borderRadius: 999,
-            color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-          }}
-        >
-          <Share size={13} />
-          Partager un fichier
-        </button>
-      </div>
     </section>
   );
 }
