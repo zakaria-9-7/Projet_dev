@@ -94,6 +94,7 @@ def shared_with_me():
 
 
 # ── GET /files/ ───────────────────────────────────────────────────
+# Returns the user's own files + files directly shared with them (not via espace).
 @files_bp.route('/', methods=['GET'])
 def list_files():
     user_id = g.user['id']
@@ -142,6 +143,14 @@ def upload_file():
             is_espace_admin = (espace_obj.admin_id == uid)
             policy = espace_obj.upload_policy or 'tous'
 
+            # Enforce espace quota if one is set (quota > 0 means limited)
+            if espace_obj.quota and espace_obj.quota > 0:
+                utilise_mb = sum(f.taille or 0 for f in Fichier.query.filter_by(espace_id=espace_id).all())
+                utilise_gb = utilise_mb / 1024.0
+                file_size_gb = file_size_mb / 1024.0
+                if utilise_gb + file_size_gb > espace_obj.quota:
+                    return jsonify({'error': f"Quota de l'espace dépassé ({espace_obj.quota:.2f} Go alloués)"}), 413
+
             if not is_espace_admin:
                 if policy == 'admin_seul':
                     return jsonify({'error': 'Seul l administrateur de l espace peut téléverser des fichiers'}), 403
@@ -173,9 +182,10 @@ def upload_file():
         fichier.chemin = file_path
 
         sha256_init = hashlib.sha256(file_content).hexdigest()
+        auteur_init = User.query.get(user_id)
         version = VersionFichier(
             numero_version=1,
-            description='Version initiale',
+            description=f'Version initiale — {auteur_init.nom if auteur_init else "utilisateur"}',
             chemin=file_path,
             sha256=sha256_init,
             auteur_id=user_id,
@@ -245,6 +255,34 @@ def upload_file():
         print(f'ERROR POST /files/: {e}')
         log_action(user_id, 'upload', statut='echec', details=str(e))
         return jsonify({'error': str(e)}), 500
+
+
+# ── GET /files/<fichier_id> ───────────────────────────────────────
+# Returns metadata for a single file. Accessible to the owner, any user with
+# an ACL entry on the file, and AdminGlobal.
+@files_bp.route('/<int:fichier_id>', methods=['GET'])
+def get_file(fichier_id):
+    user_id = g.user['id']
+    role    = g.user.get('role', '')
+
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+
+    # Access check: owner, AdminGlobal, or any ACL entry
+    is_owner  = fichier.user_id == user_id
+    is_admin  = role == 'AdminGlobal'
+    has_acl   = ACL.query.filter_by(user_id=user_id, fichier_id=fichier_id).first() is not None
+
+    if not (is_owner or is_admin or has_acl):
+        return jsonify({'error': 'Accès refusé'}), 403
+
+    return jsonify({
+        'id':            fichier.id,
+        'nom':           fichier.nom,
+        'taille':        fichier.taille,
+        'date_creation': fichier.date_creation.isoformat() if fichier.date_creation else None,
+    }), 200
 
 
 # ── GET /files/<fichier_id>/download ─────────────────────────────
@@ -467,14 +505,31 @@ def update_file(fichier_id):
         if fichier is None:
             return jsonify({'error': 'Fichier introuvable'}), 404
 
-
-
-        new_content  = uploaded.read()
-
         new_size_mb  = len(new_content) / (1024 * 1024)
         old_size_mb  = fichier.taille or 0.0
         sha256       = hashlib.sha256(new_content).hexdigest()
         owner_id     = fichier.user_id
+
+        # ── No-op check: if content is identical to current file, skip versioning ──
+        if fichier.chemin and os.path.exists(fichier.chemin):
+            try:
+                with open(fichier.chemin, 'rb') as fp:
+                    current_sha256 = hashlib.sha256(decrypt_file(fp.read())).hexdigest()
+                if current_sha256 == sha256:
+                    return jsonify({
+                        'message':        'Aucune modification détectée, version inchangée',
+                        'sha256':         sha256,
+                        'numero_version': (
+                            db.session.query(db.func.max(VersionFichier.numero_version))
+                            .filter_by(fichier_id=fichier_id).scalar()
+                        ) or 1,
+                    }), 200
+            except Exception:
+                pass  # if we can't read/decrypt, proceed with the update
+
+        # Resolve author name for the version description
+        auteur = User.query.get(user_id)
+        auteur_nom = auteur.nom if auteur else f'user {user_id}'
 
         # Prochain numéro de version
         max_version = (
@@ -487,13 +542,16 @@ def update_file(fichier_id):
         # Archive l'ancien binaire sous un nom versionné
         archive_path = f'uploads/user_{owner_id}/{fichier_id}_v{max_version}.enc'
         if fichier.chemin and os.path.exists(fichier.chemin):
+            # On Windows os.rename fails if destination exists — remove it first
+            if os.path.exists(archive_path):
+                os.remove(archive_path)
             os.rename(fichier.chemin, archive_path)
         else:
             archive_path = fichier.chemin  # référence conservée même si absent
 
         version = VersionFichier(
             numero_version=next_num,
-            description=f'Mise à jour par user {user_id}',
+            description=f'Modifié par {auteur_nom}',
             chemin=archive_path,
             sha256=sha256,
             auteur_id=user_id,

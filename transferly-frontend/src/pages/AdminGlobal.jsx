@@ -349,7 +349,7 @@ const LogRow = ({ log, index }) => (
       {" — "}
       {formatAction(log.action)}
     </span>
-    <span style={styles.logTime}>{formatTime(log.date)}</span>
+    <span style={styles.logTime}>{formatRelativeTime(log.date)}</span>
   </div>
 );
 

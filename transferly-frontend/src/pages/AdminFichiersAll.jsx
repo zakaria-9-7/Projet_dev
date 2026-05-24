@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { FileText, Trash2, FolderOpen, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, Trash2, FolderOpen, User, FilePen, History } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
-import { getFileTypeColor } from '../utils/fileType';
+import { getFileTypeColor, isEditable } from '../utils/fileType';
 
 export default function AdminFichiersAll() {
   const [fichiers, setFichiers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const navigate = useNavigate();
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -91,7 +93,7 @@ export default function AdminFichiersAll() {
               <span style={{ ...colHeaderStyle, flex: 1 }}>Propriétaire</span>
               <span style={{ ...colHeaderStyle, flex: '0 0 160px' }}>Emplacement</span>
               <span style={{ ...colHeaderStyle, flex: '0 0 120px' }}>Date</span>
-              <span style={{ ...colHeaderStyle, flex: '0 0 60px', textAlign: 'right' }}>Action</span>
+              <span style={{ ...colHeaderStyle, flex: '0 0 100px', textAlign: 'right' }}>Action</span>
             </div>
 
             {/* Lignes */}
@@ -150,14 +152,40 @@ export default function AdminFichiersAll() {
                       </span>
                     </span>
                   </div>
-
                   {/* DATE */}
                   <div style={{ flex: '0 0 120px', color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 11 }}>
                     {formatRelativeTime(f.date_creation)}
                   </div>
-
-                  {/* ACTION */}
-                  <div style={{ flex: '0 0 60px', display: 'flex', justifyContent: 'flex-end' }}>
+                  {/* ACTIONS */}
+                  <div style={{ flex: '0 0 100px', display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                    {isEditable(f.nom) && (
+                      <button
+                        onClick={() => navigate(`/editor?fileId=${f.id}`)}
+                        title="Éditer"
+                        style={{
+                          background: 'none', border: 'none', padding: 4,
+                          color: 'var(--wings-text-muted)', cursor: 'pointer', borderRadius: 6,
+                          display: 'flex', alignItems: 'center',
+                        }}
+                        onMouseEnter={el => el.currentTarget.style.color = 'var(--wings-blue)'}
+                        onMouseLeave={el => el.currentTarget.style.color = 'var(--wings-text-muted)'}
+                      >
+                        <FilePen size={14} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => navigate(`/versions?fileId=${f.id}`)}
+                      title="Historique des versions"
+                      style={{
+                        background: 'none', border: 'none', padding: 4,
+                        color: 'var(--wings-text-muted)', cursor: 'pointer', borderRadius: 6,
+                        display: 'flex', alignItems: 'center',
+                      }}
+                      onMouseEnter={el => el.currentTarget.style.color = 'var(--wings-gold)'}
+                      onMouseLeave={el => el.currentTarget.style.color = 'var(--wings-text-muted)'}
+                    >
+                      <History size={14} />
+                    </button>
                     <button
                       onClick={() => handleDelete(f.id, f.nom)}
                       title="Supprimer ce fichier (modération)"
