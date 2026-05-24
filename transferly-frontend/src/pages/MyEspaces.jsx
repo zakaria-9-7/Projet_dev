@@ -1,21 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { FolderOpen, Plus, Users, Mail } from 'lucide-react';
+import { Users, FileText, X } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
+import { colorFromName } from '../utils/colorFromName';
+
+function formatDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  const diff = (Date.now() - d) / 1000;
+  if (diff < 3600)  return `il y a ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
+  if (diff < 7 * 86400) return `il y a ${Math.floor(diff / 86400)} j`;
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
 
 export default function MyEspaces() {
   const navigate = useNavigate();
-  const [espaces, setEspaces] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [selectedEspace, setSelectedEspace] = useState(null);
-  const [members, setMembers] = useState([]);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [toast, setToast] = useState(null);
+  const [espaces,     setEspaces]     = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(null);
+  const [showCreate,  setShowCreate]  = useState(false);
+  const [newName,     setNewName]     = useState('');
+  const [creating,    setCreating]    = useState(false);
+  const [toast,       setToast]       = useState(null);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -37,15 +46,9 @@ export default function MyEspaces() {
 
   useEffect(() => { load(); }, []);
 
-  useEffect(() => {
-    if (!selectedEspace) { setMembers([]); return; }
-    API.get(`/espaces/${selectedEspace.id}/members`)
-      .then(r => setMembers(r.data))
-      .catch(() => setMembers([]));
-  }, [selectedEspace]);
-
   const handleCreate = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() || creating) return;
+    setCreating(true);
     try {
       const res = await API.post('/espaces', { nom: newName.trim() });
       if (res.data.role_updated && res.data.role_updated !== localStorage.getItem('role')) {
@@ -53,17 +56,14 @@ export default function MyEspaces() {
           const refreshRes = await API.post('/auth/refresh');
           localStorage.setItem('token', refreshRes.data.token);
           localStorage.setItem('role', refreshRes.data.role);
-          if (refreshRes.data.nom) localStorage.setItem('nom', refreshRes.data.nom);
+          if (refreshRes.data.nom)   localStorage.setItem('nom', refreshRes.data.nom);
           if (refreshRes.data.email) localStorage.setItem('email', refreshRes.data.email);
-          showToast(`Espace créé ! Vous êtes maintenant Admin Espace.`);
+          showToast('Espace créé ! Vous êtes maintenant Admin Espace.');
           setTimeout(() => window.location.reload(), 1500);
           return;
-        } catch (err) {
+        } catch {
           showToast('Reconnexion nécessaire...', 'error');
-          setTimeout(() => {
-            localStorage.clear();
-            window.location.href = '/login';
-          }, 2000);
+          setTimeout(() => { localStorage.clear(); window.location.href = '/login'; }, 2000);
           return;
         }
       }
@@ -73,196 +73,338 @@ export default function MyEspaces() {
       load();
     } catch (e) {
       showToast(e.response?.data?.error || 'Erreur création', 'error');
-    }
-  };
-
-  const handleInvite = async () => {
-    if (!inviteEmail.trim() || !selectedEspace) return;
-    try {
-      await API.post(`/espaces/${selectedEspace.id}/invite`, { email: inviteEmail.trim() });
-      showToast('Invitation envoyée');
-      setInviteEmail('');
-      setTimeout(() => {
-        API.get(`/espaces/${selectedEspace.id}/members`).then(r => setMembers(r.data));
-      }, 300);
-    } catch (e) {
-      showToast(e.response?.data?.error || 'Erreur invitation', 'error');
+    } finally {
+      setCreating(false);
     }
   };
 
   return (
     <AppLayout>
+      {/* Toast */}
       {toast && (
-        <div className={`fixed top-6 right-6 px-4 py-2 rounded-lg shadow-lg z-50 ${
-          toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
-        }`}>{toast.msg}</div>
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          padding: '12px 20px', borderRadius: 8,
+          background: toast.type === 'error' ? '#c0392b' : '#2e7d32',
+          color: '#fff', fontWeight: 600, fontSize: 14,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+        }}>
+          {toast.msg}
+        </div>
       )}
 
-      <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">Mes Espaces</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Gérez vos espaces collaboratifs et leurs membres
-          </p>
-        </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Créer un espace
-        </button>
-      </div>
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 0 24px' }}>
+        {/* Titre */}
+        <p style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: '13px',
+          color: 'var(--wings-text-muted)',
+          marginBottom: '20px',
+          letterSpacing: '0.5px',
+        }}>
+          Mes Espaces
+        </p>
 
-      {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement...</div>
-      ) : error ? (
-        <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg">{error}</div>
-      ) : espaces.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-xl p-12 text-center border border-slate-200 dark:border-slate-700">
-          <FolderOpen className="w-12 h-12 mx-auto text-slate-300 mb-4" />
-          <p className="text-slate-600 dark:text-slate-300 font-medium mb-2">Aucun espace pour le moment</p>
-          <p className="text-sm text-slate-400">Créez votre premier espace pour collaborer avec d'autres utilisateurs.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Liste des espaces */}
-          <div className="lg:col-span-1 space-y-2">
+        {loading ? (
+          <p style={{ color: 'var(--wings-text-muted)', fontSize: '13px' }}>Chargement…</p>
+        ) : error ? (
+          <p style={{ color: 'var(--wings-gold)', fontSize: '13px' }}>{error}</p>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '14px',
+          }}>
+            {/* Card Nouvel espace */}
+            <NewEspaceCard onClick={() => setShowCreate(true)} />
+
+            {/* Cards espaces */}
             {espaces.map(e => (
-              <motion.div
+              <EspaceCard
                 key={e.id}
-                whileHover={{ scale: 1.01 }}
+                espace={e}
                 onClick={() => navigate(`/espace/${e.id}`)}
-                className={`p-4 rounded-xl cursor-pointer border transition-colors ${
-                  selectedEspace?.id === e.id
-                    ? 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-300'
-                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-cyan-200'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center">
-                    <FolderOpen className="w-5 h-5 text-cyan-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">{e.nom}</p>
-                    {e.role === 'admin' ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">ADMIN</span>
-                    ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded-full">MEMBRE</span>
-                    )}
-                    {e.role === 'admin' ? (
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Vous gérez cet espace</p>
-                    ) : (
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Vous êtes membre</p>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
+              />
             ))}
           </div>
-
-          {/* Détails espace sélectionné */}
-          <div className="lg:col-span-2">
-            {!selectedEspace ? (
-              <div className="bg-white dark:bg-slate-800 rounded-xl p-12 text-center border border-slate-200 dark:border-slate-700">
-                <p className="text-slate-500 dark:text-slate-400">Sélectionnez un espace pour voir ses détails</p>
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <div className="p-5 border-b border-slate-100 dark:border-slate-700">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{selectedEspace.nom}</h2>
-                </div>
-
-                {/* Inviter un membre */}
-                <div className="p-5 border-b border-slate-100 dark:border-slate-700">
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">
-                    Inviter un membre par email
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      placeholder="email@exemple.com"
-                      value={inviteEmail}
-                      onChange={e => setInviteEmail(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleInvite()}
-                      className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                    />
-                    <button
-                      onClick={handleInvite}
-                      className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium"
-                    >
-                      <Mail className="w-4 h-4" />
-                      Inviter
-                    </button>
-                  </div>
-                </div>
-
-                {/* Liste membres */}
-                <div className="p-5">
-                  <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Membres ({members.length})
-                  </h3>
-                  {members.length === 0 ? (
-                    <p className="text-sm text-slate-400">Aucun membre pour le moment</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {members.map(m => (
-                        <div key={m.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center text-xs font-bold">
-                              {(m.nom || m.email)[0].toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{m.nom}</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">{m.email}</p>
-                            </div>
-                          </div>
-                          {m.is_admin && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">ADMIN</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Modale création */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">Créer un nouvel espace</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+        <div
+          onClick={() => { setShowCreate(false); setNewName(''); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: '440px',
+              background: 'var(--wings-surface)',
+              border: '0.5px solid var(--wings-border)',
+              borderRadius: '16px',
+              padding: '28px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <h2 style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: '20px',
+                fontWeight: 400,
+                color: 'var(--wings-text)',
+                margin: 0,
+              }}>
+                Nouvel espace
+              </h2>
+              <button
+                onClick={() => { setShowCreate(false); setNewName(''); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wings-text-muted)', padding: '4px' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '12px', color: 'var(--wings-text-muted)', marginBottom: '20px' }}>
               Vous deviendrez Admin de cet espace et pourrez y inviter d'autres utilisateurs.
             </p>
+
             <input
               type="text"
-              placeholder="Nom de l'espace"
+              placeholder="Nom de l'espace…"
               value={newName}
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
               autoFocus
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm mb-4 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: '8px',
+                background: 'var(--wings-bg)',
+                color: 'var(--wings-text)',
+                fontSize: '13px',
+                marginBottom: '16px',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
             />
-            <div className="flex gap-2 justify-end">
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => { setShowCreate(false); setNewName(''); }}
-                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
-              >Annuler</button>
+                style={{
+                  padding: '8px 20px',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: '8px',
+                  background: 'transparent',
+                  color: 'var(--wings-text-muted)',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                Annuler
+              </button>
               <button
                 onClick={handleCreate}
-                disabled={!newName.trim()}
-                className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
-              >Créer</button>
+                disabled={!newName.trim() || creating}
+                style={{
+                  padding: '8px 20px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: !newName.trim() || creating ? 'rgba(79,139,255,0.3)' : 'var(--wings-blue)',
+                  color: '#fff',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: !newName.trim() || creating ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {creating ? 'Création…' : 'Créer'}
+              </button>
             </div>
           </div>
         </div>
       )}
     </AppLayout>
+  );
+}
+
+/* ── Card Nouvel espace ─── */
+function NewEspaceCard({ onClick }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        minHeight: '200px',
+        border: `1px dashed ${hovered ? 'rgba(255,193,7,0.6)' : 'rgba(255,193,7,0.4)'}`,
+        borderRadius: '14px',
+        background: hovered ? 'rgba(255,193,7,0.08)' : 'rgba(255,193,7,0.03)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        padding: '24px',
+      }}
+    >
+      <div style={{
+        width: 44, height: 44,
+        borderRadius: '50%',
+        background: 'rgba(255,193,7,0.12)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '24px',
+        color: 'var(--wings-gold)',
+        lineHeight: 1,
+      }}>
+        +
+      </div>
+      <div style={{
+        fontFamily: 'Georgia, serif',
+        fontSize: '14px',
+        color: 'var(--wings-gold)',
+        marginTop: '12px',
+      }}>
+        Nouvel espace
+      </div>
+      <div style={{
+        fontSize: '11px',
+        color: 'var(--wings-text-muted)',
+        marginTop: '4px',
+        textAlign: 'center',
+      }}>
+        Crée un espace pour ton équipe
+      </div>
+    </div>
+  );
+}
+
+/* ── Card Espace ─── */
+function EspaceCard({ espace, onClick }) {
+  const [hovered, setHovered] = useState(false);
+  const { accent, faint } = colorFromName(espace.nom);
+  const initiale = (espace.nom || '?')[0].toUpperCase();
+  const isAdmin = espace.role === 'admin';
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'relative',
+        borderRadius: '14px',
+        padding: '20px',
+        border: `0.5px solid ${hovered ? accent : faint}`,
+        background: hovered ? 'rgba(79,139,255,0.04)' : `rgba(79,139,255,0.02)`,
+        cursor: 'pointer',
+        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        transition: 'all 0.2s',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Bandeau accent en haut */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0,
+        height: '2px',
+        background: accent,
+        opacity: 0.6,
+      }} />
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+        {/* Avatar */}
+        <div style={{
+          width: 44, height: 44,
+          borderRadius: '12px',
+          background: accent,
+          color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'Georgia, serif',
+          fontSize: '20px',
+          boxShadow: `0 0 16px ${faint}`,
+          flexShrink: 0,
+        }}>
+          {initiale}
+        </div>
+
+        {/* Badge rôle */}
+        {isAdmin ? (
+          <span style={{
+            fontFamily: 'monospace',
+            fontSize: '8px',
+            letterSpacing: '1px',
+            padding: '3px 7px',
+            borderRadius: '4px',
+            background: 'rgba(255,193,7,0.18)',
+            color: 'var(--wings-gold)',
+            border: '0.5px solid var(--wings-gold)',
+          }}>
+            ADMIN
+          </span>
+        ) : (
+          <span style={{
+            fontFamily: 'monospace',
+            fontSize: '8px',
+            letterSpacing: '1px',
+            padding: '3px 7px',
+            borderRadius: '4px',
+            background: 'rgba(168,180,212,0.1)',
+            color: 'var(--wings-text-muted)',
+            border: '0.5px solid rgba(168,180,212,0.2)',
+          }}>
+            MEMBRE
+          </span>
+        )}
+      </div>
+
+      {/* Nom */}
+      <div style={{
+        fontFamily: 'Georgia, serif',
+        fontSize: '17px',
+        color: 'var(--wings-text)',
+        fontWeight: 400,
+        marginBottom: '14px',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}>
+        {espace.nom}
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: 'flex', gap: '14px', marginBottom: '10px' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--wings-text-muted)' }}>
+          <Users size={12} style={{ color: accent, opacity: 0.7, flexShrink: 0 }} />
+          {espace.nb_membres ?? '—'} membres
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--wings-text-muted)' }}>
+          <FileText size={12} style={{ color: accent, opacity: 0.7, flexShrink: 0 }} />
+          {espace.nb_fichiers ?? '—'} fichiers
+        </span>
+      </div>
+
+      {/* Footer */}
+      <div style={{
+        paddingTop: '10px',
+        borderTop: '0.5px solid rgba(168,180,212,0.08)',
+      }}>
+        <span style={{
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          color: 'var(--wings-text-muted)',
+        }}>
+          {formatDate(espace.date_creation || espace.date_activite) || 'Actif'}
+        </span>
+      </div>
+    </div>
   );
 }

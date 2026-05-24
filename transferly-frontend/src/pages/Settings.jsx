@@ -5,14 +5,30 @@ import API from '../api/auth';
 
 function Section({ icon: Icon, title, children }) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-slate-700">
-        <div className="w-8 h-8 rounded-lg bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center">
-          <Icon className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+    <div style={{
+      background: 'var(--wings-surface)',
+      border: '0.5px solid var(--wings-border)',
+      borderRadius: 16, overflow: 'hidden',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '14px 22px',
+        borderBottom: '0.5px solid var(--wings-border)',
+      }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 8,
+          background: 'rgba(79,139,255,0.08)',
+          border: '0.5px solid rgba(79,139,255,0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <Icon size={14} color="var(--wings-blue)" />
         </div>
-        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{title}</h2>
+        <span style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500 }}>{title}</span>
       </div>
-      <div className="px-6 py-5 space-y-4">{children}</div>
+      <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -21,23 +37,42 @@ function Field({ label, type = 'text', placeholder, value, onChange }) {
   const [show, setShow] = useState(false);
   const isPassword = type === 'password';
   return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</label>
-      <div className="relative">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{
+        fontFamily: 'monospace', fontSize: '10px',
+        letterSpacing: '2px', color: 'var(--wings-gold)',
+        textTransform: 'uppercase',
+      }}>
+        {label}
+      </label>
+      <div style={{ position: 'relative' }}>
         <input
           type={isPassword && !show ? 'password' : 'text'}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+          style={{
+            width: '100%',
+            padding: isPassword ? '10px 40px 10px 14px' : '10px 14px',
+            background: 'var(--wings-bg)',
+            border: '0.5px solid var(--wings-border)',
+            borderRadius: 10, color: 'var(--wings-text)',
+            fontSize: 13, outline: 'none', boxSizing: 'border-box',
+          }}
+          onFocus={e => e.target.style.borderColor = 'var(--wings-blue)'}
+          onBlur={e => e.target.style.borderColor = 'var(--wings-border)'}
         />
         {isPassword && (
           <button
             type="button"
             onClick={() => setShow(s => !s)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            style={{
+              position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', color: 'var(--wings-text-muted)',
+              cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center',
+            }}
           >
-            {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {show ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
         )}
       </div>
@@ -47,16 +82,36 @@ function Field({ label, type = 'text', placeholder, value, onChange }) {
 
 function Toggle({ label, description, checked, onChange }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
       <div>
-        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{label}</p>
-        {description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>}
+        <p style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, margin: 0, marginBottom: description ? 2 : 0 }}>
+          {label}
+        </p>
+        {description && (
+          <p style={{ color: 'var(--wings-text-muted)', fontSize: 11, margin: 0 }}>
+            {description}
+          </p>
+        )}
       </div>
       <button
         onClick={onChange}
-        className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 ${checked ? 'bg-cyan-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+        style={{
+          position: 'relative', flexShrink: 0,
+          width: 44, height: 24, borderRadius: 999,
+          border: 'none', cursor: 'pointer',
+          background: checked ? 'var(--wings-blue)' : 'rgba(168,180,212,0.2)',
+          transition: 'background 0.2s',
+          outline: 'none',
+        }}
       >
-        <span className={`absolute top-[3px] left-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform duration-200 ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+        <span style={{
+          position: 'absolute', top: 3, left: 3,
+          width: 18, height: 18,
+          background: '#fff', borderRadius: '50%',
+          transition: 'transform 0.2s',
+          transform: checked ? 'translateX(20px)' : 'translateX(0)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+        }} />
       </button>
     </div>
   );
@@ -104,13 +159,12 @@ export default function Settings() {
     try {
       await API.put('/me/preferences', { [key]: newValue });
     } catch {
-      // Revert on failure
       setPrefs(p => ({ ...p, [key]: !newValue }));
     }
   };
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm('⚠️ ATTENTION : Cette action est irréversible. Tous vos fichiers, partages et données seront définitivement supprimés. Confirmer ?')) return;
+    if (!window.confirm('ATTENTION : Cette action est irréversible. Tous vos fichiers, partages et données seront définitivement supprimés. Confirmer ?')) return;
     if (!window.confirm('Dernière confirmation : tapez OK pour supprimer définitivement votre compte.')) return;
     try {
       await API.delete('/me');
@@ -155,25 +209,41 @@ export default function Settings() {
     }
   };
 
+  const quotaPct = quota?.pourcentage_utilise ?? 0;
+  const quotaBarColor =
+    quotaPct >= 90 ? '#e57373' :
+    quotaPct >= 70 ? 'var(--wings-gold)' :
+                     'var(--wings-blue)';
+
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        {/* Header */}
+        {/* En-tête */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Paramètres</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Gérez votre compte et vos préférences</p>
+          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+            Paramètres
+          </h1>
+          <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>
+            Gérez votre compte et vos préférences
+          </p>
         </div>
 
-        {/* Error banner */}
+        {/* Bannière erreur */}
         {error && (
-          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 14px', borderRadius: 10, fontSize: 13,
+            background: 'rgba(229,115,115,0.08)',
+            border: '0.5px solid rgba(229,115,115,0.3)',
+            color: '#e57373',
+          }}>
+            <AlertCircle size={14} style={{ flexShrink: 0 }} />
             {error}
           </div>
         )}
 
-        {/* Profile */}
+        {/* Profil */}
         <Section icon={User} title="Profil">
           <Field label="Nom complet" value={nom} onChange={e => setNom(e.target.value)} placeholder="Votre nom" />
           <Field label="Adresse e-mail" value={email} onChange={e => setEmail(e.target.value)} placeholder="votre@email.fr" />
@@ -181,39 +251,44 @@ export default function Settings() {
 
         {/* Stockage */}
         {quota && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">Stockage</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          <div style={{
+            background: 'var(--wings-surface)',
+            border: '0.5px solid var(--wings-border)',
+            borderRadius: 16, padding: '20px 22px',
+          }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+              Stockage
+            </h3>
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 12, margin: 0, marginBottom: 16 }}>
               Espace utilisé sur votre quota personnel.
             </p>
 
-            <div className="flex items-baseline justify-between mb-2">
-              <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
-                {(quota.quota_utilise_mb ?? 0).toFixed(2)}<span className="text-base font-medium text-slate-400"> Mo</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontFamily: 'Georgia, serif', fontSize: 26, color: 'var(--wings-text)', fontWeight: 400 }}>
+                {(quota.quota_utilise_mb ?? 0).toFixed(2)}
+                <span style={{ fontSize: 13, color: 'var(--wings-text-muted)', marginLeft: 4 }}>Mo</span>
               </span>
-              <span className="text-sm text-slate-500">sur {(quota.quota_total_mb ?? 0).toFixed(0)} Mo</span>
+              <span style={{ color: 'var(--wings-text-muted)', fontSize: 12 }}>
+                sur {(quota.quota_total_mb ?? 0).toFixed(0)} Mo
+              </span>
             </div>
 
-            <div className="w-full h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  (quota.pourcentage_utilise ?? 0) >= 90
-                    ? 'bg-red-500'
-                    : (quota.pourcentage_utilise ?? 0) >= 70
-                    ? 'bg-amber-500'
-                    : 'bg-cyan-500'
-                }`}
-                style={{ width: `${Math.min(100, quota.pourcentage_utilise ?? 0)}%` }}
-              />
+            <div style={{ width: '100%', height: 6, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+              <div style={{
+                height: '100%', borderRadius: 999,
+                width: `${Math.min(100, quotaPct)}%`,
+                background: quotaBarColor,
+                transition: 'width 0.4s ease',
+              }} />
             </div>
 
-            <p className="text-xs text-slate-400 mt-2">
-              {(quota.pourcentage_utilise ?? 0)}% de votre espace utilisé
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 11, marginTop: 6, marginBottom: 0 }}>
+              {quotaPct}% de votre espace utilisé
             </p>
           </div>
         )}
 
-        {/* Security */}
+        {/* Sécurité */}
         <Section icon={Lock} title="Sécurité">
           <Field label="Mot de passe actuel" type="password" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} placeholder="••••••••" />
           <Field label="Nouveau mot de passe" type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder="••••••••" />
@@ -228,43 +303,62 @@ export default function Settings() {
           <Toggle label="Résumé hebdomadaire" description="Recevoir un rapport d'activité chaque semaine" checked={prefs.notif_resume_hebdo} onChange={() => handleToggle('notif_resume_hebdo')} />
         </Section>
 
-        {/* Privacy */}
+        {/* Confidentialité */}
         <Section icon={Shield} title="Confidentialité">
           <Toggle label="Profil visible" description="Permettre aux autres utilisateurs de vous trouver par e-mail" checked={prefs.confidentialite_profil_visible} onChange={() => handleToggle('confidentialite_profil_visible')} />
           <Toggle label="Historique de connexion" description="Conserver l'historique de vos connexions (90 jours)" checked={prefs.confidentialite_historique_connexion} onChange={() => handleToggle('confidentialite_historique_connexion')} />
         </Section>
 
-        {/* Danger zone */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-red-200 dark:border-red-900/40 overflow-hidden">
-          <div className="px-6 py-4 border-b border-red-100 dark:border-red-900/30">
-            <h2 className="text-sm font-semibold text-red-600 dark:text-red-400">Zone de danger</h2>
+        {/* Zone de danger */}
+        <div style={{
+          background: 'var(--wings-surface)',
+          border: '0.5px solid rgba(229,115,115,0.3)',
+          borderRadius: 16, overflow: 'hidden',
+        }}>
+          <div style={{ padding: '14px 22px', borderBottom: '0.5px solid rgba(229,115,115,0.2)' }}>
+            <span style={{ color: '#e57373', fontSize: 12, fontFamily: 'monospace', letterSpacing: '1px', textTransform: 'uppercase' }}>
+              Zone de danger
+            </span>
           </div>
-          <div className="px-6 py-5">
+          <div style={{ padding: '18px 22px' }}>
             <button
               onClick={handleDeleteAccount}
-              className="flex items-center justify-between w-full text-left hover:opacity-80 transition"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', background: 'none', border: 'none',
+                cursor: 'pointer', textAlign: 'left', padding: 0,
+              }}
             >
               <div>
-                <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Supprimer mon compte</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Cette action est irréversible. Toutes vos données seront effacées.</p>
+                <p style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, margin: 0, marginBottom: 2 }}>
+                  Supprimer mon compte
+                </p>
+                <p style={{ color: 'var(--wings-text-muted)', fontSize: 11, margin: 0 }}>
+                  Cette action est irréversible. Toutes vos données seront effacées.
+                </p>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
+              <ChevronRight size={14} style={{ color: 'var(--wings-text-muted)', flexShrink: 0 }} />
             </button>
           </div>
         </div>
 
-        {/* Save */}
-        <div className="flex justify-end">
+        {/* Enregistrer */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 8 }}>
           <button
             onClick={handleSave}
             disabled={loading}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition disabled:opacity-60 ${
-              saved
-                ? 'bg-emerald-500 text-white'
-                : 'bg-cyan-500 hover:bg-cyan-600 text-white'
-            }`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '10px 22px',
+              background: saved ? '#059669' : 'var(--wings-blue)',
+              border: 'none', borderRadius: 999,
+              color: '#fff', fontSize: 13, fontWeight: 500,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              transition: 'background 0.2s',
+            }}
           >
-            {saved && <Check className="w-4 h-4" />}
+            {saved && <Check size={14} />}
             {saved ? 'Sauvegardé' : loading ? 'Enregistrement…' : 'Enregistrer les modifications'}
           </button>
         </div>

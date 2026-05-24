@@ -77,7 +77,7 @@ function NavItem({ to, icon: Icon, label, onClick, active = false, extraClass = 
   );
 }
 
-export default function AppLayout({ children }) {
+export default function AppLayout({ children, titleNode }) {
   const [dark, setDark] = useState(() => localStorage.getItem('darkMode') === 'true');
   const navigate = useNavigate();
   const location = useLocation();
@@ -256,15 +256,17 @@ export default function AppLayout({ children }) {
           background: 'var(--wings-surface)',
           flexShrink: 0,
         }}>
-          <h1 style={{
-            fontFamily: 'Georgia, serif',
-            fontSize: '24px',
-            color: 'var(--wings-text)',
-            fontWeight: 400,
-            margin: 0,
-          }}>
-            {pageTitle}
-          </h1>
+          {titleNode ?? (
+            <h1 style={{
+              fontFamily: 'Georgia, serif',
+              fontSize: '24px',
+              color: 'var(--wings-text)',
+              fontWeight: 400,
+              margin: 0,
+            }}>
+              {pageTitle}
+            </h1>
+          )}
 
           <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
             <button

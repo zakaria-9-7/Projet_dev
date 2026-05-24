@@ -497,60 +497,135 @@ function ShareModal({ fichier, onClose, onSuccess }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)',
+      }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+        style={{
+          width: '100%', maxWidth: 440,
+          background: 'var(--wings-surface)',
+          border: '0.5px solid var(--wings-border)',
+          borderRadius: 16,
+          boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+          overflow: 'hidden',
+        }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 truncate pr-4">
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '18px 24px',
+          borderBottom: '0.5px solid var(--wings-border)',
+        }}>
+          <h2 style={{
+            fontFamily: 'Georgia, serif',
+            fontSize: 20, fontWeight: 400,
+            color: 'var(--wings-text)',
+            margin: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            paddingRight: 16,
+          }}>
             Partager &laquo;&nbsp;{fichier.name}&nbsp;&raquo;
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition shrink-0"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--wings-text-muted)', padding: 6,
+              borderRadius: 8, flexShrink: 0,
+              display: 'flex', alignItems: 'center',
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; }}
           >
-            <X className="w-4 h-4" />
+            <X size={16} />
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Recherche utilisateur */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">
+            <label style={{
+              display: 'block',
+              fontFamily: 'monospace',
+              fontSize: 10, fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              color: 'var(--wings-gold)',
+              marginBottom: 8,
+            }}>
               Destinataire
             </label>
-            <div className="relative">
+            <div style={{ position: 'relative' }}>
               <input
-                className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 outline-none focus:border-cyan-400 transition"
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '9px 12px',
+                  background: 'var(--wings-bg)',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 8,
+                  color: 'var(--wings-text)',
+                  fontSize: 13,
+                  outline: 'none',
+                  transition: 'border-color 0.15s',
+                }}
                 placeholder="Rechercher un utilisateur…"
                 value={search}
                 onChange={e => { setSearch(e.target.value); setSelected(null); }}
+                onFocus={e => { e.target.style.borderColor = 'var(--wings-blue)'; }}
+                onBlur={e => { e.target.style.borderColor = 'var(--wings-border)'; }}
                 autoFocus
               />
               {search.length >= 2 && !selected && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-10 max-h-44 overflow-y-auto">
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0,
+                  marginTop: 4,
+                  background: 'var(--wings-surface)',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 8,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  zIndex: 10,
+                  maxHeight: 176, overflowY: 'auto',
+                }}>
                   {loadingU && (
-                    <div className="px-4 py-3 text-xs text-slate-400 text-center">Recherche…</div>
+                    <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--wings-text-muted)', textAlign: 'center' }}>Recherche…</div>
                   )}
                   {!loadingU && results.length === 0 && (
-                    <div className="px-4 py-3 text-xs text-slate-400 text-center">Aucun résultat</div>
+                    <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--wings-text-muted)', textAlign: 'center' }}>Aucun résultat</div>
                   )}
                   {results.map(u => (
                     <button
                       key={u.id}
-                      className="flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-cyan-50 dark:hover:bg-cyan-900/20 border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        width: '100%', padding: '10px 14px',
+                        background: 'transparent', border: 'none',
+                        borderBottom: '0.5px solid var(--wings-border)',
+                        cursor: 'pointer', textAlign: 'left',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(79,139,255,0.06)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                       onClick={() => { setSelected(u); setSearch(u.nom); setResults([]); }}
                     >
-                      <div className="w-7 h-7 rounded-full bg-cyan-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: 'var(--wings-blue)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0,
+                      }}>
                         {u.nom[0].toUpperCase()}
                       </div>
                       <div>
-                        <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">{u.nom}</div>
-                        <div className="text-xs text-slate-400">{u.email}</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)' }}>{u.nom}</div>
+                        <div style={{ fontSize: 11, color: 'var(--wings-text-muted)' }}>{u.email}</div>
                       </div>
                     </button>
                   ))}
@@ -558,19 +633,32 @@ function ShareModal({ fichier, onClose, onSuccess }) {
               )}
             </div>
             {selected && (
-              <div className="flex items-center gap-3 mt-2 px-3 py-2.5 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-700 rounded-lg">
-                <div className="w-7 h-7 rounded-full bg-cyan-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                marginTop: 8, padding: '10px 12px',
+                background: 'rgba(79,139,255,0.06)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 8,
+              }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: 'var(--wings-blue)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0,
+                }}>
                   {selected.nom[0].toUpperCase()}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selected.nom}</div>
-                  <div className="text-xs text-slate-400">{selected.email}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)' }}>{selected.nom}</div>
+                  <div style={{ fontSize: 11, color: 'var(--wings-text-muted)' }}>{selected.email}</div>
                 </div>
                 <button
-                  className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 text-lg leading-none"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wings-text-muted)', padding: 4, display: 'flex', transition: 'color 0.15s' }}
                   onClick={() => { setSelected(null); setSearch(''); }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; }}
                 >
-                  <X className="w-4 h-4" />
+                  <X size={14} />
                 </button>
               </div>
             )}
@@ -578,21 +666,56 @@ function ShareModal({ fichier, onClose, onSuccess }) {
 
           {/* Permissions */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">
+            <label style={{
+              display: 'block',
+              fontFamily: 'monospace',
+              fontSize: 10, fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              color: 'var(--wings-gold)',
+              marginBottom: 10,
+            }}>
               Permissions
             </label>
-            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               {SHARE_PERMS.map(({ key, label }) => (
-                <label key={key} className="flex items-center justify-between py-2.5 cursor-pointer select-none">
-                  <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+                <label
+                  key={key}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 0',
+                    borderBottom: '0.5px solid var(--wings-border)',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: 'var(--wings-text)' }}>{label}</span>
                   <button
                     type="button"
                     role="switch"
                     aria-checked={perms[key]}
                     onClick={() => setPerms(p => ({ ...p, [key]: !p[key] }))}
-                    className={`relative w-10 h-6 rounded-full transition-colors ${perms[key] ? 'bg-cyan-500' : 'bg-slate-200 dark:bg-slate-600'}`}
+                    style={{
+                      position: 'relative',
+                      width: 36, height: 20,
+                      borderRadius: 999,
+                      border: 'none', cursor: 'pointer',
+                      background: perms[key] ? 'var(--wings-blue)' : 'rgba(168,180,212,0.2)',
+                      transition: 'background 0.2s',
+                      flexShrink: 0,
+                    }}
                   >
-                    <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${perms[key] ? 'translate-x-5' : 'translate-x-1'}`} />
+                    <span style={{
+                      position: 'absolute',
+                      top: 2,
+                      left: perms[key] ? 18 : 2,
+                      width: 16, height: 16,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                      transition: 'left 0.2s',
+                      display: 'block',
+                    }} />
                   </button>
                 </label>
               ))}
@@ -601,17 +724,48 @@ function ShareModal({ fichier, onClose, onSuccess }) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-700">
+        <div style={{
+          display: 'flex', justifyContent: 'flex-end', gap: 10,
+          padding: '14px 24px',
+          borderTop: '0.5px solid var(--wings-border)',
+        }}>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            style={{
+              padding: '8px 20px', fontSize: 13,
+              background: 'transparent',
+              border: '0.5px solid var(--wings-border)',
+              borderRadius: 999,
+              color: 'var(--wings-text-muted)',
+              cursor: 'pointer',
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'var(--wings-text-muted)';
+              e.currentTarget.style.color = 'var(--wings-text)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = 'var(--wings-border)';
+              e.currentTarget.style.color = 'var(--wings-text-muted)';
+            }}
           >
             Annuler
           </button>
           <button
             onClick={submit}
             disabled={!selected || submitting}
-            className="px-5 py-2 text-sm font-semibold text-white bg-cyan-500 hover:bg-cyan-600 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              padding: '8px 24px', fontSize: 13, fontWeight: 500,
+              background: 'var(--wings-blue)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 999,
+              cursor: !selected || submitting ? 'not-allowed' : 'pointer',
+              opacity: !selected || submitting ? 0.5 : 1,
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => { if (selected && !submitting) e.currentTarget.style.background = 'var(--wings-blue-dark)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--wings-blue)'; }}
           >
             {submitting ? 'Envoi…' : 'Partager'}
           </button>

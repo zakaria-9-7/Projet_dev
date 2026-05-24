@@ -5,21 +5,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FileText } from "lucide-react";
+import { FileText, X } from "lucide-react";
 import API from "../api/auth";
 import AppLayout from "../components/AppLayout";
-
-const C = {
-  primary: "#00BCD4",
-  primaryDark: "#0097A7",
-  primaryLight: "#E0F7FA",
-  card: "#FFFFFF",
-  ink: "#212121",
-  muted: "#757575",
-  line: "#E0E0E0",
-  red: "#F44336",
-  green: "#4CAF50",
-};
 
 const PERM_COLS = [
   { key: "lecture",      label: "Peut consulter" },
@@ -27,6 +15,16 @@ const PERM_COLS = [
   { key: "suppression", label: "Peut supprimer" },
   { key: "partage",     label: "Peut partager" },
 ];
+
+function avatarColor(name) {
+  const PALETTE = [
+    'var(--wings-blue)', '#b07cce', '#5dd39e',
+    'var(--wings-gold)', '#e57373', '#64b5f6', '#9575cd',
+  ];
+  let h = 0;
+  for (const c of (name || '')) h = c.charCodeAt(0) + ((h << 5) - h);
+  return PALETTE[Math.abs(h) % PALETTE.length];
+}
 
 export default function AdminEspace() {
   const [searchParams] = useSearchParams();
@@ -113,98 +111,139 @@ export default function AdminEspace() {
       })).data;
       setRules(prev => [...prev, newRule]);
       setAddModal(false);
-      showToast("Accès partagé ✓");
+      showToast("Accès partagé");
     } catch (e) { showToast(e.message, "error"); }
   };
 
   if (loading) return <AppLayout><Loading /></AppLayout>;
-  if (error) return <AppLayout><ErrorScreen msg={error} onRetry={load} /></AppLayout>;
+  if (error)   return <AppLayout><ErrorScreen msg={error} onRetry={load} /></AppLayout>;
+
+  const colHeaderStyle = {
+    fontFamily: 'monospace', fontSize: '10px', letterSpacing: '2px',
+    color: 'var(--wings-text-muted)', opacity: 0.6, textTransform: 'uppercase',
+  };
 
   return (
     <AppLayout>
-      <div style={S.page}>
+      <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
         {toast && <Toast msg={toast.msg} type={toast.type} />}
 
         {/* En-tête */}
-        <div style={S.pageHeader}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <h1 style={S.pageTitle}>Partager un fichier</h1>
-            <p style={S.pageSubtitle}>Choisissez avec qui partager ce fichier et ce qu&apos;ils peuvent faire</p>
+            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+              Partager un fichier
+            </h1>
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>
+              Choisissez avec qui partager ce fichier et ce qu'ils peuvent faire
+            </p>
           </div>
-          <button style={S.addBtn} onClick={() => setAddModal(true)} disabled={!selectedFichier}>
+          <button
+            onClick={() => setAddModal(true)}
+            disabled={!selectedFichier}
+            style={{
+              padding: '10px 20px',
+              background: 'var(--wings-blue)',
+              border: 'none', borderRadius: 999,
+              color: '#fff', fontSize: 13, fontWeight: 500,
+              cursor: selectedFichier ? 'pointer' : 'not-allowed',
+              opacity: selectedFichier ? 1 : 0.5,
+              whiteSpace: 'nowrap', flexShrink: 0,
+            }}
+          >
             + Partager avec une personne
           </button>
         </div>
 
         {/* Encart fichier sélectionné */}
         {selectedFichier && (
-          <div className="mb-6 flex items-center gap-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div className="w-10 h-10 rounded-lg bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-cyan-500" />
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            background: 'var(--wings-surface)',
+            border: '0.5px solid var(--wings-border)',
+            borderRadius: 12, padding: '14px 18px',
+          }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'rgba(79,139,255,0.08)',
+              border: '0.5px solid rgba(79,139,255,0.15)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <FileText size={15} color="var(--wings-blue)" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <p style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, margin: 0, marginBottom: 2 }}>
                 {selectedFichier.nom || 'Fichier'}
               </p>
-              <p className="text-xs text-slate-500">Gérez les personnes ayant accès à ce fichier</p>
+              <p style={{ color: 'var(--wings-text-muted)', fontSize: 11, margin: 0 }}>
+                Gérez les personnes ayant accès à ce fichier
+              </p>
             </div>
           </div>
         )}
 
         {/* Panneau permissions */}
-        <div style={S.permPanel}>
+        <div style={{
+          background: 'var(--wings-surface)',
+          border: '0.5px solid var(--wings-border)',
+          borderRadius: 14, overflow: 'hidden',
+        }}>
           {!selectedFichier ? (
-            <div style={S.empty}>Aucun fichier sélectionné</div>
+            <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+              Aucun fichier sélectionné
+            </div>
           ) : (
             <>
-              <div style={S.permHeader}>
-                <div style={S.permTitle}>
-                  Personnes ayant accès à
-                  <span style={{ color: C.primary, marginLeft: 6 }}>{selectedFichier.nom}</span>
+              <div style={{ padding: '16px 20px', borderBottom: '0.5px solid var(--wings-border)' }}>
+                <div style={{ color: 'var(--wings-text)', fontSize: 14, fontWeight: 500, marginBottom: 2 }}>
+                  Personnes ayant accès à{' '}
+                  <span style={{ color: 'var(--wings-blue)' }}>{selectedFichier.nom}</span>
                 </div>
-                <div style={S.permSubtitle}>Cochez ce que chaque personne peut faire</div>
+                <div style={{ color: 'var(--wings-text-muted)', fontSize: 12 }}>
+                  Cochez ce que chaque personne peut faire
+                </div>
               </div>
 
               {loadingRules ? (
-                <div style={{ padding: 20, color: C.muted, textAlign: "center" }}>Chargement…</div>
+                <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+                  Chargement…
+                </div>
               ) : (
-                <table style={S.table}>
-                  <thead>
-                    <tr style={S.theadRow}>
-                      <th style={S.th}>Personne</th>
-                      {PERM_COLS.map(p => (
-                        <th key={p.key} style={{ ...S.th, textAlign: "center" }}>{p.label}</th>
-                      ))}
-                      <th style={{ ...S.th, textAlign: "center" }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div style={{ padding: '12px 20px' }}>
+                  {/* En-tête colonnes */}
+                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 0', marginBottom: 6 }}>
+                    <span style={{ ...colHeaderStyle, flex: 1 }}>Personne</span>
+                    {PERM_COLS.map(p => (
+                      <span key={p.key} style={{ ...colHeaderStyle, flex: '0 0 120px', textAlign: 'center' }}>
+                        {p.label}
+                      </span>
+                    ))}
+                    <span style={{ ...colHeaderStyle, flex: '0 0 140px', textAlign: 'center' }}>Actions</span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {rules.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} style={{ padding: "32px 0", textAlign: "center", color: C.muted, fontSize: 13 }}>
-                          Personne n&apos;a encore accès à ce fichier.
-                          <br />Cliquez sur &quot;+ Partager avec une personne&quot; pour commencer.
-                        </td>
-                      </tr>
+                      <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+                        Personne n'a encore accès à ce fichier.
+                        <br />Cliquez sur "+ Partager avec une personne" pour commencer.
+                      </div>
                     ) : rules.map((rule, i) => (
                       <PermRow
                         key={rule.id}
                         rule={rule}
-                        isLast={i === rules.length - 1}
                         saving={saving}
                         onToggle={togglePerm}
                         onRevoke={() => revoke(rule.id, rule.user_nom)}
                         onEdit={() => setEditModal(rule)}
                       />
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
               )}
             </>
           )}
         </div>
 
-        {/* Modale ajout */}
         {addModal && (
           <AddPermModal
             users={users}
@@ -214,7 +253,6 @@ export default function AdminEspace() {
           />
         )}
 
-        {/* Modale édition */}
         {editModal && (
           <EditPermModal
             rule={editModal}
@@ -223,7 +261,7 @@ export default function AdminEspace() {
                 const updated = (await API.put(`/acl/${editModal.id}`, perms)).data;
                 setRules(prev => prev.map(r => r.id === editModal.id ? updated : r));
                 setEditModal(null);
-                showToast("Permissions mises à jour ✓");
+                showToast("Permissions mises à jour");
               } catch (e) { showToast(e.message, "error"); }
             }}
             onClose={() => setEditModal(null)}
@@ -234,65 +272,114 @@ export default function AdminEspace() {
   );
 }
 
-// ── Ligne du tableau ──────────────────────────────────────────────
+/* ── Ligne permission ──────────────────────────────────────────────── */
 
-function PermRow({ rule, isLast, saving, onToggle, onRevoke, onEdit }) {
+function PermRow({ rule, saving, onToggle, onRevoke, onEdit }) {
   return (
-    <tr style={{ borderBottom: isLast ? "none" : `1px solid ${C.line}` }}>
-      <td style={S.td}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ ...S.avatar, background: avatarColor(rule.user_nom || "?") }}>
-            {(rule.user_nom || "?")[0].toUpperCase()}
-          </div>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{rule.user_nom || "—"}</div>
-            {rule.user_email && (
-              <div style={{ fontSize: 11, color: C.muted }}>{rule.user_email}</div>
-            )}
-          </div>
+    <div style={{
+      display: 'flex', alignItems: 'center',
+      background: 'rgba(255,255,255,0.02)',
+      border: '0.5px solid var(--wings-border)',
+      borderRadius: 10, padding: '12px 0',
+    }}>
+      {/* Personne */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 4, minWidth: 0 }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+          background: avatarColor(rule.user_nom || '?'),
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#fff', fontSize: 13, fontWeight: 700,
+        }}>
+          {(rule.user_nom || '?')[0].toUpperCase()}
         </div>
-      </td>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {rule.user_nom || '—'}
+          </div>
+          {rule.user_email && (
+            <div style={{ color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {rule.user_email}
+            </div>
+          )}
+        </div>
+      </div>
 
+      {/* Cases à cocher */}
       {PERM_COLS.map(p => {
         const val = rule.permissions[p.key];
         const key = `${rule.id}-${p.key}`;
         return (
-          <td key={p.key} style={{ ...S.td, textAlign: "center" }}>
+          <div key={p.key} style={{ flex: '0 0 120px', display: 'flex', justifyContent: 'center' }}>
             <button
-              style={{
-                ...S.checkbox,
-                background: val ? C.primary : "#fff",
-                borderColor: val ? C.primary : C.line,
-              }}
               onClick={() => onToggle(rule.id, p.key, val)}
               disabled={!!saving[key]}
-              title={`${val ? "Retirer" : "Accorder"} : ${p.label}`}
+              title={`${val ? 'Retirer' : 'Accorder'} : ${p.label}`}
+              style={{
+                width: 20, height: 20, borderRadius: 4,
+                border: `1.5px solid ${val ? 'var(--wings-blue)' : 'var(--wings-border)'}`,
+                background: val ? 'var(--wings-blue)' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: saving[key] ? 'not-allowed' : 'pointer',
+                opacity: saving[key] ? 0.5 : 1,
+                transition: 'all 0.15s', padding: 0,
+              }}
             >
               {val && (
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               )}
             </button>
-          </td>
+          </div>
         );
       })}
 
-      <td style={{ ...S.td, textAlign: "center" }}>
-        <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-          <button style={S.textBtn} onClick={onEdit}>Modifier</button>
-          <button style={{ ...S.textBtn, color: C.red }} onClick={onRevoke}>Retirer l&apos;accès</button>
-        </div>
-      </td>
-    </tr>
+      {/* Actions */}
+      <div style={{ flex: '0 0 140px', display: 'flex', justifyContent: 'center', gap: 8 }}>
+        <button
+          onClick={onEdit}
+          style={{
+            background: 'none', border: '0.5px solid var(--wings-border)',
+            borderRadius: 999, padding: '4px 12px',
+            color: 'var(--wings-text-muted)', fontSize: 12, cursor: 'pointer',
+          }}
+        >
+          Modifier
+        </button>
+        <button
+          onClick={onRevoke}
+          style={{
+            background: 'none', border: '0.5px solid rgba(229,115,115,0.3)',
+            borderRadius: 999, padding: '4px 12px',
+            color: '#e57373', fontSize: 12, cursor: 'pointer',
+          }}
+        >
+          Retirer
+        </button>
+      </div>
+    </div>
   );
 }
 
-// ── Modale partage par email ──────────────────────────────────────
+/* ── Modale ajout ──────────────────────────────────────────────────── */
+
+const labelStyle = {
+  display: 'block', fontFamily: 'monospace', fontSize: '10px',
+  letterSpacing: '2px', color: 'var(--wings-gold)',
+  textTransform: 'uppercase', marginBottom: '6px',
+};
+
+const inputStyle = {
+  width: '100%', padding: '10px 14px',
+  background: 'var(--wings-bg)',
+  border: '0.5px solid var(--wings-border)',
+  borderRadius: 10, color: 'var(--wings-text)',
+  fontSize: 13, outline: 'none', boxSizing: 'border-box',
+};
 
 function AddPermModal({ users, existingIds, onConfirm, onClose }) {
-  const [email, setEmail]           = useState("");
-  const [emailError, setEmailError] = useState("");
+  const [email, setEmail]           = useState('');
+  const [emailError, setEmailError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const defaultPerms = {
@@ -305,11 +392,11 @@ function AddPermModal({ users, existingIds, onConfirm, onClose }) {
     if (!trimmed) return;
     const user = users.find(u => u.email.toLowerCase() === trimmed);
     if (!user) {
-      setEmailError("Aucun utilisateur trouvé avec cet email.");
+      setEmailError('Aucun utilisateur trouvé avec cet email.');
       return;
     }
     if (existingIds.has(user.id)) {
-      setEmailError("Cette personne a déjà accès à ce fichier.");
+      setEmailError('Cette personne a déjà accès à ce fichier.');
       return;
     }
     setSubmitting(true);
@@ -318,40 +405,67 @@ function AddPermModal({ users, existingIds, onConfirm, onClose }) {
   };
 
   return (
-    <div style={M.overlay} onClick={onClose}>
-      <div style={M.modal} onClick={e => e.stopPropagation()}>
-        <div style={M.header}>
-          <div style={M.title}>Partager avec une personne</div>
-          <button style={M.close} onClick={onClose}>✕</button>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 40,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+    }} onClick={onClose}>
+      <div style={{
+        background: 'var(--wings-surface)',
+        border: '0.5px solid var(--wings-border)',
+        borderRadius: 16, padding: 28,
+        width: '100%', maxWidth: 460, margin: '0 16px',
+      }} onClick={e => e.stopPropagation()}>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: 'var(--wings-text)', fontWeight: 400, margin: 0 }}>
+            Partager avec une personne
+          </h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--wings-text-muted)', cursor: 'pointer', padding: 4 }}>
+            <X size={18} />
+          </button>
         </div>
 
-        <div style={M.section}>
-          <div style={M.label}>Adresse email</div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={labelStyle}>Adresse email</label>
           <input
-            style={M.input}
+            style={inputStyle}
             type="email"
             placeholder="exemple@email.com"
             value={email}
-            onChange={e => { setEmail(e.target.value); setEmailError(""); }}
-            onKeyDown={e => e.key === "Enter" && submit()}
+            onChange={e => { setEmail(e.target.value); setEmailError(''); }}
+            onKeyDown={e => e.key === 'Enter' && submit()}
+            onFocus={e => e.target.style.borderColor = 'var(--wings-blue)'}
+            onBlur={e => e.target.style.borderColor = 'var(--wings-border)'}
             autoFocus
           />
           {emailError && (
-            <div style={{ color: C.red, fontSize: 12, marginTop: 6 }}>{emailError}</div>
+            <div style={{ color: '#e57373', fontSize: 12, marginTop: 6 }}>{emailError}</div>
           )}
-          <div style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>
+          <div style={{ color: 'var(--wings-text-muted)', fontSize: 12, marginTop: 8 }}>
             La personne recevra un accès en lecture et téléchargement par défaut.
           </div>
         </div>
 
-        <div style={M.footer}>
-          <button style={M.cancelBtn} onClick={onClose}>Annuler</button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button onClick={onClose} style={{
+            padding: '10px 20px', background: 'transparent',
+            border: '0.5px solid var(--wings-border)', borderRadius: 999,
+            color: 'var(--wings-text-muted)', fontSize: 13, cursor: 'pointer',
+          }}>
+            Annuler
+          </button>
           <button
-            style={{ ...M.submitBtn, opacity: !email.trim() || submitting ? 0.5 : 1 }}
             onClick={submit}
             disabled={!email.trim() || submitting}
+            style={{
+              padding: '10px 24px', background: 'var(--wings-blue)',
+              border: 'none', borderRadius: 999, color: '#fff',
+              fontSize: 13, fontWeight: 500, cursor: !email.trim() || submitting ? 'not-allowed' : 'pointer',
+              opacity: !email.trim() || submitting ? 0.5 : 1,
+            }}
           >
-            {submitting ? "Partage…" : "Partager"}
+            {submitting ? 'Partage…' : 'Partager'}
           </button>
         </div>
       </div>
@@ -359,10 +473,10 @@ function AddPermModal({ users, existingIds, onConfirm, onClose }) {
   );
 }
 
-// ── Modale édition ────────────────────────────────────────────────
+/* ── Modale édition ────────────────────────────────────────────────── */
 
 function EditPermModal({ rule, onConfirm, onClose }) {
-  const [perms, setPerms]         = useState({ ...rule.permissions });
+  const [perms, setPerms]           = useState({ ...rule.permissions });
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async () => {
@@ -372,34 +486,51 @@ function EditPermModal({ rule, onConfirm, onClose }) {
   };
 
   return (
-    <div style={M.overlay} onClick={onClose}>
-      <div style={{ ...M.modal, maxWidth: 380 }} onClick={e => e.stopPropagation()}>
-        <div style={M.header}>
-          <div style={M.title}>Modifier les accès</div>
-          <button style={M.close} onClick={onClose}>✕</button>
-        </div>
-        <div style={{ marginBottom: 16, color: C.muted, fontSize: 13 }}>
-          Personne : <strong style={{ color: C.ink }}>{rule.user_nom}</strong>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 40,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+    }} onClick={onClose}>
+      <div style={{
+        background: 'var(--wings-surface)',
+        border: '0.5px solid var(--wings-border)',
+        borderRadius: 16, padding: 28,
+        width: '100%', maxWidth: 380, margin: '0 16px',
+      }} onClick={e => e.stopPropagation()}>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: 'var(--wings-text)', fontWeight: 400, margin: 0 }}>
+            Modifier les accès
+          </h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--wings-text-muted)', cursor: 'pointer', padding: 4 }}>
+            <X size={18} />
+          </button>
         </div>
 
-        <div style={M.section}>
+        <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, marginBottom: 16, marginTop: 0 }}>
+          Personne : <strong style={{ color: 'var(--wings-text)' }}>{rule.user_nom}</strong>
+        </p>
+
+        <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {PERM_COLS.map(p => (
             <div key={p.key} style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              padding: "10px 0", borderBottom: `1px solid ${C.line}`,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '10px 0', borderBottom: '0.5px solid var(--wings-border)',
             }}>
-              <span style={{ fontSize: 14 }}>{p.label}</span>
+              <span style={{ color: 'var(--wings-text)', fontSize: 13 }}>{p.label}</span>
               <button
-                style={{
-                  ...S.checkbox,
-                  background: perms[p.key] ? C.primary : "#fff",
-                  borderColor: perms[p.key] ? C.primary : C.line,
-                }}
                 onClick={() => setPerms(prev => ({ ...prev, [p.key]: !prev[p.key] }))}
+                style={{
+                  width: 20, height: 20, borderRadius: 4,
+                  border: `1.5px solid ${perms[p.key] ? 'var(--wings-blue)' : 'var(--wings-border)'}`,
+                  background: perms[p.key] ? 'var(--wings-blue)' : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', transition: 'all 0.15s', padding: 0,
+                }}
               >
                 {perms[p.key] && (
                   <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                 )}
               </button>
@@ -407,11 +538,25 @@ function EditPermModal({ rule, onConfirm, onClose }) {
           ))}
         </div>
 
-        <div style={M.footer}>
-          <button style={M.cancelBtn} onClick={onClose}>Annuler</button>
-          <button style={{ ...M.submitBtn, opacity: submitting ? 0.5 : 1 }}
-            onClick={submit} disabled={submitting}>
-            {submitting ? "Sauvegarde…" : "Enregistrer"}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button onClick={onClose} style={{
+            padding: '10px 20px', background: 'transparent',
+            border: '0.5px solid var(--wings-border)', borderRadius: 999,
+            color: 'var(--wings-text-muted)', fontSize: 13, cursor: 'pointer',
+          }}>
+            Annuler
+          </button>
+          <button
+            onClick={submit}
+            disabled={submitting}
+            style={{
+              padding: '10px 24px', background: 'var(--wings-blue)',
+              border: 'none', borderRadius: 999, color: '#fff',
+              fontSize: 13, fontWeight: 500, cursor: submitting ? 'not-allowed' : 'pointer',
+              opacity: submitting ? 0.5 : 1,
+            }}
+          >
+            {submitting ? 'Sauvegarde…' : 'Enregistrer'}
           </button>
         </div>
       </div>
@@ -419,13 +564,13 @@ function EditPermModal({ rule, onConfirm, onClose }) {
   );
 }
 
-// ── Utilitaires ───────────────────────────────────────────────────
+/* ── Utilitaires ────────────────────────────────────────────────────── */
 
 function Loading() {
   return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"60vh" }}>
-      <div style={{ textAlign:"center", color: C.muted }}>
-        <div style={{ fontSize:32, marginBottom:8 }}>⏳</div>Chargement…
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <div style={{ textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+        Chargement…
       </div>
     </div>
   );
@@ -433,11 +578,19 @@ function Loading() {
 
 function ErrorScreen({ msg, onRetry }) {
   return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"60vh" }}>
-      <div style={{ textAlign:"center" }}>
-        <div style={{ color: C.red, marginBottom:16 }}>{msg}</div>
-        <button style={{ padding:"10px 24px", background:C.primary, border:"none", borderRadius:6, color:"#fff", cursor:"pointer" }}
-          onClick={onRetry}>Réessayer</button>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ color: '#e57373', marginBottom: 16, fontSize: 13 }}>{msg}</div>
+        <button
+          onClick={onRetry}
+          style={{
+            padding: '10px 24px', background: 'var(--wings-blue)',
+            border: 'none', borderRadius: 999, color: '#fff',
+            fontSize: 13, cursor: 'pointer',
+          }}
+        >
+          Réessayer
+        </button>
       </div>
     </div>
   );
@@ -446,118 +599,12 @@ function ErrorScreen({ msg, onRetry }) {
 function Toast({ msg, type }) {
   return (
     <div style={{
-      position:"fixed", bottom:24, right:24, zIndex:9999,
-      padding:"12px 20px", borderRadius:8,
-      background: type === "error" ? C.red : C.green,
-      color:"#fff", fontWeight:600, fontSize:14,
-      boxShadow:"0 4px 16px rgba(0,0,0,.15)",
+      position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+      padding: '12px 20px', borderRadius: 10,
+      background: type === 'error' ? '#dc2626' : '#059669',
+      color: '#fff', fontWeight: 500, fontSize: 13,
     }}>
-      {type === "error" ? "✕" : "✓"} {msg}
+      {msg}
     </div>
   );
 }
-
-const AVATAR_COLORS = ["#00BCD4","#4CAF50","#FF9800","#9C27B0","#F44336","#2196F3","#009688"];
-function avatarColor(name) {
-  let h = 0;
-  for (const c of (name||"")) h = c.charCodeAt(0) + ((h<<5)-h);
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
-}
-
-// ── Styles ────────────────────────────────────────────────────────
-
-const S = {
-  page: {
-    fontFamily:"'DM Sans','Segoe UI',sans-serif", color: C.ink,
-  },
-  pageHeader: {
-    display:"flex", justifyContent:"space-between", alignItems:"flex-start",
-    marginBottom:24,
-  },
-  pageTitle: { fontSize:28, fontWeight:700, margin:"0 0 4px", letterSpacing:"-0.01em" },
-  pageSubtitle: { fontSize:14, color: C.muted, margin:0 },
-  addBtn: {
-    padding:"10px 20px", background: C.primary,
-    border:"none", borderRadius:6, color:"#fff",
-    fontSize:13, fontWeight:600, cursor:"pointer",
-    whiteSpace:"nowrap",
-  },
-  permPanel: {
-    background:"#fff", borderRadius:10,
-    border:`1px solid ${C.line}`,
-    overflow:"hidden",
-    boxShadow:"0 1px 4px rgba(0,0,0,.06)",
-  },
-  permHeader: {
-    padding:"20px 24px", borderBottom:`1px solid ${C.line}`,
-  },
-  permTitle: { fontSize:16, fontWeight:700, marginBottom:4 },
-  permSubtitle: { fontSize:12, color: C.muted },
-  table: { width:"100%", borderCollapse:"collapse" },
-  theadRow: { background:"#FAFAFA", borderBottom:`1px solid ${C.line}` },
-  th: {
-    padding:"12px 16px", textAlign:"left",
-    fontSize:12, fontWeight:600, color: C.muted,
-    textTransform:"uppercase", letterSpacing:"0.05em",
-  },
-  td: { padding:"14px 16px", verticalAlign:"middle" },
-  avatar: {
-    width:36, height:36, borderRadius:"50%",
-    display:"flex", alignItems:"center", justifyContent:"center",
-    color:"#fff", fontSize:14, fontWeight:700, flexShrink:0,
-  },
-  checkbox: {
-    width:22, height:22, borderRadius:4,
-    border:"2px solid", display:"flex", alignItems:"center", justifyContent:"center",
-    cursor:"pointer", padding:0, transition:"all .15s", background:"#fff",
-  },
-  textBtn: {
-    background:"none", border:"none", cursor:"pointer",
-    fontSize:13, fontWeight:600, color: C.primary, padding:"4px 8px",
-  },
-  empty: {
-    padding:"60px 0", textAlign:"center", color: C.muted, fontSize:14,
-  },
-};
-
-const M = {
-  overlay: {
-    position:"fixed", inset:0, background:"rgba(0,0,0,.4)",
-    display:"flex", alignItems:"center", justifyContent:"center",
-    zIndex:1000, backdropFilter:"blur(2px)",
-  },
-  modal: {
-    background:"#fff", borderRadius:12, padding:28,
-    width:"100%", maxWidth:460,
-    maxHeight:"90vh", overflowY:"auto",
-    boxShadow:"0 20px 60px rgba(0,0,0,.15)",
-  },
-  header: {
-    display:"flex", justifyContent:"space-between",
-    alignItems:"center", marginBottom:20,
-  },
-  title: { fontSize:18, fontWeight:700 },
-  close: { background:"none", border:"none", fontSize:18, cursor:"pointer", color: C.muted },
-  section: { marginBottom:20 },
-  label: {
-    fontSize:12, fontWeight:600, color: C.muted,
-    textTransform:"uppercase", letterSpacing:"0.06em",
-    marginBottom:8, display:"block",
-  },
-  input: {
-    width:"100%", padding:"10px 12px",
-    border:`1.5px solid ${C.line}`, borderRadius:6,
-    fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit",
-  },
-  footer: { display:"flex", justifyContent:"flex-end", gap:10, marginTop:8 },
-  cancelBtn: {
-    padding:"10px 20px", background:"transparent",
-    border:`1px solid ${C.line}`, borderRadius:6,
-    fontSize:14, cursor:"pointer", fontFamily:"inherit",
-  },
-  submitBtn: {
-    padding:"10px 24px", background: C.primary,
-    border:"none", borderRadius:6, color:"#fff",
-    fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit",
-  },
-};

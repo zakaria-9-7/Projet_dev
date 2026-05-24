@@ -16,19 +16,19 @@ function normalizeLog(l) {
   };
 }
 
-const ACTION_COLORS = {
-  'Téléversement':  'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-400',
-  'Partage':        'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400',
-  'Connexion':      'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400',
-  'Téléchargement': 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400',
-  'Suppression':    'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400',
+const ACTION_BADGE = {
+  'Téléversement':  { background: 'rgba(79,139,255,0.1)',    color: 'var(--wings-blue)',      border: '0.5px solid rgba(79,139,255,0.2)' },
+  'Partage':        { background: 'rgba(142,108,184,0.15)',  color: '#b07cce',                border: '0.5px solid rgba(142,108,184,0.25)' },
+  'Connexion':      { background: 'rgba(255,255,255,0.05)',  color: 'var(--wings-text-muted)', border: '0.5px solid var(--wings-border)' },
+  'Téléchargement': { background: 'rgba(255,193,7,0.12)',    color: 'var(--wings-gold)',      border: '0.5px solid rgba(255,193,7,0.25)' },
+  'Suppression':    { background: 'rgba(229,115,115,0.1)',   color: '#e57373',                border: '0.5px solid rgba(229,115,115,0.25)' },
 };
 
 export default function Logs() {
-  const [logs, setLogs]       = useState([]);
-  const [error, setError]     = useState('');
-  const [search, setSearch]   = useState('');
-  const [filter, setFilter]   = useState('Tous');
+  const [logs, setLogs]     = useState([]);
+  const [error, setError]   = useState('');
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('Tous');
 
   useEffect(() => {
     API.get('/logs/?limit=200')
@@ -58,61 +58,97 @@ export default function Logs() {
     return matchSearch && matchFilter;
   });
 
+  const colHeaderStyle = {
+    fontFamily: 'monospace',
+    fontSize: '10px',
+    letterSpacing: '2px',
+    color: 'var(--wings-text-muted)',
+    opacity: 0.6,
+    textTransform: 'uppercase',
+  };
+
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-              <Activity className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Journaux d'activité</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Toutes les actions sur la plateforme</p>
-            </div>
+        {/* En-tête */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+              Journaux d'activité
+            </h1>
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>
+              Toutes les actions sur la plateforme
+            </p>
           </div>
-
           <button
             onClick={exportCSV}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '9px 16px',
+              background: 'var(--wings-surface)',
+              border: '0.5px solid var(--wings-border)',
+              borderRadius: 999, color: 'var(--wings-text-muted)',
+              fontSize: 13, cursor: 'pointer', flexShrink: 0,
+            }}
           >
-            <Download className="w-4 h-4" />
+            <Download size={13} />
             Exporter
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-600 dark:text-red-400">
+          <div style={{
+            padding: '10px 14px', borderRadius: 10, fontSize: 13,
+            background: 'rgba(229,115,115,0.08)',
+            border: '0.5px solid rgba(229,115,115,0.3)',
+            color: '#e57373',
+          }}>
             {error}
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        {/* Filtres */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 200 }}>
+            <Search size={14} style={{
+              position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+              color: 'var(--wings-text-muted)', pointerEvents: 'none',
+            }} />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher un utilisateur, action, fichier..."
-              className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
+              placeholder="Rechercher un utilisateur, action, fichier…"
+              style={{
+                width: '100%',
+                padding: '10px 14px 10px 38px',
+                background: 'var(--wings-surface)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 12,
+                color: 'var(--wings-text)',
+                fontSize: 13, outline: 'none',
+                boxSizing: 'border-box',
+              }}
+              onFocus={e => e.target.style.borderColor = 'var(--wings-blue)'}
+              onBlur={e => e.target.style.borderColor = 'var(--wings-border)'}
             />
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="w-4 h-4 text-slate-400" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Filter size={13} style={{ color: 'var(--wings-text-muted)', flexShrink: 0 }} />
             {actions.map(a => (
               <button
                 key={a}
                 onClick={() => setFilter(a)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                  filter === a
-                    ? 'bg-cyan-500 text-white'
-                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
-                }`}
+                style={{
+                  padding: '6px 12px',
+                  background: filter === a ? 'var(--wings-blue)' : 'var(--wings-surface)',
+                  border: `0.5px solid ${filter === a ? 'var(--wings-blue)' : 'var(--wings-border)'}`,
+                  borderRadius: 999,
+                  color: filter === a ? '#fff' : 'var(--wings-text-muted)',
+                  fontSize: 12, cursor: 'pointer',
+                }}
               >
                 {a}
               </button>
@@ -120,55 +156,76 @@ export default function Logs() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  {['Utilisateur', 'Action', 'Fichier', 'Horodatage', 'Statut'].map(h => (
-                    <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {visible.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-5 py-10 text-center text-slate-400 dark:text-slate-500">
-                      Aucun journal ne correspond à votre recherche
-                    </td>
-                  </tr>
-                ) : visible.map(log => (
-                  <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-200">{log.utilisateur}</td>
-                    <td className="px-5 py-3.5">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${ACTION_COLORS[log.action] ?? 'bg-slate-100 text-slate-600'}`}>
-                        {log.action}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400 font-mono text-xs">{log.fichier}</td>
-                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 tabular-nums">{log.horodatage}</td>
-                    <td className="px-5 py-3.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        log.statut
-                          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${log.statut ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                        {log.statut ? 'Succès' : 'Échec'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Liste */}
+        <div>
+          {/* En-tête colonnes */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '6px 20px', marginBottom: 6 }}>
+            <span style={{ ...colHeaderStyle, flex: 1 }}>Utilisateur</span>
+            <span style={{ ...colHeaderStyle, flex: '0 0 140px' }}>Action</span>
+            <span style={{ ...colHeaderStyle, flex: '0 0 200px' }}>Fichier</span>
+            <span style={{ ...colHeaderStyle, flex: '0 0 130px' }}>Horodatage</span>
+            <span style={{ ...colHeaderStyle, flex: '0 0 90px', textAlign: 'right' }}>Statut</span>
           </div>
 
-          <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-400 dark:text-slate-500">
-            {visible.length} entrée{visible.length !== 1 ? 's' : ''} affichée{visible.length !== 1 ? 's' : ''}
+          {/* Lignes */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {visible.length === 0 ? (
+              <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+                Aucun journal ne correspond à votre recherche
+              </div>
+            ) : visible.map(log => (
+              <div key={log.id} style={{
+                display: 'flex', alignItems: 'center',
+                background: 'var(--wings-surface)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 10, padding: '12px 20px',
+              }}>
+                {/* UTILISATEUR */}
+                <div style={{ flex: 1, color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>
+                  {log.utilisateur}
+                </div>
+
+                {/* ACTION */}
+                <div style={{ flex: '0 0 140px' }}>
+                  <span style={{
+                    ...(ACTION_BADGE[log.action] ?? { background: 'rgba(255,255,255,0.04)', color: 'var(--wings-text-muted)', border: '0.5px solid var(--wings-border)' }),
+                    fontFamily: 'monospace', fontSize: 10,
+                    borderRadius: 6, padding: '3px 8px',
+                    display: 'inline-block', letterSpacing: '0.5px',
+                  }}>
+                    {log.action}
+                  </span>
+                </div>
+
+                {/* FICHIER */}
+                <div style={{ flex: '0 0 200px', color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>
+                  {log.fichier}
+                </div>
+
+                {/* HORODATAGE */}
+                <div style={{ flex: '0 0 130px', color: 'var(--wings-text-muted)', fontSize: 12 }}>
+                  {log.horodatage}
+                </div>
+
+                {/* STATUT */}
+                <div style={{ flex: '0 0 90px', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                  <span style={{
+                    width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                    background: log.statut ? '#5dd39e' : '#e57373',
+                  }} />
+                  <span style={{ fontSize: 12, color: log.statut ? '#5dd39e' : '#e57373' }}>
+                    {log.statut ? 'Succès' : 'Échec'}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
+
+          {visible.length > 0 && (
+            <div style={{ padding: '10px 4px', marginTop: 6, fontSize: 12, color: 'var(--wings-text-muted)' }}>
+              {visible.length} entrée{visible.length !== 1 ? 's' : ''} affichée{visible.length !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>

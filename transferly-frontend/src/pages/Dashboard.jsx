@@ -9,7 +9,6 @@ import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
 
-/* ── Shared time helper ─────────────────────────── */
 function formatTime(iso) {
   if (!iso) return '—';
   const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
@@ -19,36 +18,56 @@ function formatTime(iso) {
   return `il y a ${Math.floor(diff / 86400)} j`;
 }
 
-/* ── Shared stat card ───────────────────────────── */
-function StatCard({ icon: Icon, bg, iconCls, label, value, suffix = '', delay, quota, quotaLabel }) {
+const ICON_PALETTE = [
+  { bg: 'rgba(79,139,255,0.1)',   color: 'var(--wings-blue)' },
+  { bg: 'rgba(255,193,7,0.1)',    color: 'var(--wings-gold)' },
+  { bg: 'rgba(93,211,158,0.1)',   color: '#5dd39e' },
+  { bg: 'rgba(229,115,115,0.1)', color: '#e57373' },
+  { bg: 'rgba(142,108,184,0.15)', color: '#b07cce' },
+];
+
+function StatCard({ icon: Icon, paletteIdx = 0, label, value, suffix = '', delay, quota, quotaLabel }) {
+  const pal = ICON_PALETTE[paletteIdx % ICON_PALETTE.length];
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
-      whileHover={{ y: -4 }}
-      className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-md border border-slate-100 dark:border-slate-700 cursor-default"
+      style={{
+        background: 'var(--wings-surface)',
+        border: '0.5px solid var(--wings-border)',
+        borderRadius: 14, padding: 20, cursor: 'default',
+      }}
     >
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${bg}`}>
-        <Icon className={`w-5 h-5 ${iconCls}`} />
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: pal.bg, border: `0.5px solid ${pal.bg}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 12, flexShrink: 0,
+      }}>
+        <Icon size={16} color={pal.color} />
       </div>
-      <div className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mb-0.5">
+      <div style={{ fontFamily: 'Georgia, serif', fontSize: 26, color: 'var(--wings-text)', fontWeight: 400, marginBottom: 2 }}>
         {value}{suffix}
       </div>
-      <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
+      <div style={{ color: 'var(--wings-text-muted)', fontSize: 12 }}>{label}</div>
       {quota !== undefined && (
         <>
-          <div className="mt-3 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-            <div className="h-1.5 bg-cyan-500 rounded-full transition-all" style={{ width: `${quota}%` }} />
+          <div style={{ marginTop: 10, height: 4, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+            <div style={{
+              height: '100%', borderRadius: 999,
+              width: `${quota}%`,
+              background: quota >= 90 ? '#e57373' : quota >= 70 ? 'var(--wings-gold)' : 'var(--wings-blue)',
+              transition: 'width 0.4s',
+            }} />
           </div>
-          <div className="text-xs text-slate-400 mt-1">{quotaLabel || ''}</div>
+          <div style={{ color: 'var(--wings-text-muted)', fontSize: 11, marginTop: 4 }}>{quotaLabel || ''}</div>
         </>
       )}
     </motion.div>
   );
 }
 
-/* ── Shared shortcut card ───────────────────────── */
 function ShortcutCard({ to, icon: Icon, title, desc, delay }) {
   return (
     <motion.div
@@ -58,51 +77,80 @@ function ShortcutCard({ to, icon: Icon, title, desc, delay }) {
     >
       <Link
         to={to}
-        className="flex items-center gap-4 p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm hover:border-cyan-300 dark:hover:border-cyan-700 hover:shadow-md transition-all group"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 14, padding: 18,
+          background: 'var(--wings-surface)',
+          border: '0.5px solid var(--wings-border)',
+          borderRadius: 12, textDecoration: 'none',
+          transition: 'border-color 0.15s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(79,139,255,0.4)'}
+        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--wings-border)'}
       >
-        <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center shrink-0">
-          <Icon className="w-5 h-5 text-cyan-500" />
+        <div style={{
+          width: 36, height: 36, borderRadius: 10,
+          background: 'rgba(79,139,255,0.08)',
+          border: '0.5px solid rgba(79,139,255,0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <Icon size={16} color="var(--wings-blue)" />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{desc}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{title}</div>
+          <div style={{ color: 'var(--wings-text-muted)', fontSize: 11 }}>{desc}</div>
         </div>
-        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-cyan-500 transition-colors shrink-0" />
+        <ArrowRight size={14} style={{ color: 'var(--wings-text-muted)', flexShrink: 0 }} />
       </Link>
     </motion.div>
   );
 }
 
-/* ── Shared activity table ──────────────────────── */
-function ActivityTable({ title, rows, columns }) {
+function ActivityList({ title, rows }) {
+  const colHeaderStyle = {
+    fontFamily: 'monospace', fontSize: '10px', letterSpacing: '2px',
+    color: 'var(--wings-text-muted)', opacity: 0.6, textTransform: 'uppercase',
+  };
+
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden">
-      <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+    <div>
+      <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 14 }}>
         {title}
       </h2>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-slate-50 dark:bg-slate-900/40">
-              {columns.map(c => (
-                <th key={c} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-            {rows.map((row, i) => (
-              <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                {row.cells.map((cell, j) => (
-                  <td key={j} className="px-6 py-3.5 text-sm text-slate-500 dark:text-slate-400">
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '4px 16px', marginBottom: 6 }}>
+        {rows[0]?.cells.map((_, j) => {
+          const labels = ['Utilisateur', 'Action', 'Horodatage', 'Statut'];
+          const widths = ['1', '0 0 140px', '0 0 120px', '0 0 80px'];
+          return <span key={j} style={{ ...colHeaderStyle, flex: widths[j] || '1', paddingRight: 8 }}>{labels[j] || ''}</span>;
+        })}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {rows.length === 0 ? (
+          <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+            Aucune activité récente
+          </div>
+        ) : rows.map((row, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center',
+            background: 'var(--wings-surface)',
+            border: '0.5px solid var(--wings-border)',
+            borderRadius: 10, padding: '10px 16px',
+          }}>
+            {row.cells.map((cell, j) => {
+              const widths = ['1', '0 0 140px', '0 0 120px', '0 0 80px'];
+              return (
+                <div key={j} style={{
+                  flex: widths[j] || '1',
+                  color: j === 0 ? 'var(--wings-text)' : 'var(--wings-text-muted)',
+                  fontSize: 12, fontWeight: j === 0 ? 500 : 400,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  paddingRight: 8,
+                }}>
+                  {cell}
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -139,10 +187,10 @@ function AdminGlobalDashboard() {
   }, []);
 
   const statCards = [
-    { icon: Users,         bg: 'bg-blue-50 dark:bg-blue-900/20',   iconCls: 'text-blue-500',   label: 'Total utilisateurs',    value: stats.users },
-    { icon: FileText,      bg: 'bg-green-50 dark:bg-green-900/20', iconCls: 'text-green-500',  label: 'Total fichiers',        value: stats.files },
-    { icon: HardDrive,     bg: 'bg-amber-50 dark:bg-amber-900/20', iconCls: 'text-amber-500',  label: 'Espace disque utilisé', value: `${stats.storage} GB` },
-    { icon: AlertTriangle, bg: 'bg-red-50 dark:bg-red-900/20',     iconCls: 'text-red-500',    label: 'Tentatives échouées',   value: stats.fails },
+    { icon: Users,         paletteIdx: 0, label: 'Total utilisateurs',    value: stats.users },
+    { icon: FileText,      paletteIdx: 2, label: 'Total fichiers',        value: stats.files },
+    { icon: HardDrive,     paletteIdx: 1, label: 'Espace disque utilisé', value: `${stats.storage} GB` },
+    { icon: AlertTriangle, paletteIdx: 3, label: 'Tentatives échouées',   value: stats.fails },
   ];
 
   const activityRows = logs.map(l => ({
@@ -161,26 +209,24 @@ function AdminGlobalDashboard() {
   ];
 
   return (
-    <>
-      <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mb-1">
-        Tableau de bord administrateur
-      </h1>
-      <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">Vue globale de la plateforme</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <div>
+        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+          Tableau de bord administrateur
+        </h1>
+        <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>Vue globale de la plateforme</p>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
         {statCards.map((s, i) => <StatCard key={s.label} {...s} delay={i * 0.1} />)}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
         {shortcuts.map((s, i) => <ShortcutCard key={s.to} {...s} delay={0.4 + i * 0.1} />)}
       </div>
 
-      <ActivityTable
-        title="Activité récente"
-        columns={['Utilisateur', 'Action', 'Horodatage', 'Statut']}
-        rows={activityRows}
-      />
-    </>
+      <ActivityList title="Activité récente" rows={activityRows} />
+    </div>
   );
 }
 
@@ -192,31 +238,31 @@ function AdminEspaceDashboard() {
   const [activityRows] = useState([]);
 
   useEffect(() => {
-  Promise.all([
-    API.get('/admin/espaces/mine').catch(() => ({ data: { spaces: [] } })),
-    API.get('/quota/me').catch(() => ({ data: {} })),
-  ]).then(([espacesRes, quotaRes]) => {
-    const e = espacesRes.data.spaces?.[0];
-    const quota = quotaRes.data;
-    const quotaUsed = quota.quota_utilise_mb || 0;
-    const quotaTotal = quota.quota_total_mb || 1;
-    const quotaPct = Math.round((quotaUsed / quotaTotal) * 100);
-    if (e) {
-      setStats({
-        members:  e.nb_membres  || 0,
-        files:    e.nb_fichiers || 0,
-        quotaPct: quotaPct,
-        acls:     e.nb_acls    || 0,
-      });
-    }
-  });
-}, []);
+    Promise.all([
+      API.get('/admin/espaces/mine').catch(() => ({ data: { spaces: [] } })),
+      API.get('/quota/me').catch(() => ({ data: {} })),
+    ]).then(([espacesRes, quotaRes]) => {
+      const e = espacesRes.data.spaces?.[0];
+      const quota = quotaRes.data;
+      const quotaUsed = quota.quota_utilise_mb || 0;
+      const quotaTotal = quota.quota_total_mb || 1;
+      const quotaPct = Math.round((quotaUsed / quotaTotal) * 100);
+      if (e) {
+        setStats({
+          members:  e.nb_membres  || 0,
+          files:    e.nb_fichiers || 0,
+          quotaPct: quotaPct,
+          acls:     e.nb_acls    || 0,
+        });
+      }
+    });
+  }, []);
 
   const statCards = [
-    { icon: Users,       bg: 'bg-blue-50 dark:bg-blue-900/20',    iconCls: 'text-blue-500',   label: "Membres de l'espace",  value: stats.members },
-    { icon: FileText,    bg: 'bg-green-50 dark:bg-green-900/20',  iconCls: 'text-green-500',  label: "Fichiers de l'espace", value: stats.files },
-    { icon: HardDrive,   bg: 'bg-amber-50 dark:bg-amber-900/20',  iconCls: 'text-amber-500',  label: 'Quota utilisé',        value: stats.quotaPct, suffix: '%', quota: stats.quotaPct },
-    { icon: ShieldCheck, bg: 'bg-violet-50 dark:bg-violet-900/20',iconCls: 'text-violet-500', label: 'Permissions actives',  value: stats.acls },
+    { icon: Users,       paletteIdx: 0, label: "Membres de l'espace",  value: stats.members },
+    { icon: FileText,    paletteIdx: 2, label: "Fichiers de l'espace", value: stats.files },
+    { icon: HardDrive,   paletteIdx: 1, label: 'Quota utilisé',        value: stats.quotaPct, suffix: '%', quota: stats.quotaPct },
+    { icon: ShieldCheck, paletteIdx: 4, label: 'Permissions actives',  value: stats.acls },
   ];
 
   const shortcuts = [
@@ -225,26 +271,24 @@ function AdminEspaceDashboard() {
   ];
 
   return (
-    <>
-      <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mb-1">
-        Tableau de bord — Mon espace
-      </h1>
-      <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">Gestion de votre espace académique</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <div>
+        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+          Tableau de bord — Mon espace
+        </h1>
+        <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>Gestion de votre espace académique</p>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
         {statCards.map((s, i) => <StatCard key={s.label} {...s} delay={i * 0.1} />)}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
         {shortcuts.map((s, i) => <ShortcutCard key={s.to} {...s} delay={0.4 + i * 0.1} />)}
       </div>
 
-      <ActivityTable
-        title="Activité de l'espace"
-        columns={['Utilisateur', 'Action', 'Horodatage', 'Statut']}
-        rows={activityRows}
-      />
-    </>
+      <ActivityList title="Activité de l'espace" rows={activityRows} />
+    </div>
   );
 }
 
@@ -270,8 +314,8 @@ function UtilisateurDashboard() {
       setFiles((Array.isArray(filesData) ? filesData : []).slice(0, 5).map(f => ({
         ...f,
         taille_fmt: f.taille != null
-  ? (Number(f.taille) < 0.01 ? `${(Number(f.taille) * 1024).toFixed(0)} KB` : `${Number(f.taille).toFixed(1)} MB`)
-  : '—',
+          ? (Number(f.taille) < 0.01 ? `${(Number(f.taille) * 1024).toFixed(0)} KB` : `${Number(f.taille).toFixed(1)} MB`)
+          : '—',
         modifie:     formatRelativeTime(f.date_creation),
         partage_par: f.user_id === currentUserId ? 'Moi' : 'Autre',
       })));
@@ -288,10 +332,10 @@ function UtilisateurDashboard() {
   }, []);
 
   const dashStats = [
-    { icon: FileText,  bg: 'bg-blue-50 dark:bg-blue-900/20',   iconCls: 'text-blue-500',  label: 'Mes fichiers',      value: stats.files },
-    { icon: HardDrive, bg: 'bg-amber-50 dark:bg-amber-900/20', iconCls: 'text-amber-500', label: 'Mon quota',         value: stats.quotaPct, suffix: '%', quota: stats.quotaPct, quotaLabel: `${stats.quotaUsed?.toFixed(2) ?? '0'} GB / ${stats.quotaTotal ?? '0'} GB` },
-    { icon: Share2,    bg: 'bg-green-50 dark:bg-green-900/20', iconCls: 'text-green-500', label: 'Partagés avec moi', value: stats.shared },
-    { icon: Activity,  bg: 'bg-pink-50 dark:bg-pink-900/20',   iconCls: 'text-pink-500',  label: 'Activité récente',  value: stats.activity },
+    { icon: FileText,  paletteIdx: 0, label: 'Mes fichiers',      value: stats.files },
+    { icon: HardDrive, paletteIdx: 1, label: 'Mon quota',         value: stats.quotaPct, suffix: '%', quota: stats.quotaPct, quotaLabel: `${stats.quotaUsed?.toFixed(2) ?? '0'} GB / ${stats.quotaTotal ?? '0'} GB` },
+    { icon: Share2,    paletteIdx: 2, label: 'Partagés avec moi', value: stats.shared },
+    { icon: Activity,  paletteIdx: 4, label: 'Activité récente',  value: stats.activity },
   ];
 
   const handleDownload = async (f) => {
@@ -306,93 +350,126 @@ function UtilisateurDashboard() {
     }
   };
 
-  return (
-    <>
-      <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mb-1">
-        Ça roule ?
-      </h1>
-      <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">Voilà ce qui se passe sur votre espace</p>
+  const colHeaderStyle = {
+    fontFamily: 'monospace', fontSize: '10px', letterSpacing: '2px',
+    color: 'var(--wings-text-muted)', opacity: 0.6, textTransform: 'uppercase',
+  };
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  const actionBtnBase = {
+    background: 'none', border: 'none', padding: 4,
+    color: 'var(--wings-text-muted)', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', borderRadius: 6,
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <div>
+        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+          Ça roule ?
+        </h1>
+        <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>Voilà ce qui se passe sur votre espace</p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
         {dashStats.map((s, i) => <StatCard key={s.label} {...s} delay={i * 0.1} />)}
       </div>
 
-      {/* Recent files table */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 overflow-hidden">
-        <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+      {/* Fichiers récents */}
+      <div>
+        <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 14 }}>
           Fichiers récents
         </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/40">
-                {['Nom', 'Taille', 'Modifié', 'Partagé par', 'Actions'].map(h => (
-                  <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-              {files.map((f, i) => (
-                <tr key={f.id ?? i} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                  <td className="px-6 py-3.5">
-                    <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                      <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="truncate max-w-[200px]">{f.nom}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-3.5 text-sm text-slate-500 dark:text-slate-400">{f.taille_fmt}</td>
-                  <td className="px-6 py-3.5 text-sm text-slate-500 dark:text-slate-400">{f.modifie}</td>
-                  <td className="px-6 py-3.5 text-sm text-slate-500 dark:text-slate-400">{f.partage_par}</td>
-                  <td className="px-6 py-3.5">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleDownload(f)}
-                        className="p-1.5 text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-md transition-colors"
-                        title="Télécharger"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => navigate(`/versions?fileId=${f.id}`)}
-                        className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
-                        title="Historique des versions"
-                      >
-                        <Settings className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => navigate('/shared')}
-                        className="p-1.5 text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-md transition-colors"
-                        title="Partager"
-                      >
-                        <Share className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+        <div style={{ display: 'flex', alignItems: 'center', padding: '4px 16px', marginBottom: 6 }}>
+          <span style={{ ...colHeaderStyle, flex: 1 }}>Nom</span>
+          <span style={{ ...colHeaderStyle, flex: '0 0 80px' }}>Taille</span>
+          <span style={{ ...colHeaderStyle, flex: '0 0 110px' }}>Modifié</span>
+          <span style={{ ...colHeaderStyle, flex: '0 0 90px' }}>Partagé par</span>
+          <span style={{ ...colHeaderStyle, flex: '0 0 90px', textAlign: 'right' }}>Actions</span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {files.length === 0 ? (
+            <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+              Aucun fichier récent
+            </div>
+          ) : files.map((f, i) => (
+            <div key={f.id ?? i} style={{
+              display: 'flex', alignItems: 'center',
+              background: 'var(--wings-surface)',
+              border: '0.5px solid var(--wings-border)',
+              borderRadius: 10, padding: '12px 16px',
+            }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <FileText size={13} style={{ color: 'var(--wings-text-muted)', flexShrink: 0 }} />
+                <span style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {f.nom}
+                </span>
+              </div>
+              <div style={{ flex: '0 0 80px', color: 'var(--wings-text-muted)', fontSize: 12, fontFamily: 'monospace' }}>
+                {f.taille_fmt}
+              </div>
+              <div style={{ flex: '0 0 110px', color: 'var(--wings-text-muted)', fontSize: 12 }}>
+                {f.modifie}
+              </div>
+              <div style={{ flex: '0 0 90px', color: 'var(--wings-text-muted)', fontSize: 12 }}>
+                {f.partage_par}
+              </div>
+              <div style={{ flex: '0 0 90px', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => handleDownload(f)}
+                  title="Télécharger"
+                  style={actionBtnBase}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--wings-blue)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--wings-text-muted)'}
+                >
+                  <Download size={13} />
+                </button>
+                <button
+                  onClick={() => navigate(`/versions?fileId=${f.id}`)}
+                  title="Historique des versions"
+                  style={actionBtnBase}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--wings-text)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--wings-text-muted)'}
+                >
+                  <Settings size={13} />
+                </button>
+                <button
+                  onClick={() => navigate('/shared')}
+                  title="Partager"
+                  style={actionBtnBase}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--wings-blue)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--wings-text-muted)'}
+                >
+                  <Share size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
-/* ── Status badge helper ────────────────────────── */
+/* ── Badge statut ────────────────────────────────────────────────── */
 function StatusBadge({ ok }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-      ok
-        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-        : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-    }`}>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '2px 8px', borderRadius: 6, fontSize: 11,
+      background: ok ? 'rgba(93,211,158,0.1)' : 'rgba(229,115,115,0.1)',
+      color: ok ? '#5dd39e' : '#e57373',
+      border: `0.5px solid ${ok ? 'rgba(93,211,158,0.25)' : 'rgba(229,115,115,0.25)'}`,
+    }}>
+      <span style={{ width: 5, height: 5, borderRadius: '50%', background: ok ? '#5dd39e' : '#e57373' }} />
       {ok ? 'Succès' : 'Échec'}
     </span>
   );
 }
 
 /* ════════════════════════════════════════════════
-   ROOT — role dispatcher, no redirect
+   ROOT — dispatcheur par rôle
    ════════════════════════════════════════════════ */
 export default function Dashboard() {
   const role = localStorage.getItem('role');

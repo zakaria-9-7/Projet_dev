@@ -38,69 +38,121 @@ export default function AdminEspacesAll() {
     }
   };
 
+  const colHeaderStyle = {
+    fontFamily: 'monospace',
+    fontSize: '10px',
+    letterSpacing: '2px',
+    color: 'var(--wings-text-muted)',
+    opacity: 0.6,
+    textTransform: 'uppercase',
+  };
+
   return (
     <AppLayout>
       {toast && (
-        <div className={`fixed top-6 right-6 px-4 py-2 rounded-lg shadow-lg z-50 ${
-          toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
-        }`}>{toast.msg}</div>
+        <div style={{
+          position: 'fixed', top: 24, right: 24, zIndex: 50,
+          padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 500,
+          background: toast.type === 'error' ? '#dc2626' : '#059669',
+          color: '#fff',
+        }}>
+          {toast.msg}
+        </div>
       )}
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">Gestion des espaces</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Superviser et modérer tous les espaces de la plateforme</p>
-      </div>
+      <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement...</div>
-      ) : espaces.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-xl p-12 text-center border border-slate-200 dark:border-slate-700">
-          <FolderOpen className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-          <p className="text-slate-500">Aucun espace sur la plateforme</p>
+        {/* En-tête */}
+        <div>
+          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+            Gestion des espaces
+          </h1>
+          <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>
+            Superviser et modérer tous les espaces de la plateforme
+          </p>
         </div>
-      ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-50 dark:bg-slate-900/40">
-              <tr>
-                {['Espace', 'Administrateur', 'Membres', 'Fichiers', 'Action'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+
+        {loading ? (
+          <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+            Chargement…
+          </div>
+        ) : espaces.length === 0 ? (
+          <div style={{ padding: '64px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <FolderOpen size={40} style={{ color: 'var(--wings-text-muted)', opacity: 0.4 }} />
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>Aucun espace sur la plateforme</p>
+          </div>
+        ) : (
+          <div>
+            {/* En-tête colonnes */}
+            <div style={{ display: 'flex', alignItems: 'center', padding: '6px 20px', marginBottom: 6 }}>
+              <span style={{ ...colHeaderStyle, flex: '0 0 220px' }}>Espace</span>
+              <span style={{ ...colHeaderStyle, flex: 1 }}>Administrateur</span>
+              <span style={{ ...colHeaderStyle, flex: '0 0 90px' }}>Membres</span>
+              <span style={{ ...colHeaderStyle, flex: '0 0 90px' }}>Fichiers</span>
+              <span style={{ ...colHeaderStyle, flex: '0 0 60px', textAlign: 'right' }}>Action</span>
+            </div>
+
+            {/* Lignes */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {espaces.map(e => (
-                <tr key={e.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                  <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
-                    <span className="inline-flex items-center gap-2">
-                      <FolderOpen className="w-4 h-4 text-cyan-500" /> {e.nom}
+                <div key={e.id} style={{
+                  display: 'flex', alignItems: 'center',
+                  background: 'var(--wings-surface)',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 12, padding: '14px 20px',
+                }}>
+                  {/* NOM ESPACE */}
+                  <div style={{ flex: '0 0 220px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <FolderOpen size={14} style={{ color: 'var(--wings-gold)', flexShrink: 0 }} />
+                    <span style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {e.nom}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                    {e.admin_nom}
-                    <span className="block text-xs text-slate-400">{e.admin_email}</span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                    <span className="inline-flex items-center gap-1"><Users className="w-3 h-3" /> {e.nb_membres}</span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                    <span className="inline-flex items-center gap-1"><FileText className="w-3 h-3" /> {e.nb_fichiers}</span>
-                  </td>
-                  <td className="px-4 py-3">
+                  </div>
+
+                  {/* ADMINISTRATEUR */}
+                  <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
+                    <div style={{ color: 'var(--wings-text)', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {e.admin_nom}
+                    </div>
+                    <div style={{ color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {e.admin_email}
+                    </div>
+                  </div>
+
+                  {/* MEMBRES */}
+                  <div style={{ flex: '0 0 90px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Users size={13} style={{ color: 'var(--wings-text-muted)', opacity: 0.7, flexShrink: 0 }} />
+                    <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--wings-text)' }}>{e.nb_membres}</span>
+                  </div>
+
+                  {/* FICHIERS */}
+                  <div style={{ flex: '0 0 90px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <FileText size={13} style={{ color: 'var(--wings-text-muted)', opacity: 0.7, flexShrink: 0 }} />
+                    <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--wings-text)' }}>{e.nb_fichiers}</span>
+                  </div>
+
+                  {/* ACTION */}
+                  <div style={{ flex: '0 0 60px', display: 'flex', justifyContent: 'flex-end' }}>
                     <button
                       onClick={() => handleDelete(e.id, e.nom)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 rounded"
                       title="Supprimer cet espace (modération)"
+                      style={{
+                        background: 'none', border: 'none', padding: 4,
+                        color: 'var(--wings-text-muted)', cursor: 'pointer', borderRadius: 6,
+                        display: 'flex', alignItems: 'center',
+                      }}
+                      onMouseEnter={el => el.currentTarget.style.color = '#e57373'}
+                      onMouseLeave={el => el.currentTarget.style.color = 'var(--wings-text-muted)'}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 size={14} />
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </div>
+          </div>
+        )}
+      </div>
     </AppLayout>
   );
 }
