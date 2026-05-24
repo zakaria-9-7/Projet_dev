@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { HardDrive, Users, FileText, Trash2, X, UserMinus, Crown, User } from 'lucide-react';
+import { FolderOpen, HardDrive, Users, FileText, Trash2, X, UserMinus, Crown, User } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
+import SearchBar from '../components/SearchBar';
+import { useDebounced } from '../hooks/useDebounced';
 
 export default function AdminEspacesAll() {
   const [espaces,        setEspaces]        = useState([]);
@@ -9,7 +11,19 @@ export default function AdminEspacesAll() {
   const [toast,          setToast]          = useState(null);
   const [selectedEspace, setSelectedEspace] = useState(null);
   const [members,        setMembers]        = useState([]);
-  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [searchTerm,     setSearchTerm]     = useState('');
+  const debouncedSearch = useDebounced(searchTerm, 300);
+
+  const filteredEspaces = espaces.filter(e => {
+    if (!debouncedSearch) return true;
+    const q = debouncedSearch.toLowerCase();
+    return (
+      (e.nom         || '').toLowerCase().includes(q) ||
+      (e.admin_nom   || '').toLowerCase().includes(q) ||
+      (e.admin_email || '').toLowerCase().includes(q)
+    );
+  });
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -32,7 +46,7 @@ export default function AdminEspacesAll() {
 
   const loadMembers = async (espace) => {
     setSelectedEspace(espace);
-    setLoadingMembers(true);
+    setMembersLoading(true);
     try {
       const res = await API.get(`/admin/espaces/${espace.id}/members`);
       setMembers(res.data);
@@ -40,7 +54,7 @@ export default function AdminEspacesAll() {
       showToast('Erreur chargement membres', 'error');
       setMembers([]);
     } finally {
-      setLoadingMembers(false);
+      setMembersLoading(false);
     }
   };
 
@@ -56,13 +70,22 @@ export default function AdminEspacesAll() {
     }
   };
 
+  const colHeaderStyle = {
+    fontFamily: 'monospace',
+    fontSize: '10px',
+    letterSpacing: '2px',
+    color: 'var(--wings-text-muted)',
+    opacity: 0.6,
+    textTransform: 'uppercase',
+  };
+
   const handleRemoveMember = async (userId, userNom) => {
     if (!confirm(`Retirer "${userNom}" de l'espace "${selectedEspace.nom}" ?`)) return;
     try {
       await API.delete(`/admin/espaces/${selectedEspace.id}/members/${userId}`);
       showToast(`${userNom} retiré de l'espace`);
       loadMembers(selectedEspace);
-      load(); // refresh member count
+      load();
     } catch (e) {
       showToast(e.response?.data?.error || 'Erreur', 'error');
     }
@@ -71,145 +94,208 @@ export default function AdminEspacesAll() {
   return (
     <AppLayout>
       {toast && (
-        <div className={`fixed top-6 right-6 px-4 py-2 rounded-lg shadow-lg z-50 ${
-          toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
-        }`}>{toast.msg}</div>
+        <div style={{
+          position: 'fixed', top: 24, right: 24, zIndex: 50,
+          padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 500,
+          background: toast.type === 'error' ? '#dc2626' : '#059669',
+          color: '#fff',
+        }}>
+          {toast.msg}
+        </div>
       )}
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">Gestion des espaces</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Superviser et modérer tous les espaces de la plateforme</p>
-      </div>
+      <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      <div className="flex gap-6">
-        {/* ── Espaces list ── */}
-        <div className={`${selectedEspace ? 'w-1/2' : 'w-full'} transition-all`}>
-          {loading ? (
-            <div className="text-center py-12 text-slate-400">Chargement...</div>
-          ) : espaces.length === 0 ? (
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-12 text-center border border-slate-200 dark:border-slate-700">
-              <HardDrive className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-              <p className="text-slate-500">Aucun espace sur la plateforme</p>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-slate-50 dark:bg-slate-900/40">
-                  <tr>
-                    {['Espace', 'Administrateur', 'Membres', 'Fichiers', 'Action'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {espaces.map(e => (
-                    <tr
-                      key={e.id}
-                      onClick={() => loadMembers(e)}
-                      className={`cursor-pointer transition-colors ${
-                        selectedEspace?.id === e.id
-                          ? 'bg-cyan-50 dark:bg-cyan-900/20'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
-                      }`}
-                    >
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
-                        <span className="inline-flex items-center gap-2">
-                          <HardDrive className="w-4 h-4 text-cyan-500" /> {e.nom}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                        {e.admin_nom}
-                        <span className="block text-xs text-slate-400">{e.admin_email}</span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                        <span className="inline-flex items-center gap-1"><Users className="w-3 h-3" /> {e.nb_membres}</span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                        <span className="inline-flex items-center gap-1"><FileText className="w-3 h-3" /> {e.nb_fichiers}</span>
-                      </td>
-                      <td className="px-4 py-3" onClick={ev => ev.stopPropagation()}>
-                        <button
-                          onClick={() => handleDelete(e.id, e.nom)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 rounded"
-                          title="Supprimer cet espace (modération)"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        {/* En-tête */}
+        <div>
+          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+            Gestion des espaces
+          </h1>
+          <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>
+            Superviser et modérer tous les espaces de la plateforme
+          </p>
         </div>
 
-        {/* ── Member detail panel ── */}
-        {selectedEspace && (
-          <div className="w-1/2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden self-start">
-            {/* Panel header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <HardDrive className="w-4 h-4 text-cyan-500" />
-                  {selectedEspace.nom}
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Membres de l'espace</p>
-              </div>
-              <button
-                onClick={() => setSelectedEspace(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <SearchBar
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Rechercher un espace, un administrateur…"
+        />
 
-            {/* Members list */}
-            <div className="p-4">
-              {loadingMembers ? (
-                <div className="text-center py-8 text-slate-400 text-sm">Chargement...</div>
-              ) : members.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">Aucun membre</div>
+        <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+          {/* COLONNE GAUCHE : Liste des espaces */}
+          <div style={{ flex: selectedEspace ? '0 0 55%' : '1 1 auto', minWidth: 0, transition: 'flex-basis 0.2s' }}>
+            {loading ? (
+              <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+                Chargement…
+              </div>
+            ) : espaces.length === 0 ? (
+              <div style={{ padding: '64px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                <FolderOpen size={40} style={{ color: 'var(--wings-text-muted)', opacity: 0.4 }} />
+                <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>Aucun espace sur la plateforme</p>
+              </div>
+            ) : (
+              <div>
+                {/* En-tête colonnes */}
+                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 20px', marginBottom: 6 }}>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 200px' }}>Espace</span>
+                  <span style={{ ...colHeaderStyle, flex: 1 }}>Administrateur</span>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 80px' }}>Membres</span>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 80px' }}>Fichiers</span>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 60px', textAlign: 'right' }}>Action</span>
+                </div>
+
+                {/* Lignes */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {filteredEspaces.map(e => (
+                    <div
+                      key={e.id}
+                      onClick={() => loadMembers(e)}
+                      style={{
+                        display: 'flex', alignItems: 'center',
+                        background: selectedEspace?.id === e.id ? 'var(--wings-surface)' : 'transparent',
+                        border: selectedEspace?.id === e.id ? '0.5px solid var(--wings-gold)' : '0.5px solid var(--wings-border)',
+                        borderRadius: 12, padding: '14px 20px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={ev => { if (selectedEspace?.id !== e.id) ev.currentTarget.style.background = 'var(--wings-surface)'; }}
+                      onMouseLeave={ev => { if (selectedEspace?.id !== e.id) ev.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <div style={{ flex: '0 0 200px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <FolderOpen size={14} style={{ color: 'var(--wings-gold)', flexShrink: 0 }} />
+                        <span style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {e.nom}
+                        </span>
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
+                        <div style={{ color: 'var(--wings-text)', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {e.admin_nom}
+                        </div>
+                        <div style={{ color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {e.admin_email}
+                        </div>
+                      </div>
+
+                      <div style={{ flex: '0 0 80px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Users size={13} style={{ color: 'var(--wings-text-muted)', opacity: 0.7, flexShrink: 0 }} />
+                        <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--wings-text)' }}>{e.nb_membres}</span>
+                      </div>
+
+                      <div style={{ flex: '0 0 80px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <FileText size={13} style={{ color: 'var(--wings-text-muted)', opacity: 0.7, flexShrink: 0 }} />
+                        <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--wings-text)' }}>{e.nb_fichiers}</span>
+                      </div>
+
+                      <div style={{ flex: '0 0 60px', display: 'flex', justifyContent: 'flex-end' }} onClick={ev => ev.stopPropagation()}>
+                        <button
+                          onClick={() => handleDelete(e.id, e.nom)}
+                          title="Supprimer cet espace (modération)"
+                          style={{
+                            background: 'none', border: 'none', padding: 4,
+                            color: 'var(--wings-text-muted)', cursor: 'pointer', borderRadius: 6,
+                            display: 'flex', alignItems: 'center',
+                          }}
+                          onMouseEnter={el => el.currentTarget.style.color = '#e57373'}
+                          onMouseLeave={el => el.currentTarget.style.color = 'var(--wings-text-muted)'}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* COLONNE DROITE : Panneau détail membres (visible seulement si un espace est sélectionné) */}
+          {selectedEspace && (
+            <div style={{
+              flex: '0 0 45%',
+              background: 'var(--wings-surface)',
+              border: '0.5px solid var(--wings-border)',
+              borderRadius: 12,
+              padding: 20,
+              alignSelf: 'flex-start',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, color: 'var(--wings-text)', fontWeight: 500 }}>
+                    Membres
+                  </div>
+                  <div style={{ color: 'var(--wings-text-muted)', fontSize: 11, fontFamily: 'monospace' }}>
+                    {selectedEspace.nom}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedEspace(null)}
+                  style={{
+                    background: 'none', border: 'none', padding: 4,
+                    color: 'var(--wings-text-muted)', cursor: 'pointer', borderRadius: 6,
+                  }}
+                  title="Fermer"
+                >
+                  ×
+                </button>
+              </div>
+
+              {membersLoading ? (
+                <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 12 }}>
+                  Chargement des membres…
+                </div>
+              ) : !members || members.length === 0 ? (
+                <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 12 }}>
+                  Aucun membre
+                </div>
               ) : (
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {members.map(m => (
-                    <div key={m.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                          {(m.nom || m.email)[0].toUpperCase()}
+                    <div key={m.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px',
+                      background: 'var(--wings-bg)',
+                      border: '0.5px solid var(--wings-border)',
+                      borderRadius: 8,
+                    }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: 'var(--wings-blue)', color: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 11, fontWeight: 600, flexShrink: 0,
+                      }}>
+                        {(m.nom || m.email || '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: 'var(--wings-text)', fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {m.nom}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{m.nom}</p>
-                          <p className="text-xs text-slate-400">{m.email}</p>
+                        <div style={{ color: 'var(--wings-text-muted)', fontSize: 10, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {m.email}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {m.is_admin ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
-                            <Crown className="w-2.5 h-2.5" /> Admin
-                          </span>
-                        ) : (
-                          <>
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 rounded-full">
-                              <User className="w-2.5 h-2.5" /> Membre
-                            </span>
-                            <button
-                              onClick={() => handleRemoveMember(m.id, m.nom)}
-                              className="p-1.5 text-slate-400 hover:text-red-500 rounded"
-                              title="Retirer ce membre"
-                            >
-                              <UserMinus className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => handleRemoveMember(m.id, m.nom)}
+                        title="Retirer ce membre"
+                        style={{
+                          background: 'none', border: 'none', padding: 4,
+                          color: 'var(--wings-text-muted)', cursor: 'pointer', borderRadius: 6,
+                          display: 'flex', alignItems: 'center', flexShrink: 0,
+                        }}
+                        onMouseEnter={el => el.currentTarget.style.color = '#e57373'}
+                        onMouseLeave={el => el.currentTarget.style.color = 'var(--wings-text-muted)'}
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
       </div>
     </AppLayout>
   );

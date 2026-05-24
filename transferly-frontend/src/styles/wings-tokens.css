@@ -1,0 +1,52 @@
+:root {
+  /* Dark mode (par défaut pour Wings) */
+  --wings-bg: #000000;
+  --wings-surface: #0a0e1a;
+  --wings-text: #ffffff;
+  --wings-text-muted: #a8b4d4;
+  --wings-blue: #4F8BFF;
+  --wings-blue-dark: #2d5fc4;
+  --wings-blue-pale: #8db3ff;
+  --wings-gold: #FFC107;
+  --wings-gold-dark: #b78a05;
+  --wings-border: rgba(79, 139, 255, 0.15);
+  --wings-cicada-opacity: 0.45;
+  --wings-cicada-filter: brightness(0.7) saturate(0.8) drop-shadow(0 0 60px rgba(79,139,255,0.6));
+}
+
+[data-theme="light"] {
+  /* Fond cassé chaud */
+  --wings-bg: #f8f3e8;
+  --wings-surface: #ede4d3;
+
+  /* Texte bleu marine profond saturé (presque noir mais avec de la couleur) */
+  --wings-text: #0d1b3d;
+  --wings-text-muted: #4a5578;
+
+  /* Bleu pour les boutons et accents - adapté au fond clair */
+  --wings-blue: #1e3a8a;
+  --wings-blue-dark: #0a1f4d;
+  --wings-blue-pale: #3b5fc7;
+
+  /* Accent corail terreux au lieu du doré */
+  --wings-gold: #c97b63;
+  --wings-gold-dark: #a35c47;
+
+  /* Border subtile bleu marine */
+  --wings-border: rgba(13, 27, 61, 0.18);
+
+  /* Cigale en arrière-plan : encore plus discrète pour ne pas voler le show au texte */
+  --wings-cicada-opacity: 0.12;
+  --wings-cicada-filter: brightness(0.9) saturate(0.4);
+}
+
+@keyframes wings-breathe {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.06); }
+}
+
+@keyframes wings-float-particle {
+  0%, 100% { transform: translateY(0px)   translateX(0px); }
+  33%      { transform: translateY(-14px) translateX(7px); }
+  66%      { transform: translateY(7px)   translateX(-9px); }
+}

@@ -1,0 +1,58 @@
+.login-page {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Grille papier — couvre tout le fond */
+.login-grid {
+  position:         absolute;
+  inset:            0;
+  pointer-events:   none;
+  z-index:          0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+[data-theme="light"] .login-grid {
+  background-image:
+    linear-gradient(rgba(13, 27, 61, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(13, 27, 61, 0.03) 1px, transparent 1px);
+}
+
+/* Halo bleu atmosphérique autour de la cigale */
+.login-halo-blue {
+  position:       absolute;
+  width:          500px;
+  height:         500px;
+  top:            -60px;
+  left:           50%;
+  transform:      translateX(-50%);
+  border-radius:  50%;
+  background:     radial-gradient(circle, rgba(79, 139, 255, 0.18) 0%, transparent 70%);
+  filter:         blur(70px);
+  pointer-events: none;
+  z-index:        0;
+}
+
+[data-theme="light"] .login-halo-blue {
+  background: radial-gradient(circle, rgba(79, 139, 255, 0.12) 0%, transparent 70%);
+}
+
+/* Lumière dorée en bas à droite du formulaire */
+.login-glow-gold {
+  position:       absolute;
+  width:          400px;
+  height:         200px;
+  bottom:         60px;
+  right:          -100px;
+  pointer-events: none;
+  z-index:        0;
+  background:     radial-gradient(ellipse, rgba(255, 193, 7, 0.12) 0%, transparent 70%);
+  filter:         blur(50px);
+}
+
+[data-theme="light"] .login-glow-gold {
+  background: radial-gradient(ellipse, rgba(201, 123, 99, 0.15) 0%, transparent 70%);
+}

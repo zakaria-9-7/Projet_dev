@@ -1,0 +1,44 @@
+.wings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 22px;
+  color: var(--wings-text-muted);
+  font-size: 13px;
+  border-left: 2px solid transparent;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.wings-nav-item:hover {
+  background: rgba(79, 139, 255, 0.05);
+  color: var(--wings-text);
+}
+
+.wings-nav-item.active {
+  background: rgba(79, 139, 255, 0.1);
+  color: var(--wings-text);
+  border-left-color: var(--wings-blue);
+}
+
+.wings-nav-item.logout {
+  color: var(--wings-gold);
+}
+
+.wings-nav-item.logout:hover {
+  background: rgba(255, 193, 7, 0.08);
+  color: var(--wings-gold);
+}
+
+.wings-theme-toggle:hover {
+  background: var(--wings-surface) !important;
+}

@@ -18,45 +18,65 @@ const Icon = ({ name, size = 16, color = 'currentColor' }) => {
   return icons[name] || null;
 };
 
-// ─── Restore Confirmation Modal ───────────────────────────────
+// ─── Modale de confirmation de restauration ───────────────────
 function RestoreModal({ version, onConfirm, onCancel, loading }) {
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.3)',
+      position: 'fixed', inset: 0,
+      background: 'rgba(0,0,0,0.6)',
       backdropFilter: 'blur(4px)', zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16,
     }}>
       <div style={{
-        background: '#fff', borderRadius: 16, padding: '32px',
-        width: 400, boxShadow: '0 20px 60px rgba(0,0,0,.2)',
+        background: 'var(--wings-surface)',
+        border: '0.5px solid var(--wings-border)',
+        borderRadius: 16, padding: 28,
+        width: '100%', maxWidth: 400,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
       }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: 12,
-          background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          marginBottom: 16,
+        <h3 style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: 18, fontWeight: 400,
+          color: 'var(--wings-text)', margin: '0 0 10px',
         }}>
-          <Icon name="versions" size={22} color="#ea580c" />
-        </div>
-        <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1a1a2e', margin: '0 0 8px' }}>
           Restaurer la version {version.numero_version} ?
         </h3>
-        <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.6, margin: '0 0 24px' }}>
-          La version courante sera archivée et la <strong>v{version.numero_version}</strong> deviendra
-          la version active du fichier. Cette action est réversible.
+        <p style={{ fontSize: 13, color: 'var(--wings-text-muted)', lineHeight: 1.6, margin: '0 0 24px' }}>
+          La version courante sera archivée et la{' '}
+          <strong style={{ color: 'var(--wings-text)', fontWeight: 600 }}>v{version.numero_version}</strong>{' '}
+          deviendra la version active du fichier. Cette action est réversible.
         </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{
-            padding: '9px 20px', borderRadius: 9, border: '1.5px solid #e2e8f0',
-            background: '#fff', color: '#475569', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
-          }}>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: '8px 20px', borderRadius: 999,
+              border: '0.5px solid var(--wings-border)',
+              background: 'transparent',
+              color: 'var(--wings-text-muted)',
+              fontSize: 13, cursor: 'pointer',
+              transition: 'color 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; e.currentTarget.style.borderColor = 'var(--wings-text-muted)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; e.currentTarget.style.borderColor = 'var(--wings-border)'; }}
+          >
             Annuler
           </button>
-          <button onClick={onConfirm} disabled={loading} style={{
-            padding: '9px 20px', borderRadius: 9, border: 'none',
-            background: loading ? '#93c5fd' : '#2563eb',
-            color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            style={{
+              padding: '8px 20px', borderRadius: 999, border: 'none',
+              background: 'var(--wings-blue)',
+              color: '#fff', fontSize: 13, fontWeight: 500,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--wings-blue-dark)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--wings-blue)'; }}
+          >
             {loading ? 'Restauration...' : 'Confirmer la restauration'}
           </button>
         </div>
@@ -65,7 +85,7 @@ function RestoreModal({ version, onConfirm, onCancel, loading }) {
   );
 }
 
-// ─── Version Row ──────────────────────────────────────────────
+// ─── Ligne de version ─────────────────────────────────────────
 function VersionRow({ v, isLatest, permissions, onRestoreClick, onPreviewClick, onDownloadClick }) {
   const [hov, setHov] = useState(false);
 
@@ -78,93 +98,106 @@ function VersionRow({ v, isLatest, permissions, onRestoreClick, onPreviewClick, 
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        display: 'grid', gridTemplateColumns: '110px 1fr 1fr',
-        gap: 16, padding: '16px 24px',
-        background: isLatest ? '#f0f9ff' : (hov ? '#fafbfd' : '#fff'),
-        borderBottom: '1px solid #f1f5f9',
-        alignItems: 'center', transition: 'background .12s',
-      }}>
-
-      {/* Version badge */}
-      <div>
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16,
+        padding: '16px 20px',
+        background: 'var(--wings-surface)',
+        border: `0.5px solid ${hov ? 'rgba(79,139,255,0.3)' : 'var(--wings-border)'}`,
+        borderRadius: 12,
+        marginBottom: 10,
+        transition: 'border-color 0.15s',
+      }}
+    >
+      {/* Gauche : badge version + date */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
         <span style={{
           display: 'inline-flex', alignItems: 'center', gap: 5,
-          padding: '5px 12px', borderRadius: 20,
-          background: isLatest ? '#dbeafe' : '#f1f5f9',
-          color: isLatest ? '#1d4ed8' : '#475569',
-          fontSize: 12.5, fontWeight: 700,
+          padding: '4px 8px', borderRadius: 6, flexShrink: 0,
+          background: isLatest ? 'rgba(79,139,255,0.12)' : 'rgba(168,180,212,0.08)',
+          color: isLatest ? 'var(--wings-blue)' : 'var(--wings-text-muted)',
+          border: isLatest ? '0.5px solid rgba(79,139,255,0.25)' : '0.5px solid var(--wings-border)',
+          fontSize: 11, fontWeight: 600, fontFamily: 'monospace',
         }}>
           v{v.numero_version}
-          {isLatest && <span style={{ fontSize: 10, fontWeight: 400, opacity: .8 }}>actuelle</span>}
+          {isLatest && <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.8 }}>actuelle</span>}
         </span>
-      </div>
 
-      {/* Date + description */}
-      <div>
-        <div style={{ fontSize: 13.5, color: '#334155', fontWeight: 500 }}>
-          {v.date_modification ? new Date(v.date_modification).toLocaleString('fr-FR') : '—'}
-        </div>
-        {v.description && (
-          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{v.description}</div>
-        )}
-        {isLatest && (
-          <div style={{ fontSize: 11, color: '#22c55e', fontWeight: 500, marginTop: 2, display: 'flex', alignItems: 'center', gap: 3 }}>
-            <Icon name="check" size={10} color="#22c55e" /> Dernière modification
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, color: 'var(--wings-text)', fontWeight: 400 }}>
+            {v.date_modification ? new Date(v.date_modification).toLocaleString('fr-FR') : '—'}
           </div>
-        )}
+          {v.description && (
+            <div style={{ fontSize: 11, color: 'var(--wings-text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {v.description}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+      {/* Droite : statut ou actions */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         {isLatest ? (
           <span style={{
-            padding: '6px 14px', borderRadius: 8,
-            background: '#f0fdf4', color: '#16a34a',
-            fontSize: 12.5, fontWeight: 600,
-            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '4px 10px', borderRadius: 999,
+            background: 'rgba(107,155,120,0.12)',
+            color: '#5dd39e',
+            fontSize: 11, fontFamily: 'monospace',
+            border: '0.5px solid rgba(93,211,158,0.2)',
           }}>
-            <Icon name="check" size={12} color="#16a34a" /> Courante
+            Courante
           </span>
         ) : (
           <>
             {canPreview && (
-              <button onClick={() => onPreviewClick(v)} style={{
-                padding: '7px 14px', borderRadius: 8, border: '1.5px solid #e2e8f0',
-                background: '#fff', color: '#475569', fontSize: 12.5, fontWeight: 600,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-              }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
-                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-                Prévisualiser
+              <button
+                onClick={() => onPreviewClick(v)}
+                style={{
+                  padding: '5px 12px', borderRadius: 999,
+                  border: '0.5px solid var(--wings-border)',
+                  background: 'transparent',
+                  color: 'var(--wings-text-muted)',
+                  fontSize: 12, cursor: 'pointer',
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; e.currentTarget.style.borderColor = 'var(--wings-text-muted)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; e.currentTarget.style.borderColor = 'var(--wings-border)'; }}
+              >
+                Aperçu
               </button>
             )}
             {canDownload && (
-              <button onClick={() => onDownloadClick(v)} style={{
-                padding: '7px 14px', borderRadius: 8, border: '1.5px solid #e2e8f0',
-                background: '#fff', color: '#475569', fontSize: 12.5, fontWeight: 600,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-              }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
-                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
+              <button
+                onClick={() => onDownloadClick(v)}
+                style={{
+                  padding: '5px 12px', borderRadius: 999,
+                  border: '0.5px solid var(--wings-border)',
+                  background: 'transparent',
+                  color: 'var(--wings-text-muted)',
+                  fontSize: 12, cursor: 'pointer',
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; e.currentTarget.style.borderColor = 'var(--wings-text-muted)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; e.currentTarget.style.borderColor = 'var(--wings-border)'; }}
+              >
                 Télécharger
               </button>
             )}
             {canRestore && (
-              <button onClick={() => onRestoreClick(v)} style={{
-                padding: '7px 16px', borderRadius: 8, border: 'none',
-                background: '#2563eb', color: '#fff',
-                fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'none'; }}>
-                <Icon name="versions" size={12} color="#fff" /> Restaurer
+              <button
+                onClick={() => onRestoreClick(v)}
+                style={{
+                  padding: '5px 14px', borderRadius: 999,
+                  border: '0.5px solid var(--wings-border)',
+                  background: 'transparent',
+                  color: 'var(--wings-text-muted)',
+                  fontSize: 12, cursor: 'pointer',
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; e.currentTarget.style.borderColor = 'var(--wings-text-muted)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; e.currentTarget.style.borderColor = 'var(--wings-border)'; }}
+              >
+                Restaurer
               </button>
             )}
           </>
@@ -174,7 +207,7 @@ function VersionRow({ v, isLatest, permissions, onRestoreClick, onPreviewClick, 
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────
+// ─── Composant principal ──────────────────────────────────────
 export default function FileVersions() {
   const [params] = useSearchParams();
   const fileId   = params.get('fileId');
@@ -246,14 +279,18 @@ export default function FileVersions() {
     return (
       <AppLayout>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-          <div style={{ textAlign: 'center', color: '#64748b' }}>
-            <p style={{ fontSize: 15, marginBottom: 16 }}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 14, marginBottom: 16, color: 'var(--wings-text-muted)' }}>
               Aucun fichier sélectionné. Retournez à vos fichiers.
             </p>
-            <button onClick={() => navigate('/files')} style={{
-              padding: '9px 20px', borderRadius: 9, border: 'none',
-              background: '#2563eb', color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-            }}>
+            <button
+              onClick={() => navigate('/files')}
+              style={{
+                padding: '8px 20px', borderRadius: 999, border: 'none',
+                background: 'var(--wings-blue)', color: '#fff',
+                fontSize: 13, cursor: 'pointer',
+              }}
+            >
               Retour aux fichiers
             </button>
           </div>
@@ -264,102 +301,85 @@ export default function FileVersions() {
 
   return (
     <AppLayout>
-      {/* ── Page header ── */}
-      <div style={{ marginBottom: 28 }}>
-        <button onClick={() => navigate(-1)} style={{
+      {/* ── Fil d'ariane ── */}
+      <button
+        onClick={() => navigate(-1)}
+        style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
-          border: 'none', background: 'none', padding: 0,
-          fontSize: 13.5, color: '#3b82f6', cursor: 'pointer',
-          fontWeight: 500, marginBottom: 14,
-        }}>
-          <Icon name="back" size={15} color="#3b82f6" /> Retour aux fichiers
-        </button>
+          border: 'none', background: 'transparent', padding: 0,
+          fontSize: 13, color: 'var(--wings-text-muted)', cursor: 'pointer',
+          marginBottom: 20,
+        }}
+      >
+        <Icon name="back" size={14} color="var(--wings-text-muted)" /> Retour
+      </button>
 
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', margin: 0, letterSpacing: '-0.02em' }}>
-              Historique des versions
-            </h1>
-            <p style={{ fontSize: 13.5, color: '#94a3b8', marginTop: 4 }}>
-              Fichier : <span style={{ fontFamily: 'monospace', color: '#64748b', fontWeight: 500 }}>{fileName}</span>
-            </p>
-          </div>
-          <div style={{
-            padding: '8px 18px', borderRadius: 99,
-            background: '#fff', border: '1px solid #e2e8f0',
-            fontSize: 13, color: '#64748b', fontWeight: 500,
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <Icon name="versions" size={14} color="#94a3b8" />
-            {versions.length} version{versions.length > 1 ? 's' : ''}
-          </div>
-        </div>
+      {/* ── En-tête ── */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: 24, fontWeight: 400,
+          color: 'var(--wings-text)', margin: '0 0 6px',
+        }}>
+          Historique des versions
+        </h1>
+        <p style={{
+          fontSize: 11, fontFamily: 'monospace',
+          color: 'var(--wings-gold)', margin: 0,
+        }}>
+          {fileName}
+          {versions.length > 0 && (
+            <span style={{ color: 'var(--wings-text-muted)', marginLeft: 10 }}>
+              · {versions.length} version{versions.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </p>
       </div>
 
-      {/* ── Table card ── */}
+      {/* ── Liste des versions ── */}
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
-          <div style={{
-            width: 36, height: 36, border: '3px solid #e2e8f0',
-            borderTopColor: '#3b82f6', borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+          <div style={{ fontSize: 13, color: 'var(--wings-text-muted)' }}>Chargement…</div>
+        </div>
+      ) : versions.length === 0 ? (
+        <div style={{ textAlign: 'center', paddingTop: 64, paddingBottom: 64 }}>
+          <p style={{ fontSize: 14, color: 'var(--wings-text-muted)', margin: '0 0 4px' }}>
+            Aucune version disponible pour ce fichier.
+          </p>
         </div>
       ) : (
-        <div style={{
-          background: '#fff', borderRadius: 14,
-          border: '1px solid #e8e8ed',
-          boxShadow: '0 1px 4px rgba(0,0,0,.04)',
-          overflow: 'hidden',
-        }}>
-          {/* Table header */}
-          <div style={{
-            display: 'grid', gridTemplateColumns: '110px 1fr 1fr',
-            gap: 16, padding: '12px 24px',
-            borderBottom: '1.5px solid #f1f5f9', background: '#fafbfd',
-          }}>
-            {['Version', 'Date de modification', 'Actions'].map((h, i) => (
-              <span key={h} style={{
-                fontSize: 11, fontWeight: 600, color: '#94a3b8',
-                textTransform: 'uppercase', letterSpacing: '.08em',
-                textAlign: i === 2 ? 'right' : 'left',
-              }}>{h}</span>
-            ))}
-          </div>
-
-          {versions.length === 0 ? (
-            <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
-              Aucune version disponible pour ce fichier.
-            </div>
-          ) : (
-            versions.map((v, i) => (
-              <VersionRow
-                key={v.id}
-                v={v}
-                isLatest={i === 0}
-                permissions={permissions}
-                onRestoreClick={setRestoreTarget}
-                onPreviewClick={setPreviewTarget}
-                onDownloadClick={handleVersionDownload}
-              />
-            ))
-          )}
+        <div>
+          {versions.map((v, i) => (
+            <VersionRow
+              key={v.id}
+              v={v}
+              isLatest={i === 0}
+              permissions={permissions}
+              onRestoreClick={setRestoreTarget}
+              onPreviewClick={setPreviewTarget}
+              onDownloadClick={handleVersionDownload}
+            />
+          ))}
         </div>
       )}
 
-      {/* ── Info banner ── */}
-      <div style={{
-        marginTop: 20, padding: '12px 18px', borderRadius: 10,
-        background: '#f0f9ff', border: '1px solid #bae6fd',
-        display: 'flex', alignItems: 'center', gap: 10,
-        fontSize: 13, color: '#0369a1',
-      }}>
-        <Icon name="info" size={15} color="#0369a1" />
-        La restauration d'une ancienne version archive la version courante. Elle reste disponible dans cet historique.
-      </div>
+      {/* ── Bloc d'information ── */}
+      {!loading && (
+        <div style={{
+          marginTop: 12,
+          padding: '14px 18px',
+          borderLeft: '3px solid var(--wings-gold)',
+          borderRadius: '0 10px 10px 0',
+          background: 'var(--wings-surface)',
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          fontSize: 12, color: 'var(--wings-text-muted)',
+        }}>
+          <Icon name="info" size={14} color="var(--wings-gold)" />
+          La restauration d'une ancienne version archive la version courante. Elle reste disponible dans cet historique.
+        </div>
+      )}
 
-      {/* ── Restore Modal ── */}
+      {/* ── Modale de restauration ── */}
       {restoreTarget && (
         <RestoreModal
           version={restoreTarget}
@@ -369,7 +389,7 @@ export default function FileVersions() {
         />
       )}
 
-      {/* ── Version Preview Modal ── */}
+      {/* ── Modale de prévisualisation ── */}
       {previewTarget && (
         <FilePreviewModal
           file={{ id: fileId, nom: fileName }}
@@ -383,15 +403,11 @@ export default function FileVersions() {
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 2000,
-          padding: '14px 20px', borderRadius: 12,
-          background: toast.type === 'success' ? '#f0fdf4' : '#fef2f2',
-          border: `1px solid ${toast.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-          color: toast.type === 'success' ? '#16a34a' : '#dc2626',
-          fontSize: 13.5, fontWeight: 600,
-          display: 'flex', alignItems: 'center', gap: 8,
-          boxShadow: '0 8px 24px rgba(0,0,0,.1)',
+          padding: '10px 18px', borderRadius: 8,
+          background: toast.type === 'success' ? '#059669' : '#dc2626',
+          color: '#fff', fontSize: 14, fontWeight: 600,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
         }}>
-          {toast.type === 'success' ? <Icon name="check" size={16} color="#16a34a" /> : '⚠'}
           {toast.message}
         </div>
       )}

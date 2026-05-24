@@ -51,22 +51,45 @@ export default function JoinEspace() {
   }, [token, navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl shadow-md p-10 max-w-md w-full text-center">
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--wings-bg)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
+    }}>
+      <div style={{
+        background: 'var(--wings-surface)',
+        border: '0.5px solid var(--wings-border)',
+        borderRadius: 16, padding: '40px 32px',
+        maxWidth: 440, width: '100%',
+        textAlign: 'center',
+      }}>
         {status === 'loading' && (
           <>
-            <Loader className="w-12 h-12 mx-auto text-cyan-500 animate-spin mb-4" />
-            <h2 className="text-xl font-bold text-slate-900">Acceptation de l'invitation...</h2>
+            <Loader size={40} color="var(--wings-blue)" style={{ margin: '0 auto 16px', display: 'block', animation: 'spin 1s linear infinite' }} />
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: 'var(--wings-text)', fontWeight: 400, margin: 0 }}>
+              Acceptation de l'invitation…
+            </h2>
           </>
         )}
         {status === 'success' && (
           <>
-            <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-500 mb-4" />
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Bienvenue !</h2>
-            <p className="text-slate-600 mb-6">{message}</p>
+            <CheckCircle2 size={40} color="#5dd39e" style={{ margin: '0 auto 16px', display: 'block' }} />
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 8 }}>
+              Bienvenue !
+            </h2>
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 14, marginBottom: 24, lineHeight: 1.5 }}>
+              {message}
+            </p>
             <button
               onClick={() => navigate(`/espace/${espaceId}`)}
-              className="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg"
+              style={{
+                padding: '10px 24px',
+                background: 'var(--wings-blue)',
+                border: 'none', borderRadius: 999,
+                color: '#fff', fontSize: 13, fontWeight: 500,
+                cursor: 'pointer',
+              }}
             >
               Accéder à l'espace
             </button>
@@ -74,21 +97,37 @@ export default function JoinEspace() {
         )}
         {status === 'error' && (
           <>
-            <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Impossible de rejoindre l'espace</h2>
-            <p className="text-slate-600 mb-6">{message}</p>
-            <div className="flex gap-3 justify-center flex-wrap">
+            <AlertCircle size={40} color="#e57373" style={{ margin: '0 auto 16px', display: 'block' }} />
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 8 }}>
+              Impossible de rejoindre l'espace
+            </h2>
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 14, marginBottom: 24, lineHeight: 1.5 }}>
+              {message}
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 onClick={() => navigate('/admin-espace')}
-                className="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg"
+                style={{
+                  padding: '10px 20px',
+                  background: 'var(--wings-blue)',
+                  border: 'none', borderRadius: 999,
+                  color: '#fff', fontSize: 13, fontWeight: 500,
+                  cursor: 'pointer',
+                }}
               >
                 Voir mes espaces
               </button>
               <button
                 onClick={() => navigate('/dashboard')}
-                className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg"
+                style={{
+                  padding: '10px 20px',
+                  background: 'transparent',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 999, color: 'var(--wings-text-muted)',
+                  fontSize: 13, cursor: 'pointer',
+                }}
               >
-                Retour au dashboard
+                Retour au tableau de bord
               </button>
             </div>
           </>

@@ -3,6 +3,41 @@ import { Users, FolderOpen, HardDrive, Search, Edit2, Trash2, Pause, Play, Shiel
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 
+const roleBadgeStyle = (role) => {
+  if (role === 'AdminGlobal') return {
+    background: 'rgba(142,108,184,0.15)', color: '#b07cce',
+    border: '0.5px solid rgba(142,108,184,0.25)',
+  };
+  if (role === 'AdminEspace') return {
+    background: 'rgba(255,193,7,0.15)', color: 'var(--wings-gold)',
+    border: '0.5px solid rgba(255,193,7,0.25)',
+  };
+  return {
+    background: 'rgba(79,139,255,0.1)', color: 'var(--wings-blue)',
+    border: '0.5px solid rgba(79,139,255,0.2)',
+  };
+};
+
+const labelStyle = {
+  display: 'block', fontFamily: 'monospace', fontSize: '10px',
+  letterSpacing: '2px', color: 'var(--wings-gold)',
+  textTransform: 'uppercase', marginBottom: '6px',
+};
+
+const inputStyle = {
+  width: '100%', padding: '10px 14px',
+  background: 'var(--wings-bg)',
+  border: '0.5px solid var(--wings-border)',
+  borderRadius: 10, color: 'var(--wings-text)',
+  fontSize: 13, outline: 'none', boxSizing: 'border-box',
+};
+
+const actionBtnBase = {
+  background: 'none', border: 'none',
+  color: 'var(--wings-text-muted)', cursor: 'pointer',
+  padding: 4, display: 'flex', alignItems: 'center', borderRadius: 6,
+};
+
 export default function AdminPanel() {
   const [tab,       setTab]       = useState('users');
   const [users,     setUsers]     = useState([]);
@@ -96,250 +131,299 @@ export default function AdminPanel() {
     { id: 'quotas',  label: 'Quotas',        icon: HardDrive },
   ];
 
+  const colHeaderStyle = {
+    fontFamily: 'monospace', fontSize: '10px', letterSpacing: '2px',
+    color: 'var(--wings-text-muted)', opacity: 0.6, textTransform: 'uppercase',
+  };
+
   return (
     <AppLayout>
-      {/* Toast */}
       {toast && (
-        <div className={`fixed top-6 right-6 px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium ${
-          toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
-        }`}>
+        <div style={{
+          position: 'fixed', top: 24, right: 24, zIndex: 50,
+          padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 500,
+          background: toast.type === 'error' ? '#dc2626' : '#059669',
+          color: '#fff',
+        }}>
           {toast.msg}
         </div>
       )}
 
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-          <Shield className="w-6 h-6 text-violet-500" />
-          Administration
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Gestion globale de la plateforme Transferly
-        </p>
-      </div>
+      <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-700">
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-              tab === t.id
-                ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
-                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
-            }`}
-          >
-            <t.icon className="w-4 h-4" />
-            {t.label}
-          </button>
-        ))}
-      </div>
+        {/* En-tête */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <Shield size={18} color="var(--wings-blue)" style={{ flexShrink: 0 }} />
+            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400, margin: 0 }}>
+              Administration
+            </h1>
+          </div>
+          <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>
+            Gestion globale de la plateforme Transferly
+          </p>
+        </div>
 
-      {loading ? (
-        <div className="text-center py-16 text-slate-400 dark:text-slate-500">Chargement...</div>
-      ) : (
-        <>
-          {/* Search bar (users + quotas tabs) */}
-          {(tab === 'users' || tab === 'quotas') && (
-            <div className="mb-4 relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Rechercher un utilisateur..."
-                className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-              />
-            </div>
-          )}
+        {/* Onglets */}
+        <div style={{ display: 'flex', gap: 4, borderBottom: '0.5px solid var(--wings-border)' }}>
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '10px 16px', fontSize: 13,
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderBottom: tab === t.id ? '2px solid var(--wings-blue)' : '2px solid transparent',
+                color: tab === t.id ? 'var(--wings-blue)' : 'var(--wings-text-muted)',
+                marginBottom: -1, fontWeight: tab === t.id ? 500 : 400,
+                transition: 'color 0.15s',
+              }}
+            >
+              <t.icon size={14} />
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-          {/* ── USERS TAB ── */}
-          {tab === 'users' && (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-slate-50 dark:bg-slate-900/40">
-                  <tr>
-                    {['Nom', 'Email', 'Rôle', 'Statut', 'Actions'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+        {loading ? (
+          <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+            Chargement…
+          </div>
+        ) : (
+          <>
+            {/* Barre de recherche (users + quotas) */}
+            {(tab === 'users' || tab === 'quotas') && (
+              <div style={{ position: 'relative', maxWidth: 340 }}>
+                <Search size={14} style={{
+                  position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+                  color: 'var(--wings-text-muted)', pointerEvents: 'none',
+                }} />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Rechercher un utilisateur…"
+                  style={{
+                    width: '100%', padding: '10px 14px 10px 38px',
+                    background: 'var(--wings-surface)',
+                    border: '0.5px solid var(--wings-border)',
+                    borderRadius: 12, color: 'var(--wings-text)',
+                    fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                  }}
+                  onFocus={e => e.target.style.borderColor = 'var(--wings-blue)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--wings-border)'}
+                />
+              </div>
+            )}
+
+            {/* ── ONGLET UTILISATEURS ── */}
+            {tab === 'users' && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 20px', marginBottom: 6 }}>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 180px' }}>Nom</span>
+                  <span style={{ ...colHeaderStyle, flex: 1 }}>Email</span>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 140px' }}>Rôle</span>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 100px' }}>Statut</span>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 100px', textAlign: 'right' }}>Actions</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {filteredUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-400">
-                        Aucun utilisateur trouvé
-                      </td>
-                    </tr>
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+                      Aucun utilisateur trouvé
+                    </div>
                   ) : filteredUsers.map(u => (
-                    <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">{u.nom || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{u.email}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                          u.role === 'AdminGlobal'  ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400' :
-                          u.role === 'AdminEspace'  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' :
-                                                      'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
-                        }`}>
+                    <div key={u.id} style={{
+                      display: 'flex', alignItems: 'center',
+                      background: 'var(--wings-surface)',
+                      border: '0.5px solid var(--wings-border)',
+                      borderRadius: 12, padding: '14px 20px',
+                    }}>
+                      <div style={{ flex: '0 0 180px', color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {u.nom || '—'}
+                      </div>
+                      <div style={{ flex: 1, color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>
+                        {u.email}
+                      </div>
+                      <div style={{ flex: '0 0 140px' }}>
+                        <span style={{ ...roleBadgeStyle(u.role), fontFamily: 'monospace', fontSize: 10, borderRadius: 6, padding: '3px 8px', display: 'inline-block' }}>
                           {u.role}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          u.statut === 'actif'
-                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                            : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                        }`}>
+                      </div>
+                      <div style={{ flex: '0 0 100px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: u.statut === 'actif' ? '#5dd39e' : '#e57373', flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: u.statut === 'actif' ? '#5dd39e' : '#e57373' }}>
                           {u.statut}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => setEditUser({ ...u })}
-                            className="p-1.5 text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded transition-colors"
-                            title="Modifier"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleSuspend(u.id)}
-                            className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded transition-colors"
-                            title={u.statut === 'actif' ? 'Suspendre' : 'Activer'}
-                          >
-                            {u.statut === 'actif' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(u.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                      </div>
+                      <div style={{ flex: '0 0 100px', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => setEditUser({ ...u })}
+                          title="Modifier"
+                          style={actionBtnBase}
+                          onMouseEnter={e => e.currentTarget.style.color = 'var(--wings-text)'}
+                          onMouseLeave={e => e.currentTarget.style.color = 'var(--wings-text-muted)'}
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleSuspend(u.id)}
+                          title={u.statut === 'actif' ? 'Suspendre' : 'Activer'}
+                          style={actionBtnBase}
+                          onMouseEnter={e => e.currentTarget.style.color = 'var(--wings-gold)'}
+                          onMouseLeave={e => e.currentTarget.style.color = 'var(--wings-text-muted)'}
+                        >
+                          {u.statut === 'actif' ? <Pause size={14} /> : <Play size={14} />}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(u.id)}
+                          title="Supprimer"
+                          style={actionBtnBase}
+                          onMouseEnter={e => e.currentTarget.style.color = '#e57373'}
+                          onMouseLeave={e => e.currentTarget.style.color = 'var(--wings-text-muted)'}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </div>
+              </div>
+            )}
 
-          {/* ── ESPACES TAB ── */}
-          {tab === 'espaces' && (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-slate-50 dark:bg-slate-900/40">
-                  <tr>
-                    {['ID', "Nom de l'espace", 'Admin', 'Actions'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+            {/* ── ONGLET ESPACES ── */}
+            {tab === 'espaces' && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 20px', marginBottom: 6 }}>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 60px' }}>ID</span>
+                  <span style={{ ...colHeaderStyle, flex: 1 }}>Nom de l'espace</span>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 200px' }}>Admin</span>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 60px', textAlign: 'right' }}>Action</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {espaces.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-10 text-center text-sm text-slate-400">
-                        Aucun espace
-                      </td>
-                    </tr>
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+                      Aucun espace
+                    </div>
                   ) : espaces.map(e => (
-                    <tr key={e.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">#{e.id}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
+                    <div key={e.id} style={{
+                      display: 'flex', alignItems: 'center',
+                      background: 'var(--wings-surface)',
+                      border: '0.5px solid var(--wings-border)',
+                      borderRadius: 12, padding: '14px 20px',
+                    }}>
+                      <div style={{ flex: '0 0 60px', color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 12 }}>
+                        #{e.id}
+                      </div>
+                      <div style={{ flex: 1, color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>
                         {e.name || e.nom || '—'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                        {e.adminEspace
-                          ? `${e.adminEspace[0] || ''} (${e.adminEspace[1] || ''})`
-                          : '—'}
-                      </td>
-                      <td className="px-4 py-3">
+                      </div>
+                      <div style={{ flex: '0 0 200px', color: 'var(--wings-text-muted)', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {e.adminEspace ? `${e.adminEspace[0] || ''} (${e.adminEspace[1] || ''})` : '—'}
+                      </div>
+                      <div style={{ flex: '0 0 60px', display: 'flex', justifyContent: 'flex-end' }}>
                         <button
                           onClick={() => handleDeleteEspace(e.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                           title="Supprimer"
+                          style={actionBtnBase}
+                          onMouseEnter={el => el.currentTarget.style.color = '#e57373'}
+                          onMouseLeave={el => el.currentTarget.style.color = 'var(--wings-text-muted)'}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 size={14} />
                         </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </div>
+              </div>
+            )}
 
-          {/* ── QUOTAS TAB ── */}
-          {tab === 'quotas' && (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-slate-50 dark:bg-slate-900/40">
-                  <tr>
-                    {['Utilisateur', 'Email', 'Quota alloué', 'Actions'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+            {/* ── ONGLET QUOTAS ── */}
+            {tab === 'quotas' && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 20px', marginBottom: 6 }}>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 180px' }}>Utilisateur</span>
+                  <span style={{ ...colHeaderStyle, flex: 1 }}>Email</span>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 120px' }}>Quota alloué</span>
+                  <span style={{ ...colHeaderStyle, flex: '0 0 100px', textAlign: 'right' }}>Action</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {filteredUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-10 text-center text-sm text-slate-400">
-                        Aucun utilisateur
-                      </td>
-                    </tr>
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
+                      Aucun utilisateur
+                    </div>
                   ) : filteredUsers.map(u => (
-                    <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">{u.nom || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{u.email}</td>
-                      <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100 font-medium">
+                    <div key={u.id} style={{
+                      display: 'flex', alignItems: 'center',
+                      background: 'var(--wings-surface)',
+                      border: '0.5px solid var(--wings-border)',
+                      borderRadius: 12, padding: '14px 20px',
+                    }}>
+                      <div style={{ flex: '0 0 180px', color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {u.nom || '—'}
+                      </div>
+                      <div style={{ flex: 1, color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>
+                        {u.email}
+                      </div>
+                      <div style={{ flex: '0 0 120px', color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, fontFamily: 'monospace' }}>
                         {u.quota ?? 2} GB
-                      </td>
-                      <td className="px-4 py-3">
+                      </div>
+                      <div style={{ flex: '0 0 100px', display: 'flex', justifyContent: 'flex-end' }}>
                         <button
                           onClick={() => setEditQuota({ id: u.id, email: u.email, quota: u.quota ?? 2 })}
-                          className="px-3 py-1 text-xs bg-cyan-500 hover:bg-cyan-600 text-white rounded-md transition-colors font-medium"
+                          style={{
+                            padding: '6px 14px', fontSize: 12,
+                            background: 'var(--wings-blue)',
+                            border: 'none', borderRadius: 999,
+                            color: '#fff', cursor: 'pointer', fontWeight: 500,
+                          }}
                         >
                           Modifier
                         </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* ── MODALE ÉDITION UTILISATEUR ── */}
       {editUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-xl border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-bold mb-5 text-slate-900 dark:text-slate-100">Modifier l'utilisateur</h3>
-            <div className="space-y-4">
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 50, padding: 16, backdropFilter: 'blur(4px)',
+        }}>
+          <div style={{
+            background: 'var(--wings-surface)',
+            border: '0.5px solid var(--wings-border)',
+            borderRadius: 16, padding: 28,
+            maxWidth: 440, width: '100%',
+          }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 20 }}>
+              Modifier l'utilisateur
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Email</label>
+                <label style={labelStyle}>Email</label>
                 <input
                   type="email"
                   value={editUser.email}
                   onChange={e => setEditUser({ ...editUser, email: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  style={inputStyle}
+                  onFocus={e => e.target.style.borderColor = 'var(--wings-blue)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--wings-border)'}
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Rôle</label>
+                <label style={labelStyle}>Rôle</label>
                 <select
                   value={editUser.role}
                   onChange={e => setEditUser({ ...editUser, role: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  style={{ ...inputStyle, cursor: 'pointer' }}
                 >
                   <option value="Utilisateur">Utilisateur</option>
                   <option value="AdminEspace">AdminEspace</option>
@@ -347,27 +431,35 @@ export default function AdminPanel() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Statut</label>
+                <label style={labelStyle}>Statut</label>
                 <select
                   value={editUser.statut}
                   onChange={e => setEditUser({ ...editUser, statut: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  style={{ ...inputStyle, cursor: 'pointer' }}
                 >
                   <option value="actif">Actif</option>
                   <option value="bloque">Bloqué</option>
                 </select>
               </div>
             </div>
-            <div className="flex justify-end gap-2 mt-6">
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
               <button
                 onClick={() => setEditUser(null)}
-                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                style={{
+                  padding: '10px 20px', background: 'transparent',
+                  border: '0.5px solid var(--wings-border)', borderRadius: 999,
+                  color: 'var(--wings-text-muted)', fontSize: 13, cursor: 'pointer',
+                }}
               >
                 Annuler
               </button>
               <button
                 onClick={handleSaveUser}
-                className="px-4 py-2 text-sm bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-lg transition-colors"
+                style={{
+                  padding: '10px 20px', background: 'var(--wings-blue)',
+                  border: 'none', borderRadius: 999,
+                  color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                }}
               >
                 Enregistrer
               </button>
@@ -378,31 +470,52 @@ export default function AdminPanel() {
 
       {/* ── MODALE ÉDITION QUOTA ── */}
       {editQuota && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-xl border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-slate-100">Modifier le quota</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">{editQuota.email}</p>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
-              Quota en GB
-            </label>
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 50, padding: 16, backdropFilter: 'blur(4px)',
+        }}>
+          <div style={{
+            background: 'var(--wings-surface)',
+            border: '0.5px solid var(--wings-border)',
+            borderRadius: 16, padding: 28,
+            maxWidth: 380, width: '100%',
+          }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+              Modifier le quota
+            </h3>
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, marginBottom: 16, marginTop: 0 }}>
+              {editQuota.email}
+            </p>
+            <label style={labelStyle}>Quota en GB</label>
             <input
               type="number"
               min="0.5"
               step="0.5"
               value={editQuota.quota}
               onChange={e => setEditQuota({ ...editQuota, quota: e.target.value })}
-              className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              style={inputStyle}
+              onFocus={e => e.target.style.borderColor = 'var(--wings-blue)'}
+              onBlur={e => e.target.style.borderColor = 'var(--wings-border)'}
             />
-            <div className="flex justify-end gap-2 mt-6">
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
               <button
                 onClick={() => setEditQuota(null)}
-                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                style={{
+                  padding: '10px 20px', background: 'transparent',
+                  border: '0.5px solid var(--wings-border)', borderRadius: 999,
+                  color: 'var(--wings-text-muted)', fontSize: 13, cursor: 'pointer',
+                }}
               >
                 Annuler
               </button>
               <button
                 onClick={handleSaveQuota}
-                className="px-4 py-2 text-sm bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-lg transition-colors"
+                style={{
+                  padding: '10px 20px', background: 'var(--wings-blue)',
+                  border: 'none', borderRadius: 999,
+                  color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                }}
               >
                 Enregistrer
               </button>

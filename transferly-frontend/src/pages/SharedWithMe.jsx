@@ -1,58 +1,43 @@
-/**
- * IE-07 — Page "Fichiers partagés avec moi"
- * Fichier : frontend/src/pages/SharedWithMe.jsx
- *
- * Fidèle au prototype Figma : tableau avec colonnes
- * Nom du fichier | Partagé par | Date de partage | Permissions | Actions
- * Filtres : Toutes les permissions · Toutes les dates · Recherche par propriétaire
- */
-
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { FolderOpen, User } from "lucide-react";
+import { Share2, Download, Eye, FilePen, FolderOpen, User, X } from "lucide-react";
 import API from "../api/auth";
 import AppLayout from "../components/AppLayout";
 import { formatRelativeTime } from '../utils/formatTime';
-import { isEditable } from '../utils/fileType';
+import { isEditable, getFileTypeColor } from '../utils/fileType';
 
-// ── Design tokens (fidèle au prototype : blanc/cyan/gris) ─────────
-const C = {
-  primary: "#00BCD4",      // cyan Transferly
-  primaryDark: "#0097A7",
-  primaryLight: "#E0F7FA",
-  bg: "#F8F9FA",
-  card: "#FFFFFF",
-  ink: "#212121",
-  muted: "#757575",
-  line: "#E0E0E0",
-  red: "#F44336",
-  green: "#4CAF50",
-  sidebar: "#FFFFFF",
-  sidebarActive: "#E0F7FA",
-  sidebarActiveBorder: "#00BCD4",
+const actionBtnStyle = {
+  background: 'var(--wings-surface)',
+  border: '0.5px solid var(--wings-border)',
+  borderRadius: 6,
+  padding: '5px 7px',
+  color: 'var(--wings-text-muted)',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
 };
 
-// Badges de permissions (fidèles au prototype)
-const PERM_BADGES = {
-  lecture:      { label: "Lecture",   color: "#E3F2FD", text: "#1565C0" },
-  ecriture:     { label: "Écriture",  color: "#E8F5E9", text: "#2E7D32" },
-  partage:      { label: "Partage",   color: "#FFF3E0", text: "#E65100" },
-  download:     { label: "Téléchargement", color: "#F3E5F5", text: "#6A1B9A" },
-  suppression:  { label: "Suppression",   color: "#FFEBEE", text: "#B71C1C" },
-  upload:       { label: "Upload",         color: "#E8F5E9", text: "#1B5E20" },
+const filterSelectStyle = {
+  padding: '8px 12px',
+  background: 'var(--wings-surface)',
+  border: '0.5px solid var(--wings-border)',
+  borderRadius: 8,
+  fontSize: 13,
+  color: 'var(--wings-text)',
+  cursor: 'pointer',
+  outline: 'none',
 };
-
 
 export default function SharedWithMe() {
   const navigate = useNavigate();
-  const [fichiers, setFichiers]         = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState(null);
-  const [filtrePerms, setFiltrePerms]   = useState("all");
-  const [filtreDates, setFiltreDates]   = useState("all");
-  const [searchOwner, setSearchOwner]   = useState("");
-  const [shareModal, setShareModal]     = useState(null);
-  const [toast, setToast]               = useState(null);
+  const [fichiers, setFichiers]       = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
+  const [filtrePerms, setFiltrePerms] = useState("all");
+  const [filtreDates, setFiltreDates] = useState("all");
+  const [searchOwner, setSearchOwner] = useState("");
+  const [shareModal, setShareModal]   = useState(null);
+  const [toast, setToast]             = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -84,12 +69,11 @@ export default function SharedWithMe() {
     } catch (e) { showToast(e.response?.data?.error || e.message, "error"); }
   };
 
-  // Filtrage selon le prototype
   const affichés = fichiers.filter(f => {
     const perms = f.mes_permissions || {};
-    if (filtrePerms === "lecture"      && !perms.lecture)   return false;
-    if (filtrePerms === "download"     && !perms.download)  return false;
-    if (filtrePerms === "ecriture"     && !perms.ecriture)  return false;
+    if (filtrePerms === "lecture"  && !perms.lecture)  return false;
+    if (filtrePerms === "download" && !perms.download) return false;
+    if (filtrePerms === "ecriture" && !perms.ecriture) return false;
     const owner = (f.proprietaire_nom || "").toLowerCase();
     if (searchOwner && !owner.includes(searchOwner.toLowerCase())) return false;
     if (filtreDates === "today") {
@@ -111,212 +95,204 @@ export default function SharedWithMe() {
 
   return (
     <AppLayout>
-    <div style={S.page}>
-      {toast && <Toast msg={toast.msg} type={toast.type} />}
+      <div>
+        {toast && <Toast msg={toast.msg} type={toast.type} />}
 
-      {/* En-tête */}
-      <div style={S.pageHeader}>
-        <h1 style={S.pageTitle}>Fichiers partagés avec moi</h1>
-        <p style={S.pageSubtitle}>
-          Fichiers que d&apos;autres utilisateurs ont partagé avec vous
-        </p>
-      </div>
+        {/* Barre de filtres */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
+          <select
+            style={filterSelectStyle}
+            value={filtrePerms}
+            onChange={e => setFiltrePerms(e.target.value)}
+          >
+            <option value="all">Toutes les permissions</option>
+            <option value="lecture">Lecture</option>
+            <option value="download">Téléchargement</option>
+            <option value="ecriture">Écriture</option>
+          </select>
 
-      {/* Barre de filtres — fidèle au prototype */}
-      <div style={S.filterBar}>
-        {/* Filtre permissions */}
-        <select
-          style={S.filterSelect}
-          value={filtrePerms}
-          onChange={e => setFiltrePerms(e.target.value)}
-        >
-          <option value="all">Toutes les permissions</option>
-          <option value="lecture">Lecture</option>
-          <option value="download">Téléchargement</option>
-          <option value="ecriture">Écriture</option>
-        </select>
+          <select
+            style={filterSelectStyle}
+            value={filtreDates}
+            onChange={e => setFiltreDates(e.target.value)}
+          >
+            <option value="all">Toutes les dates</option>
+            <option value="today">Aujourd'hui</option>
+            <option value="week">Cette semaine</option>
+          </select>
 
-        {/* Filtre dates */}
-        <select
-          style={S.filterSelect}
-          value={filtreDates}
-          onChange={e => setFiltreDates(e.target.value)}
-        >
-          <option value="all">Toutes les dates</option>
-          <option value="today">Aujourd&apos;hui</option>
-          <option value="week">Cette semaine</option>
-        </select>
+          <input
+            style={{
+              ...filterSelectStyle,
+              flex: 1, minWidth: 200,
+              cursor: 'text',
+            }}
+            placeholder="Rechercher par propriétaire..."
+            value={searchOwner}
+            onChange={e => setSearchOwner(e.target.value)}
+          />
+        </div>
 
-        {/* Recherche par propriétaire */}
-        <input
-          style={S.searchInput}
-          placeholder="Rechercher par propriétaire..."
-          value={searchOwner}
-          onChange={e => setSearchOwner(e.target.value)}
-        />
-      </div>
-
-      {/* Tableau — fidèle au prototype */}
-      <div style={S.tableCard}>
+        {/* Grille de fichiers */}
         {affichés.length === 0 ? (
-          <div style={S.empty}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-            <div style={{ fontWeight: 600 }}>Aucun fichier partagé</div>
-            <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>
-              Les fichiers partagés avec vous apparaîtront ici.
-            </div>
+          <div style={{ textAlign: 'center', paddingTop: 72, paddingBottom: 72 }}>
+            <Share2
+              size={40}
+              style={{ color: 'var(--wings-text-muted)', opacity: 0.4, margin: '0 auto 12px', display: 'block' }}
+            />
+            <p style={{ fontSize: 14, color: 'var(--wings-text-muted)', margin: '0 0 4px' }}>Aucun fichier partagé</p>
+            <p style={{ fontSize: 12, color: 'var(--wings-text-muted)', opacity: 0.6, margin: 0 }}>
+              Les fichiers que l'on partage avec vous apparaîtront ici
+            </p>
           </div>
         ) : (
-          <table style={S.table}>
-            <thead>
-              <tr style={S.theadRow}>
-                <th style={S.th}>Nom du fichier</th>
-                <th style={S.th}>Partagé par</th>
-                <th style={S.th}>Date de partage</th>
-                <th style={S.th}>Permissions</th>
-                <th style={{ ...S.th, textAlign: "right" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {affichés.map((f, i) => (
-                <FichierRow
-                  key={f.id}
-                  fichier={f}
-                  isLast={i === affichés.length - 1}
-                  onDownload={() => handleDownload(f)}
-                  onShare={() => setShareModal(f)}
-                  onEdit={() => navigate(`/editor?fileId=${f.id}`)}
-                  onApercu={() => navigate(`/editor?fileId=${f.id}&mode=read`)}
-                />
-              ))}
-            </tbody>
-          </table>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+            {affichés.map(f => (
+              <FileCard
+                key={f.id}
+                fichier={f}
+                onDownload={() => handleDownload(f)}
+                onShare={() => setShareModal(f)}
+                onEdit={() => navigate(`/editor?fileId=${f.id}`)}
+                onApercu={() => navigate(`/editor?fileId=${f.id}&mode=read`)}
+              />
+            ))}
+          </div>
+        )}
+
+        {shareModal && (
+          <ShareModal
+            fichier={shareModal}
+            onClose={() => setShareModal(null)}
+            onSuccess={(msg) => { showToast(msg); setShareModal(null); }}
+          />
         )}
       </div>
-
-      {shareModal && (
-        <ShareModal
-          fichier={shareModal}
-          onClose={() => setShareModal(null)}
-          onSuccess={(msg) => { showToast(msg); setShareModal(null); }}
-        />
-      )}
-    </div>
     </AppLayout>
   );
 }
 
-// ── Ligne tableau ─────────────────────────────────────────────────
+// ── Carte fichier ─────────────────────────────────────────────────
 
-function FichierRow({ fichier, isLast, onDownload, onShare, onEdit, onApercu }) {
-  const perms = fichier.mes_permissions || {};
+function FileCard({ fichier, onDownload, onShare, onEdit, onApercu }) {
+  const perms  = fichier.mes_permissions || {};
+  const ftColor = getFileTypeColor(fichier.nom);
+  const ext    = fichier.nom?.split('.').pop()?.toUpperCase() || 'FILE';
+  const taille = Number(fichier.taille) || 0;
+  const sizeStr = taille < 0.01
+    ? `${(taille * 1024).toFixed(0)} KB`
+    : `${taille.toFixed(1)} MB`;
 
   return (
-    <tr style={{ ...S.tr, borderBottom: isLast ? "none" : `1px solid ${C.line}` }}>
-      {/* Nom */}
-      <td style={S.td}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={S.fileIcon}>{fileIcon(fichier.nom)}</span>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontWeight: 500, fontSize: 14, color: C.ink }}>
-              {fichier.nom}
-            </span>
-            {fichier.source === 'espace' ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 rounded-full mt-1">
-                <FolderOpen className="w-3 h-3" />
-                {fichier.espace_nom || 'Espace'}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 rounded-full mt-1">
-                <User className="w-3 h-3" />
-                Partage direct
-              </span>
-            )}
-          </div>
-        </div>
-      </td>
+    <div style={{
+      background: 'var(--wings-surface)',
+      border: '0.5px solid var(--wings-border)',
+      borderRadius: 12,
+      padding: 16,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
+    }}>
+      {/* Badge extension + badge source */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+        <span style={{
+          fontSize: 10, fontFamily: 'monospace', fontWeight: 700,
+          padding: '3px 8px',
+          background: ftColor.bg,
+          color: ftColor.color,
+          borderRadius: 6,
+        }}>{ext}</span>
 
-      {/* Partagé par */}
-      <td style={S.td}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{
-            ...S.avatar,
-            background: avatarColor(fichier.proprietaire_nom || "?"),
+        {fichier.source === 'espace' ? (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontSize: 10, fontWeight: 600,
+            padding: '2px 7px',
+            background: 'rgba(79,139,255,0.1)',
+            color: 'var(--wings-blue)',
+            borderRadius: 999,
           }}>
-            {(fichier.proprietaire_nom || "?")[0].toUpperCase()}
-          </div>
-          <span style={{ fontSize: 14 }}>{fichier.proprietaire_nom || "—"}</span>
-        </div>
-      </td>
+            <FolderOpen size={10} />
+            {fichier.espace_nom || 'Espace'}
+          </span>
+        ) : (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontSize: 10, fontWeight: 600,
+            padding: '2px 7px',
+            background: 'rgba(255,193,7,0.1)',
+            color: 'var(--wings-gold)',
+            borderRadius: 999,
+          }}>
+            <User size={10} />
+            Direct
+          </span>
+        )}
+      </div>
 
-      {/* Date */}
-      <td style={{ ...S.td, color: C.muted, fontSize: 13 }}>
-        {formatRelativeTime(fichier.date_creation)}
-      </td>
+      {/* Nom + infos */}
+      <div>
+        <p style={{
+          fontSize: 13, fontWeight: 500,
+          color: 'var(--wings-text)',
+          margin: '0 0 4px',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }} title={fichier.nom}>{fichier.nom}</p>
+        <p style={{ fontSize: 11, color: 'var(--wings-text-muted)', margin: 0 }}>
+          Partagé par {fichier.proprietaire_nom || '—'} · {sizeStr}
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--wings-text-muted)', opacity: 0.7, margin: '2px 0 0' }}>
+          {formatRelativeTime(fichier.date_creation)}
+        </p>
+      </div>
 
-      {/* Permissions — version compacte */}
-      <td style={S.td}>
-        <div className="flex flex-wrap gap-1">
-          {perms.lecture    && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Consulter</span>}
-          {perms.download   && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Télécharger</span>}
-          {perms.ecriture   && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">Modifier</span>}
-          {!perms.lecture && !perms.download && !perms.ecriture && (
-            <span style={{ color: C.muted, fontSize: 12 }}>Aucune</span>
-          )}
-        </div>
-      </td>
+      {/* Permissions */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {perms.lecture  && <PermBadge label="Lecture" />}
+        {perms.download && <PermBadge label="Téléchargement" />}
+        {perms.ecriture && <PermBadge label="Écriture" />}
+      </div>
 
       {/* Actions */}
-      <td style={{ ...S.td, textAlign: "right" }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          {isEditable(fichier.nom) && (
-            <button
-              style={{ ...S.actionIconBtn, color: "#1565C0", borderColor: "#BBDEFB" }}
-              onClick={onApercu}
-              title="Aperçu (lecture seule)"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-              </svg>
-            </button>
-          )}
-          {isEditable(fichier.nom) && perms.ecriture && (
-            <button
-              style={{ ...S.actionIconBtn, color: "#0097A7", borderColor: "#B2EBF2" }}
-              onClick={onEdit}
-              title="Éditer"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
-          )}
-          {perms.download && (
-            <button style={S.actionIconBtn} onClick={onDownload} title="Télécharger">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-              </svg>
-            </button>
-          )}
-          {perms.partage && (
-            <button style={S.actionIconBtn} onClick={onShare} title="Partager">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-              </svg>
-            </button>
-          )}
-        </div>
-      </td>
-    </tr>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 'auto' }}>
+        {isEditable(fichier.nom) && (
+          <button onClick={onApercu} title="Aperçu" style={actionBtnStyle}>
+            <Eye size={13} />
+          </button>
+        )}
+        {isEditable(fichier.nom) && perms.ecriture && (
+          <button onClick={onEdit} title="Éditer" style={actionBtnStyle}>
+            <FilePen size={13} />
+          </button>
+        )}
+        {perms.download && (
+          <button onClick={onDownload} title="Télécharger" style={actionBtnStyle}>
+            <Download size={13} />
+          </button>
+        )}
+        {perms.partage && (
+          <button onClick={onShare} title="Partager" style={actionBtnStyle}>
+            <Share2 size={13} />
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════════════
-// COMPOSANT SHAREMODAL (export nommé)
-// ══════════════════════════════════════════════════════════════════
+function PermBadge({ label }) {
+  return (
+    <span style={{
+      fontSize: 10, padding: '2px 7px',
+      background: 'rgba(168,180,212,0.1)',
+      color: 'var(--wings-text-muted)',
+      borderRadius: 999,
+      border: '0.5px solid var(--wings-border)',
+    }}>{label}</span>
+  );
+}
+
+// ── Modale de partage ─────────────────────────────────────────────
 
 export function ShareModal({ fichier, onClose, onSuccess }) {
   const [search, setSearch]         = useState("");
@@ -346,73 +322,289 @@ export function ShareModal({ fichier, onClose, onSuccess }) {
     setSubmitting(true);
     try {
       await API.post(`/files/${fichier.id}/share`, { target_user_id: selected.id, permissions: perms });
-      onSuccess?.(`Fichier partagé avec ${selected.nom} ✓`);
+      onSuccess?.(`Fichier partagé avec ${selected.nom}`);
     } catch (e) { onSuccess?.(e.message, "error"); }
     finally { setSubmitting(false); }
   };
 
+  const PERMS_AFFICHÉES = [
+    { key: 'lecture',  label: 'Lecture' },
+    { key: 'download', label: 'Téléchargement' },
+    { key: 'ecriture', label: 'Écriture' },
+  ];
+
   return (
-    <div style={SM.overlay} onClick={onClose}>
-      <div style={SM.modal} onClick={e => e.stopPropagation()}>
-        <div style={SM.header}>
-          <div style={SM.title}>Partager "{fichier.nom}"</div>
-          <button style={SM.close} onClick={onClose}>✕</button>
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: '100%', maxWidth: 440,
+          background: 'var(--wings-surface)',
+          border: '0.5px solid var(--wings-border)',
+          borderRadius: 16,
+          boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+          overflow: 'hidden',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* En-tête */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '18px 24px',
+          borderBottom: '0.5px solid var(--wings-border)',
+        }}>
+          <h2 style={{
+            fontFamily: 'Georgia, serif',
+            fontSize: 20, fontWeight: 400,
+            color: 'var(--wings-text)',
+            margin: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            paddingRight: 16,
+          }}>
+            Partager &laquo;&nbsp;{fichier.nom}&nbsp;&raquo;
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--wings-text-muted)', padding: 6,
+              borderRadius: 8, flexShrink: 0,
+              display: 'flex', alignItems: 'center',
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; }}
+          >
+            <X size={16} />
+          </button>
         </div>
 
-        {/* Recherche */}
-        <div style={SM.section}>
-          <div style={SM.label}>Destinataire</div>
-          <input style={SM.input} placeholder="Rechercher un utilisateur..."
-            value={search} onChange={e => { setSearch(e.target.value); setSelected(null); }} autoFocus />
-          {search.length >= 2 && !selected && (
-            <div style={SM.dropdown}>
-              {loadingU && <div style={SM.dropMsg}>Recherche…</div>}
-              {!loadingU && results.length === 0 && <div style={SM.dropMsg}>Aucun résultat</div>}
-              {results.map(u => (
-                <div key={u.id} style={SM.dropItem} onClick={() => { setSelected(u); setSearch(u.nom); setResults([]); }}>
-                  <div style={{ ...SM.avatar, background: avatarColor(u.nom) }}>{u.nom[0].toUpperCase()}</div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{u.nom}</div>
-                    <div style={{ fontSize: 12, color: C.muted }}>{u.email}</div>
-                  </div>
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Recherche */}
+          <div>
+            <label style={{
+              display: 'block',
+              fontFamily: 'monospace',
+              fontSize: 10, fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              color: 'var(--wings-gold)',
+              marginBottom: 8,
+            }}>
+              Destinataire
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '9px 12px',
+                  background: 'var(--wings-bg)',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 8,
+                  color: 'var(--wings-text)',
+                  fontSize: 13,
+                  outline: 'none',
+                  transition: 'border-color 0.15s',
+                }}
+                placeholder="Rechercher un utilisateur..."
+                value={search}
+                onChange={e => { setSearch(e.target.value); setSelected(null); }}
+                onFocus={e => { e.target.style.borderColor = 'var(--wings-blue)'; }}
+                onBlur={e => { e.target.style.borderColor = 'var(--wings-border)'; }}
+                autoFocus
+              />
+              {search.length >= 2 && !selected && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0,
+                  marginTop: 4,
+                  background: 'var(--wings-surface)',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 8,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  zIndex: 10,
+                  maxHeight: 176, overflowY: 'auto',
+                }}>
+                  {loadingU && (
+                    <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--wings-text-muted)', textAlign: 'center' }}>Recherche…</div>
+                  )}
+                  {!loadingU && results.length === 0 && (
+                    <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--wings-text-muted)', textAlign: 'center' }}>Aucun résultat</div>
+                  )}
+                  {results.map(u => (
+                    <button
+                      key={u.id}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        width: '100%', padding: '10px 14px',
+                        background: 'transparent', border: 'none',
+                        borderBottom: '0.5px solid var(--wings-border)',
+                        cursor: 'pointer', textAlign: 'left',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(79,139,255,0.06)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      onClick={() => { setSelected(u); setSearch(u.nom); setResults([]); }}
+                    >
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: 'var(--wings-blue)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0,
+                      }}>
+                        {u.nom[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)' }}>{u.nom}</div>
+                        <div style={{ fontSize: 11, color: 'var(--wings-text-muted)' }}>{u.email}</div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
+              )}
+            </div>
+            {selected && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                marginTop: 8, padding: '10px 12px',
+                background: 'rgba(79,139,255,0.06)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 8,
+              }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: 'var(--wings-blue)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0,
+                }}>
+                  {selected.nom[0].toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)' }}>{selected.nom}</div>
+                  <div style={{ fontSize: 11, color: 'var(--wings-text-muted)' }}>{selected.email}</div>
+                </div>
+                <button
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wings-text-muted)', padding: 4, display: 'flex', transition: 'color 0.15s' }}
+                  onClick={() => { setSelected(null); setSearch(""); }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Permissions */}
+          <div>
+            <label style={{
+              display: 'block',
+              fontFamily: 'monospace',
+              fontSize: 10, fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              color: 'var(--wings-gold)',
+              marginBottom: 10,
+            }}>
+              Permissions
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {PERMS_AFFICHÉES.map(({ key, label }) => (
+                <label
+                  key={key}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 0',
+                    borderBottom: '0.5px solid var(--wings-border)',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: 'var(--wings-text)' }}>{label}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={perms[key]}
+                    onClick={() => setPerms(p => ({ ...p, [key]: !p[key] }))}
+                    style={{
+                      position: 'relative',
+                      width: 36, height: 20,
+                      borderRadius: 999,
+                      border: 'none', cursor: 'pointer',
+                      background: perms[key] ? 'var(--wings-blue)' : 'rgba(168,180,212,0.2)',
+                      transition: 'background 0.2s',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute',
+                      top: 2,
+                      left: perms[key] ? 18 : 2,
+                      width: 16, height: 16,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                      transition: 'left 0.2s',
+                      display: 'block',
+                    }} />
+                  </button>
+                </label>
               ))}
             </div>
-          )}
-          {selected && (
-            <div style={SM.selectedUser}>
-              <div style={{ ...SM.avatar, background: avatarColor(selected.nom) }}>{selected.nom[0].toUpperCase()}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700 }}>{selected.nom}</div>
-                <div style={{ fontSize: 12, color: C.muted }}>{selected.email}</div>
-              </div>
-              <button style={SM.clearBtn} onClick={() => { setSelected(null); setSearch(""); }}>✕</button>
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* Permissions */}
-        <div style={SM.section}>
-          <div style={SM.label}>Permissions</div>
-          {Object.entries(PERM_BADGES).filter(([k]) => k !== "upload" && k !== "suppression" && k !== "partage").map(([key, badge]) => (
-            <label key={key} style={SM.permRow}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ ...SM.permChip, background: badge.color, color: badge.text }}>
-                  {badge.label}
-                </span>
-              </div>
-              <div style={{ ...SM.toggle, background: perms[key] ? C.primary : C.line }}
-                onClick={() => setPerms(p => ({ ...p, [key]: !p[key] }))}>
-                <div style={{ ...SM.knob, transform: perms[key] ? "translateX(20px)" : "translateX(2px)" }} />
-              </div>
-            </label>
-          ))}
-        </div>
-
-        <div style={SM.footer}>
-          <button style={SM.cancelBtn} onClick={onClose}>Annuler</button>
-          <button style={{ ...SM.submitBtn, opacity: !selected || submitting ? 0.5 : 1 }}
-            onClick={submit} disabled={!selected || submitting}>
+        {/* Pied */}
+        <div style={{
+          display: 'flex', justifyContent: 'flex-end', gap: 10,
+          padding: '14px 24px',
+          borderTop: '0.5px solid var(--wings-border)',
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 20px', fontSize: 13,
+              background: 'transparent',
+              border: '0.5px solid var(--wings-border)',
+              borderRadius: 999,
+              color: 'var(--wings-text-muted)',
+              cursor: 'pointer',
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'var(--wings-text-muted)';
+              e.currentTarget.style.color = 'var(--wings-text)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = 'var(--wings-border)';
+              e.currentTarget.style.color = 'var(--wings-text-muted)';
+            }}
+          >
+            Annuler
+          </button>
+          <button
+            onClick={submit}
+            disabled={!selected || submitting}
+            style={{
+              padding: '8px 24px', fontSize: 13, fontWeight: 500,
+              background: 'var(--wings-blue)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 999,
+              cursor: !selected || submitting ? 'not-allowed' : 'pointer',
+              opacity: !selected || submitting ? 0.5 : 1,
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => { if (selected && !submitting) e.currentTarget.style.background = 'var(--wings-blue-dark)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--wings-blue)'; }}
+          >
             {submitting ? "Envoi…" : "Partager"}
           </button>
         </div>
@@ -421,13 +613,12 @@ export function ShareModal({ fichier, onClose, onSuccess }) {
   );
 }
 
-// ── Petits composants ─────────────────────────────────────────────
+// ── Composants utilitaires ────────────────────────────────────────
 
 function LoadingState() {
   return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"60vh" }}>
-      <div style={{ textAlign:"center", color: C.muted }}>
-        <div style={{ fontSize:32, marginBottom:8 }}>⏳</div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <div style={{ textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
         Chargement…
       </div>
     </div>
@@ -436,10 +627,23 @@ function LoadingState() {
 
 function ErrorState({ msg, onRetry }) {
   return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"60vh" }}>
-      <div style={{ textAlign:"center" }}>
-        <div style={{ color: C.red, marginBottom:16 }}>{msg}</div>
-        <button style={{ ...S.primaryBtn }} onClick={onRetry}>Réessayer</button>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ color: '#e57373', marginBottom: 16, fontSize: 14 }}>{msg}</p>
+        <button
+          onClick={onRetry}
+          style={{
+            padding: '8px 20px',
+            background: 'var(--wings-blue)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 999,
+            fontSize: 13,
+            cursor: 'pointer',
+          }}
+        >
+          Réessayer
+        </button>
       </div>
     </div>
   );
@@ -448,178 +652,13 @@ function ErrorState({ msg, onRetry }) {
 function Toast({ msg, type }) {
   return (
     <div style={{
-      position:"fixed", bottom:24, right:24, zIndex:9999,
-      padding:"12px 20px", borderRadius:8,
-      background: type === "error" ? C.red : C.green,
-      color:"#fff", fontWeight:600, fontSize:14,
-      boxShadow:"0 4px 16px rgba(0,0,0,.15)",
+      position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+      padding: '10px 18px', borderRadius: 8,
+      background: type === 'error' ? '#dc2626' : '#059669',
+      color: '#fff', fontWeight: 600, fontSize: 14,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
     }}>
-      {type === "error" ? "✕" : "✓"} {msg}
+      {msg}
     </div>
   );
 }
-
-// ── Helpers ───────────────────────────────────────────────────────
-
-function fileIcon(nom) {
-  const ext = (nom || "").split(".").pop().toLowerCase();
-  const map = { pdf:"📄", jpg:"🖼", jpeg:"🖼", png:"🖼", xlsx:"📊", xls:"📊",
-                doc:"📝", docx:"📝", zip:"🗜", rar:"🗜", mp4:"🎬", mp3:"🎵",
-                pptx:"📊", ppt:"📊" };
-  return map[ext] || "📄";
-}
-
-
-const AVATAR_COLORS = ["#00BCD4","#4CAF50","#FF9800","#9C27B0","#F44336","#2196F3","#009688"];
-function avatarColor(name) {
-  let hash = 0;
-  for (const c of (name || "")) hash = c.charCodeAt(0) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-// ── Styles ────────────────────────────────────────────────────────
-
-const S = {
-  page: {
-    fontFamily: "'DM Sans', 'Segoe UI', sans-serif", color: C.ink,
-  },
-  pageHeader: { marginBottom: 24 },
-  pageTitle: { fontSize: 28, fontWeight: 700, margin: "0 0 4px", letterSpacing: "-0.01em" },
-  pageSubtitle: { fontSize: 14, color: C.muted, margin: 0 },
-  filterBar: {
-    display: "flex", alignItems: "center", gap: 12,
-    marginBottom: 20, flexWrap: "wrap",
-  },
-  filterSelect: {
-    padding: "8px 12px", border: `1px solid ${C.line}`,
-    borderRadius: 6, fontSize: 13, background: "#fff",
-    color: C.ink, cursor: "pointer", outline: "none",
-    minWidth: 160,
-  },
-  searchInput: {
-    padding: "8px 14px", border: `1px solid ${C.line}`,
-    borderRadius: 6, fontSize: 13, outline: "none",
-    flex: 1, minWidth: 200,
-    fontFamily: "inherit",
-  },
-  tableCard: {
-    background: "#fff", borderRadius: 10,
-    border: `1px solid ${C.line}`,
-    overflow: "hidden",
-    boxShadow: "0 1px 4px rgba(0,0,0,.06)",
-  },
-  table: { width: "100%", borderCollapse: "collapse" },
-  theadRow: { background: "#FAFAFA", borderBottom: `1px solid ${C.line}` },
-  th: {
-    padding: "12px 16px", textAlign: "left",
-    fontSize: 12, fontWeight: 600, color: C.muted,
-    textTransform: "uppercase", letterSpacing: "0.05em",
-  },
-  tr: { transition: "background .1s" },
-  td: { padding: "14px 16px", verticalAlign: "middle" },
-  fileIcon: { fontSize: 18 },
-  avatar: {
-    width: 32, height: 32, borderRadius: "50%",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    color: "#fff", fontSize: 13, fontWeight: 700, flexShrink: 0,
-  },
-  permBadge: {
-    display: "inline-block", padding: "3px 8px",
-    borderRadius: 4, fontSize: 11, fontWeight: 600,
-  },
-  actionIconBtn: {
-    width: 32, height: 32, borderRadius: 6,
-    border: `1px solid ${C.line}`, background: "#fff",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    cursor: "pointer", color: C.muted, transition: "all .15s",
-  },
-  primaryBtn: {
-    padding: "10px 24px", background: C.primary,
-    border: "none", borderRadius: 6, color: "#fff",
-    fontSize: 14, fontWeight: 600, cursor: "pointer",
-  },
-  empty: {
-    padding: "80px 0", textAlign: "center", color: C.muted,
-  },
-};
-
-const SM = {
-  overlay: {
-    position: "fixed", inset: 0, background: "rgba(0,0,0,.4)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    zIndex: 1000, backdropFilter: "blur(2px)",
-  },
-  modal: {
-    background: "#fff", borderRadius: 12, padding: 28,
-    width: "100%", maxWidth: 460,
-    maxHeight: "90vh", overflowY: "auto",
-    boxShadow: "0 20px 60px rgba(0,0,0,.15)",
-  },
-  header: {
-    display: "flex", justifyContent: "space-between",
-    alignItems: "center", marginBottom: 24,
-  },
-  title: { fontSize: 18, fontWeight: 700 },
-  close: { background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.muted },
-  section: { marginBottom: 20 },
-  label: {
-    fontSize: 12, fontWeight: 600, color: C.muted,
-    textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8,
-    display: "block",
-  },
-  input: {
-    width: "100%", padding: "10px 12px",
-    border: `1.5px solid ${C.line}`, borderRadius: 6,
-    fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit",
-  },
-  dropdown: {
-    border: `1px solid ${C.line}`, borderRadius: 6, marginTop: 4,
-    maxHeight: 180, overflowY: "auto", background: "#fff",
-    boxShadow: "0 4px 16px rgba(0,0,0,.1)",
-  },
-  dropMsg: { padding: "10px 14px", fontSize: 13, color: C.muted, textAlign: "center" },
-  dropItem: {
-    display: "flex", alignItems: "center", gap: 10,
-    padding: "10px 14px", cursor: "pointer",
-    borderBottom: `1px solid ${C.line}`,
-  },
-  selectedUser: {
-    display: "flex", alignItems: "center", gap: 10,
-    padding: "10px 14px", marginTop: 8,
-    background: C.primaryLight, border: `1px solid ${C.primary}`,
-    borderRadius: 6,
-  },
-  avatar: {
-    width: 32, height: 32, borderRadius: "50%",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    color: "#fff", fontSize: 13, fontWeight: 700, flexShrink: 0,
-  },
-  clearBtn: { background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: 14 },
-  permRow: {
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    padding: "10px 0", borderBottom: `1px solid ${C.line}`, cursor: "pointer",
-  },
-  permChip: {
-    padding: "3px 10px", borderRadius: 4, fontSize: 12, fontWeight: 600,
-  },
-  toggle: {
-    width: 44, height: 24, borderRadius: 12,
-    position: "relative", cursor: "pointer", transition: "background .2s", flexShrink: 0,
-  },
-  knob: {
-    position: "absolute", top: 2, width: 20, height: 20,
-    borderRadius: "50%", background: "#fff",
-    boxShadow: "0 1px 4px rgba(0,0,0,.2)", transition: "transform .2s",
-  },
-  footer: { display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 },
-  cancelBtn: {
-    padding: "10px 20px", background: "transparent",
-    border: `1px solid ${C.line}`, borderRadius: 6,
-    fontSize: 14, cursor: "pointer", fontFamily: "inherit",
-  },
-  submitBtn: {
-    padding: "10px 24px", background: C.primary,
-    border: "none", borderRadius: 6, color: "#fff",
-    fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-  },
-};

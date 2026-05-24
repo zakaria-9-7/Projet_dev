@@ -1,15 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
 import {
-  FolderOpen, Users, Mail, Settings, Trash2, Edit2, ArrowLeft,
-  UploadCloud, Download, FileText, Link2, Copy, UserMinus, LogOut as ExitIcon, Shield, History, FilePen, Eye,
+  Users, Mail, Settings, Trash2, Edit2, ArrowLeft,
+  UploadCloud, Download, FileText, Link2, Copy, UserMinus,
+  LogOut as ExitIcon, Shield, History, FilePen, Eye,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import FilePreviewModal from '../components/FilePreviewModal';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
-import { isEditable } from '../utils/fileType';
+import { isEditable, getFileTypeColor } from '../utils/fileType';
+import { colorFromName } from '../utils/colorFromName';
+
+const actionBtnStyle = {
+  background: 'var(--wings-surface)',
+  border: '0.5px solid var(--wings-border)',
+  borderRadius: 6,
+  padding: '5px 7px',
+  color: 'var(--wings-text-muted)',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+};
 
 export default function EspaceDetail() {
   const { espaceId } = useParams();
@@ -33,6 +45,7 @@ export default function EspaceDetail() {
 
   const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
   const isAdmin = espace && espace.admin_id === currentUserId;
+  const { accent, faint } = colorFromName(espace?.nom || '');
 
   const canUpload = (() => {
     if (!details) return true;
@@ -248,388 +261,571 @@ export default function EspaceDetail() {
     }
   };
 
+  const titleNode = espace ? (
+    editMode ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input
+          type="text"
+          value={editName}
+          onChange={e => setEditName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleRename()}
+          autoFocus
+          style={{
+            fontSize: 22,
+            fontFamily: 'Georgia, serif',
+            background: 'transparent',
+            border: 'none',
+            borderBottom: `1px solid ${accent}`,
+            outline: 'none',
+            color: 'var(--wings-text)',
+            padding: '2px 0',
+            minWidth: 120,
+          }}
+        />
+        <button
+          onClick={handleRename}
+          style={{ color: accent, fontSize: 12, background: 'none', border: 'none', cursor: 'pointer' }}
+        >OK</button>
+        <button
+          onClick={() => { setEditMode(false); setEditName(espace.nom); }}
+          style={{ color: 'var(--wings-text-muted)', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer' }}
+        >Annuler</button>
+      </div>
+    ) : (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400 }}>
+          {espace.nom}
+        </span>
+        {isAdmin && (
+          <button
+            onClick={() => setEditMode(true)}
+            title="Renommer"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wings-text-muted)', display: 'flex', alignItems: 'center', padding: 0 }}
+          >
+            <Edit2 size={14} />
+          </button>
+        )}
+      </div>
+    )
+  ) : null;
+
   if (loading) {
-    return <AppLayout><div className="text-center py-12 text-slate-400">Chargement...</div></AppLayout>;
+    return (
+      <AppLayout>
+        <div style={{ textAlign: 'center', paddingTop: 48, color: 'var(--wings-text-muted)', fontSize: 13 }}>
+          Chargement...
+        </div>
+      </AppLayout>
+    );
   }
 
   if (!espace) {
-    return <AppLayout><div className="text-center py-12 text-slate-400">Espace introuvable</div></AppLayout>;
+    return (
+      <AppLayout>
+        <div style={{ textAlign: 'center', paddingTop: 48, color: 'var(--wings-text-muted)', fontSize: 13 }}>
+          Espace introuvable
+        </div>
+      </AppLayout>
+    );
   }
 
+  const tabs = [
+    { id: 'fichiers',    label: 'Fichiers',    icon: FileText, count: fichiers.length },
+    { id: 'membres',     label: 'Membres',     icon: Users,    count: membres.length },
+    ...(isAdmin ? [{ id: 'invitations', label: 'Invitations', icon: Mail, count: invitations.filter(i => !i.utilise).length }] : []),
+    ...(isAdmin ? [{ id: 'parametres',  label: 'Paramètres',  icon: Settings }] : []),
+  ];
+
   return (
-    <AppLayout>
-      {toast && (
-        <div className={`fixed top-6 right-6 px-4 py-2 rounded-lg shadow-lg z-50 ${
-          toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
-        }`}>{toast.msg}</div>
-      )}
+    <AppLayout titleNode={titleNode}>
+      <div style={{ '--accent': accent, '--accent-faint': faint }}>
 
-      {/* Header espace */}
-      <div className="mb-6">
-        <button
-          onClick={() => navigate('/admin-espace')}
-          className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-2"
-        >
-          <ArrowLeft className="w-4 h-4" /> Retour à mes espaces
-        </button>
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center">
-              <FolderOpen className="w-6 h-6 text-cyan-500" />
-            </div>
-            <div>
-              {editMode ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={e => setEditName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleRename()}
-                    autoFocus
-                    className="text-2xl font-extrabold bg-transparent border-b-2 border-cyan-500 outline-none text-slate-900 dark:text-slate-100"
-                  />
-                  <button onClick={handleRename} className="text-cyan-600 text-sm font-semibold">OK</button>
-                  <button onClick={() => { setEditMode(false); setEditName(espace.nom); }} className="text-slate-400 text-sm">Annuler</button>
-                </div>
-              ) : (
-                <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  {espace.nom}
-                  {isAdmin && (
-                    <button onClick={() => setEditMode(true)} className="text-slate-400 hover:text-cyan-500" title="Renommer">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </h1>
-              )}
-              <p className="text-sm text-slate-500 mt-0.5">
-                {isAdmin ? 'Vous êtes admin de cet espace' : 'Vous êtes membre'}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {isAdmin ? (
-              <button
-                onClick={handleDeleteEspace}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition"
-              >
-                <Trash2 className="w-4 h-4" /> Supprimer l'espace
-              </button>
-            ) : (
-              <button
-                onClick={handleLeave}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition"
-              >
-                <ExitIcon className="w-4 h-4" /> Quitter l'espace
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+        {/* Toast */}
+        {toast && (
+          <div style={{
+            position: 'fixed', top: 24, right: 24,
+            padding: '8px 16px', borderRadius: 8,
+            background: toast.type === 'error' ? '#dc2626' : '#059669',
+            color: '#fff', zIndex: 50, fontSize: 14,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          }}>{toast.msg}</div>
+        )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-700">
-        {[
-          { id: 'fichiers',    label: 'Fichiers',    icon: FileText, count: fichiers.length },
-          { id: 'membres',     label: 'Membres',     icon: Users,    count: membres.length },
-          ...(isAdmin ? [{ id: 'invitations', label: 'Invitations', icon: Mail, count: invitations.filter(i => !i.utilise).length }] : []),
-          ...(isAdmin ? [{ id: 'parametres',  label: 'Paramètres',  icon: Settings }] : []),
-        ].map(t => (
+        {/* Sous-barre : fil d'ariane + action */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition ${
-              tab === t.id
-                ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
-                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
-            }`}
+            onClick={() => navigate('/admin-espace')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'transparent', border: 'none',
+              color: 'var(--wings-text-muted)', fontSize: 13,
+              cursor: 'pointer', padding: 0,
+            }}
           >
-            <t.icon className="w-4 h-4" />
-            {t.label}
-            {t.count != null && (
-              <span className="text-xs bg-slate-100 dark:bg-slate-700 px-1.5 rounded">{t.count}</span>
-            )}
+            <ArrowLeft size={14} /> Retour à mes espaces
           </button>
-        ))}
-      </div>
 
-      {/* Onglet Fichiers */}
-      {tab === 'fichiers' && (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              {fichiers.length} fichier{fichiers.length > 1 ? 's' : ''}
-            </h2>
-            {canUpload ? (
-              <label className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg cursor-pointer text-sm font-medium transition">
-                <UploadCloud className="w-4 h-4" /> Téléverser dans l'espace
-                <input type="file" onChange={handleUpload} className="hidden" />
-              </label>
+          {isAdmin ? (
+            <button
+              onClick={handleDeleteEspace}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'transparent',
+                border: '0.5px solid rgba(220,80,80,0.3)',
+                color: '#e57373',
+                padding: '6px 14px',
+                borderRadius: 999,
+                fontSize: 12,
+                cursor: 'pointer',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,80,80,0.06)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Trash2 size={12} /> Supprimer l'espace
+            </button>
+          ) : (
+            <button
+              onClick={handleLeave}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'transparent',
+                border: '0.5px solid var(--wings-border)',
+                color: 'var(--wings-text-muted)',
+                padding: '6px 14px',
+                borderRadius: 999,
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >
+              <ExitIcon size={12} /> Quitter l'espace
+            </button>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, borderBottom: '0.5px solid var(--wings-border)', marginBottom: 24 }}>
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '12px 18px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: tab === t.id ? '2px solid var(--accent)' : '2px solid transparent',
+                color: tab === t.id ? 'var(--wings-text)' : 'var(--wings-text-muted)',
+                fontSize: 13,
+                fontWeight: tab === t.id ? 500 : 400,
+                cursor: 'pointer',
+                marginBottom: '-0.5px',
+                transition: 'all 0.15s',
+              }}
+            >
+              <t.icon size={14} />
+              {t.label}
+              {t.count !== undefined && (
+                <span style={{
+                  fontSize: 10, padding: '2px 6px',
+                  background: 'var(--wings-surface)',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 999,
+                  color: 'var(--wings-text-muted)',
+                  fontFamily: 'monospace',
+                }}>{t.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Onglet Fichiers ── */}
+        {tab === 'fichiers' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <span style={{ fontSize: 13, color: 'var(--wings-text-muted)' }}>
+                {fichiers.length} fichier{fichiers.length !== 1 ? 's' : ''}
+              </span>
+              {canUpload ? (
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 18px',
+                  background: 'var(--wings-blue)',
+                  color: '#fff',
+                  borderRadius: 999,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  border: 'none',
+                  transition: 'opacity 0.15s',
+                }}>
+                  <UploadCloud size={14} /> Téléverser dans l'espace
+                  <input type="file" onChange={handleUpload} style={{ display: 'none' }} />
+                </label>
+              ) : (
+                <div
+                  title="Vous n'avez pas l'autorisation de téléverser dans cet espace"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 18px',
+                    background: 'var(--wings-surface)',
+                    border: '0.5px solid var(--wings-border)',
+                    color: 'var(--wings-text-muted)',
+                    borderRadius: 999,
+                    fontSize: 13,
+                    cursor: 'not-allowed',
+                  }}
+                >
+                  <UploadCloud size={14} /> Téléversement non autorisé
+                </div>
+              )}
+            </div>
+
+            {!canUpload && (
+              <div style={{
+                marginBottom: 16,
+                padding: '10px 14px',
+                background: 'rgba(251,191,36,0.08)',
+                border: '0.5px solid rgba(251,191,36,0.2)',
+                borderRadius: 10,
+                fontSize: 12,
+                color: 'rgba(251,191,36,0.9)',
+              }}>
+                L'administrateur de cet espace a restreint le téléversement. Vous pouvez consulter et télécharger les fichiers selon vos droits.
+              </div>
+            )}
+
+            {fichiers.length === 0 ? (
+              <div style={{ textAlign: 'center', paddingTop: 72, paddingBottom: 72 }}>
+                <FileText size={40} style={{ color: 'var(--wings-text-muted)', opacity: 0.4, margin: '0 auto 12px', display: 'block' }} />
+                <p style={{ fontSize: 14, color: 'var(--wings-text-muted)', margin: '0 0 4px' }}>Aucun fichier dans cet espace</p>
+                <p style={{ fontSize: 12, color: 'var(--wings-text-muted)', opacity: 0.6, margin: 0 }}>Téléversez votre premier fichier pour démarrer la collaboration</p>
+              </div>
             ) : (
-              <div
-                title="Vous n'avez pas l'autorisation de téléverser dans cet espace"
-                className="flex items-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 rounded-lg cursor-not-allowed text-sm font-medium"
-              >
-                <UploadCloud className="w-4 h-4" /> Téléversement non autorisé
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+                {fichiers.map(f => {
+                  const isOwner = f.owner_id === currentUserId;
+                  const perms = (isOwner || isAdmin)
+                    ? { lecture: true, download: true, ecriture: true, partage: true, suppression: true }
+                    : (f.mes_permissions || { lecture: false, download: false, ecriture: false, partage: false, suppression: false });
+                  const ftColor = getFileTypeColor(f.nom);
+                  const ext = f.nom?.split('.').pop()?.toUpperCase() || 'FILE';
+                  const taille = Number(f.taille) || 0;
+                  const sizeStr = taille < 0.01 ? `${(taille * 1024).toFixed(0)} KB` : `${taille.toFixed(1)} MB`;
+
+                  return (
+                    <div
+                      key={f.id}
+                      style={{
+                        background: 'var(--wings-surface)',
+                        border: '0.5px solid var(--wings-border)',
+                        borderRadius: 12,
+                        padding: 16,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <span style={{
+                          fontSize: 10, fontFamily: 'monospace', fontWeight: 700,
+                          padding: '3px 8px',
+                          background: ftColor.bg,
+                          color: ftColor.color,
+                          borderRadius: 6,
+                        }}>{ext}</span>
+                      </div>
+
+                      <div>
+                        <p style={{
+                          fontSize: 13, fontWeight: 500,
+                          color: 'var(--wings-text)',
+                          margin: '0 0 4px',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }} title={f.nom}>{f.nom}</p>
+                        <p style={{ fontSize: 11, color: 'var(--wings-text-muted)', margin: 0 }}>
+                          {f.owner_nom || f.owner_email} · {sizeStr}
+                        </p>
+                        <p style={{ fontSize: 11, color: 'var(--wings-text-muted)', opacity: 0.7, margin: '2px 0 0' }}>
+                          {formatRelativeTime(f.date_creation)}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 'auto' }}>
+                        {perms.download && (
+                          <button onClick={() => handleDownload(f)} title="Télécharger" style={actionBtnStyle}>
+                            <Download size={13} />
+                          </button>
+                        )}
+                        {perms.lecture && (
+                          <button onClick={() => navigate(`/versions?fileId=${f.id}`)} title="Historique" style={actionBtnStyle}>
+                            <History size={13} />
+                          </button>
+                        )}
+                        {(isAdmin || isOwner) && (
+                          <button onClick={() => openAclModal(f)} title="Gérer les accès" style={actionBtnStyle}>
+                            <Shield size={13} />
+                          </button>
+                        )}
+                        {perms.lecture && (
+                          <button onClick={() => setPreviewFile(f)} title="Aperçu" style={actionBtnStyle}>
+                            <Eye size={13} />
+                          </button>
+                        )}
+                        {isEditable(f.nom) && perms.ecriture && (
+                          <button onClick={() => navigate(`/editor?fileId=${f.id}`)} title="Éditer" style={actionBtnStyle}>
+                            <FilePen size={13} />
+                          </button>
+                        )}
+                        {perms.suppression && (
+                          <button onClick={() => handleDeleteFile(f.id, f.nom)} title="Supprimer" style={{ ...actionBtnStyle, color: '#e57373' }}>
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
-          {!canUpload && (
-            <div className="mb-4 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
-              <span>ⓘ</span>
-              L'administrateur de cet espace a restreint le téléversement. Vous pouvez consulter et télécharger les fichiers selon vos droits.
-            </div>
-          )}
-          {fichiers.length === 0 ? (
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-12 text-center border border-slate-200 dark:border-slate-700">
-              <FileText className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-              <p className="text-slate-500 dark:text-slate-400 font-medium">Aucun fichier dans cet espace</p>
-              <p className="text-xs text-slate-400 mt-1">Uploadez votre premier fichier pour démarrer la collaboration</p>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-slate-50 dark:bg-slate-900/40">
-                  <tr>
-                    {['Nom', 'Propriétaire', 'Taille', 'Date', 'Actions'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {fichiers.map(f => {
-                    const isOwner = f.owner_id === currentUserId;
-                    const perms = (isOwner || isAdmin)
-                      ? { lecture: true, download: true, ecriture: true, partage: true, suppression: true }
-                      : (f.mes_permissions || { lecture: false, download: false, ecriture: false, partage: false, suppression: false });
-                    return (
-                    <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-slate-400" /> {f.nom}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{f.owner_nom || f.owner_email}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{(() => {
-  const t = Number(f.taille) || 0;
-  return t < 0.01 ? `${(t * 1024).toFixed(0)} KB` : `${t.toFixed(1)} MB`;
-})()}
-</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{formatRelativeTime(f.date_creation)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          {perms.download && (
-                          <button
-                            onClick={() => handleDownload(f)}
-                            className="p-1.5 text-slate-400 hover:text-cyan-500 rounded"
-                            title="Télécharger"
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                          )}
-                          {perms.lecture && (
-                          <button
-                            onClick={() => navigate(`/versions?fileId=${f.id}`)}
-                            className="p-1.5 text-slate-400 hover:text-amber-500 rounded"
-                            title="Historique des versions"
-                          >
-                            <History className="w-4 h-4" />
-                          </button>
-                          )}
-                          {(isAdmin || isOwner) && (
-                          <button
-                            onClick={() => openAclModal(f)}
-                            className="p-1.5 text-slate-400 hover:text-violet-500 rounded"
-                            title="Gérer les accès"
-                          >
-                            <Shield className="w-4 h-4" />
-                          </button>
-                          )}
-                          {perms.lecture && (
-                          <button
-                            onClick={() => setPreviewFile(f)}
-                            className="p-1.5 text-slate-400 hover:text-blue-500 rounded"
-                            title="Aperçu"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          )}
-                          {isEditable(f.nom) && perms.ecriture && (
-                            <button
-                              onClick={() => navigate(`/editor?fileId=${f.id}`)}
-                              className="p-1.5 text-slate-400 hover:text-cyan-500 rounded"
-                              title="Éditer"
-                            >
-                              <FilePen className="w-4 h-4" />
-                            </button>
-                          )}
-                          {perms.suppression && (
-                            <button
-                              onClick={() => handleDeleteFile(f.id, f.nom)}
-                              className="p-1.5 text-slate-400 hover:text-red-500 rounded"
-                              title="Supprimer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+        )}
 
-      {/* Onglet Membres */}
-      {tab === 'membres' && (
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">
-            {membres.length} membre{membres.length > 1 ? 's' : ''}
-          </h2>
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="divide-y divide-slate-100 dark:divide-slate-700">
-              {membres.map(m => (
-                <div key={m.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-cyan-500 text-white flex items-center justify-center font-bold">
-                      {(m.nom || m.email)[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        {m.nom || '—'}
-                        {m.role === 'admin' && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full">ADMIN</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{m.email}</p>
-                    </div>
+        {/* ── Onglet Membres ── */}
+        {tab === 'membres' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {membres.length === 0 ? (
+              <div style={{ textAlign: 'center', paddingTop: 64, color: 'var(--wings-text-muted)', fontSize: 13 }}>
+                Aucun membre dans cet espace
+              </div>
+            ) : membres.map(m => (
+              <div
+                key={m.id}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: 'var(--wings-surface)',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 12,
+                  padding: '12px 16px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: 'var(--accent)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontSize: 13, fontWeight: 600, flexShrink: 0,
+                  }}>
+                    {(m.nom || m.email)[0].toUpperCase()}
                   </div>
-                  {isAdmin && m.role !== 'admin' && (
-                    <button
-                      onClick={() => handleRemoveMember(m.id)}
-                      className="p-2 text-slate-400 hover:text-red-500 rounded"
-                      title="Retirer du groupe"
-                    >
-                      <UserMinus className="w-4 h-4" />
-                    </button>
-                  )}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)' }}>
+                        {m.nom || '—'}
+                      </span>
+                      {m.role === 'admin' ? (
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, padding: '2px 6px',
+                          background: 'rgba(255,193,7,0.15)',
+                          color: 'var(--wings-gold)',
+                          borderRadius: 999, letterSpacing: '0.5px',
+                        }}>ADMIN</span>
+                      ) : (
+                        <span style={{
+                          fontSize: 9, fontWeight: 600, padding: '2px 6px',
+                          background: 'rgba(168,180,212,0.1)',
+                          color: 'var(--wings-text-muted)',
+                          borderRadius: 999, letterSpacing: '0.5px',
+                        }}>MEMBRE</span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--wings-text-muted)', margin: 0 }}>{m.email}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+                {isAdmin && m.role !== 'admin' && (
+                  <button
+                    onClick={() => handleRemoveMember(m.id)}
+                    title="Retirer du groupe"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wings-text-muted)', padding: 6, display: 'flex' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#e57373'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; }}
+                  >
+                    <UserMinus size={15} />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Onglet Invitations */}
-      {tab === 'invitations' && isAdmin && (
-        <div>
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 mb-4">
-            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
-              <Mail className="w-4 h-4" /> Inviter par email
-            </h3>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="email@exemple.com"
-                value={inviteEmail}
-                onChange={e => setInviteEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleInvite()}
-                className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-              />
-              <button onClick={handleInvite} className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium rounded-lg">
-                Inviter
+        {/* ── Onglet Invitations ── */}
+        {tab === 'invitations' && isAdmin && (
+          <div>
+            <div style={{
+              background: 'var(--wings-surface)',
+              border: '0.5px solid var(--wings-border)',
+              borderRadius: 12,
+              padding: 20,
+              marginBottom: 16,
+            }}>
+              <h3 style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Mail size={14} /> Inviter par email
+              </h3>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="email"
+                  placeholder="email@exemple.com"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleInvite()}
+                  style={{
+                    flex: 1, padding: '8px 12px',
+                    background: 'var(--wings-bg)',
+                    border: '0.5px solid var(--wings-border)',
+                    borderRadius: 8,
+                    color: 'var(--wings-text)',
+                    fontSize: 13,
+                    outline: 'none',
+                    transition: 'border-color 0.15s',
+                  }}
+                  onFocus={e => { e.target.style.borderColor = accent; }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--wings-border)'; }}
+                />
+                <button
+                  onClick={handleInvite}
+                  style={{
+                    padding: '8px 18px',
+                    background: 'var(--wings-blue)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 999,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Inviter
+                </button>
+              </div>
+              <button
+                onClick={handleGenerateLink}
+                style={{
+                  marginTop: 12,
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 13, color: 'var(--wings-gold)',
+                  padding: 0,
+                }}
+              >
+                <Link2 size={14} /> Générer un lien d'invitation public
               </button>
             </div>
-            <button
-              onClick={handleGenerateLink}
-              className="mt-3 flex items-center gap-2 text-sm text-cyan-600 hover:text-cyan-700"
-            >
-              <Link2 className="w-4 h-4" /> Générer un lien d'invitation public
-            </button>
-          </div>
 
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">
-            Invitations actives ({invitations.filter(i => !i.utilise).length})
-          </h3>
-          {invitations.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-6">Aucune invitation</p>
-          ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
-              {invitations.map(i => (
-                <div key={i.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {i.email || 'Lien public'}
-                      {i.utilise && <span className="ml-2 text-xs text-emerald-600">✓ Utilisée</span>}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Expire le {new Date(i.date_expiration).toLocaleDateString('fr-FR')}
-                    </p>
+            <p style={{ fontSize: 12, color: 'var(--wings-text-muted)', marginBottom: 12 }}>
+              Invitations actives ({invitations.filter(i => !i.utilise).length})
+            </p>
+
+            {invitations.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--wings-text-muted)', textAlign: 'center', paddingTop: 24 }}>Aucune invitation</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {invitations.map(i => (
+                  <div
+                    key={i.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: 'var(--wings-surface)',
+                      border: '0.5px solid var(--wings-border)',
+                      borderRadius: 10,
+                      padding: '10px 14px',
+                    }}
+                  >
+                    <div>
+                      <p style={{ fontSize: 13, color: 'var(--wings-text)', margin: '0 0 2px' }}>
+                        {i.email || 'Lien public'}
+                        {i.utilise && <span style={{ marginLeft: 8, fontSize: 11, color: '#4ade80' }}>Utilisée</span>}
+                      </p>
+                      <p style={{ fontSize: 11, color: 'var(--wings-text-muted)', margin: 0 }}>
+                        Expire le {new Date(i.date_expiration).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                    {!i.utilise && (
+                      <button
+                        onClick={() => handleCopyInvite(i.token)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '6px 12px',
+                          background: 'var(--wings-bg)',
+                          border: '0.5px solid var(--wings-border)',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          color: 'var(--wings-text-muted)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Copy size={12} /> Copier le lien
+                      </button>
+                    )}
                   </div>
-                  {!i.utilise && (
-                    <button
-                      onClick={() => handleCopyInvite(i.token)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg"
-                    >
-                      <Copy className="w-3 h-3" /> Copier le lien
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* Onglet Paramètres */}
-      {tab === 'parametres' && isAdmin && (
-        <div className="max-w-2xl">
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">
-              Politique de téléversement
-            </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
+        {/* ── Onglet Paramètres ── */}
+        {tab === 'parametres' && isAdmin && (
+          <div style={{ maxWidth: 600 }}>
+            <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)', margin: '0 0 4px' }}>Politique de téléversement</p>
+            <p style={{ fontSize: 12, color: 'var(--wings-text-muted)', marginBottom: 20 }}>
               Définissez qui peut ajouter des fichiers dans cet espace.
             </p>
 
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                { value: 'tous', label: 'Tous les membres', desc: 'N\'importe quel membre de l\'espace peut téléverser des fichiers.' },
-                { value: 'membres_choisis', label: 'Membres sélectionnés', desc: 'Seuls les membres que vous choisissez peuvent téléverser.' },
-                { value: 'admin_seul', label: 'Administrateur uniquement', desc: 'Seul vous pouvez téléverser des fichiers.' },
+                { value: 'tous',            label: 'Tous les membres',          desc: "N'importe quel membre de l'espace peut téléverser des fichiers." },
+                { value: 'membres_choisis', label: 'Membres sélectionnés',      desc: 'Seuls les membres que vous choisissez peuvent téléverser.' },
+                { value: 'admin_seul',      label: 'Administrateur uniquement', desc: 'Seul vous pouvez téléverser des fichiers.' },
               ].map(opt => (
                 <label
                   key={opt.value}
-                  className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition ${
-                    uploadPolicy === opt.value
-                      ? 'border-cyan-400 bg-cyan-50 dark:bg-cyan-900/20'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                  }`}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    padding: 14,
+                    background: uploadPolicy === opt.value ? 'var(--accent-faint)' : 'var(--wings-surface)',
+                    border: uploadPolicy === opt.value ? `1px solid var(--accent)` : '0.5px solid var(--wings-border)',
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
                 >
                   <input
                     type="radio"
                     name="upload-policy"
                     checked={uploadPolicy === opt.value}
                     onChange={() => setUploadPolicy(opt.value)}
-                    className="mt-1 accent-cyan-500"
+                    style={{ marginTop: 2, accentColor: accent }}
                   />
                   <div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{opt.label}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{opt.desc}</p>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)', margin: '0 0 4px' }}>{opt.label}</p>
+                    <p style={{ fontSize: 12, color: 'var(--wings-text-muted)', margin: 0 }}>{opt.desc}</p>
                   </div>
                 </label>
               ))}
             </div>
 
             {uploadPolicy === 'membres_choisis' && (
-              <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-900/40 rounded-lg">
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">
+              <div style={{
+                marginTop: 16,
+                padding: 14,
+                background: 'var(--wings-surface)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 10,
+              }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--wings-text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Membres autorisés à téléverser :
                 </p>
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {membres.filter(m => m.role !== 'admin').map(m => (
-                    <label key={m.id} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                    <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--wings-text)', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
                         checked={uploadAutorises.includes(m.id)}
@@ -638,13 +834,13 @@ export default function EspaceDetail() {
                             prev.includes(m.id) ? prev.filter(x => x !== m.id) : [...prev, m.id]
                           );
                         }}
-                        className="accent-cyan-500"
+                        style={{ accentColor: accent }}
                       />
                       {m.nom} ({m.email})
                     </label>
                   ))}
                   {membres.filter(m => m.role !== 'admin').length === 0 && (
-                    <p className="text-xs text-slate-400">Aucun autre membre dans l'espace.</p>
+                    <p style={{ fontSize: 12, color: 'var(--wings-text-muted)', margin: 0 }}>Aucun autre membre dans l'espace.</p>
                   )}
                 </div>
               </div>
@@ -652,129 +848,197 @@ export default function EspaceDetail() {
 
             <button
               onClick={handleSavePolicy}
-              className="mt-5 px-5 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold rounded-lg"
+              style={{
+                marginTop: 20,
+                padding: '10px 24px',
+                background: 'var(--wings-blue)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 999,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
             >
               Enregistrer la politique
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Modale invitation */}
-      {inviteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setInviteModal(null)}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">
-              {inviteModal.email ? `Invitation envoyée à ${inviteModal.email}` : "Lien d'invitation public créé"}
-            </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-              Partagez ce lien avec la personne que vous souhaitez inviter. Il expire dans 7 jours.
-            </p>
-            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg p-3 mb-4 flex items-center gap-2">
-              <code className="flex-1 text-xs text-slate-700 dark:text-slate-300 break-all font-mono">
-                {inviteModal.url}
-              </code>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(inviteModal.url).catch(() => {});
-                  showToast('Lien copié');
-                }}
-                className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold rounded-md"
-              >
-                <Copy className="w-3 h-3" /> Copier
-              </button>
-            </div>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setInviteModal(null)}
-                className="px-4 py-2 text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg"
-              >
-                Fermer
-              </button>
+        {/* ── Modale invitation ── */}
+        {inviteModal && (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
+            onClick={() => setInviteModal(null)}
+          >
+            <div
+              style={{
+                background: 'var(--wings-surface)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 16, padding: 24,
+                maxWidth: 480, width: '100%',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 style={{ fontSize: 15, fontWeight: 500, color: 'var(--wings-text)', marginBottom: 8, marginTop: 0 }}>
+                {inviteModal.email ? `Invitation envoyée à ${inviteModal.email}` : "Lien d'invitation public créé"}
+              </h3>
+              <p style={{ fontSize: 12, color: 'var(--wings-text-muted)', marginBottom: 16 }}>
+                Partagez ce lien avec la personne que vous souhaitez inviter. Il expire dans 7 jours.
+              </p>
+              <div style={{
+                background: 'var(--wings-bg)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 8, padding: '10px 12px',
+                display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16,
+              }}>
+                <code style={{ flex: 1, fontSize: 11, color: 'var(--wings-text-muted)', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                  {inviteModal.url}
+                </code>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(inviteModal.url).catch(() => {}); showToast('Lien copié'); }}
+                  style={{
+                    flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 12px',
+                    background: 'var(--wings-blue)',
+                    color: '#fff', border: 'none',
+                    borderRadius: 8, fontSize: 12, cursor: 'pointer',
+                  }}
+                >
+                  <Copy size={12} /> Copier
+                </button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setInviteModal(null)}
+                  style={{
+                    padding: '8px 16px', fontSize: 13,
+                    background: 'transparent',
+                    border: '0.5px solid var(--wings-border)',
+                    borderRadius: 8, color: 'var(--wings-text)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Fermer
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Modale ACL fichier */}
-      {aclModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAclModal(null)}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-2xl w-full shadow-xl max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">
-              Gérer les accès — {aclModal.fichier.nom}
-            </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-              {aclModal.can_manage
-                ? 'Définissez les droits de chaque membre sur ce fichier.'
-                : 'Vous n\'avez pas les droits pour modifier ces accès.'}
-            </p>
+        {/* ── Modale ACL fichier ── */}
+        {aclModal && (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
+            onClick={() => setAclModal(null)}
+          >
+            <div
+              style={{
+                background: 'var(--wings-surface)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 16, padding: 24,
+                maxWidth: 600, width: '100%',
+                maxHeight: '80vh', overflowY: 'auto',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 style={{ fontSize: 15, fontWeight: 500, color: 'var(--wings-text)', marginBottom: 4, marginTop: 0 }}>
+                Gérer les accès — {aclModal.fichier.nom}
+              </h3>
+              <p style={{ fontSize: 12, color: 'var(--wings-text-muted)', marginBottom: 16 }}>
+                {aclModal.can_manage
+                  ? 'Définissez les droits de chaque membre sur ce fichier.'
+                  : "Vous n'avez pas les droits pour modifier ces accès."}
+              </p>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-2 px-2 text-xs font-semibold text-slate-500 uppercase">Membre</th>
-                    <th className="text-center py-2 px-2 text-xs font-semibold text-slate-500 uppercase">Lecture</th>
-                    <th className="text-center py-2 px-2 text-xs font-semibold text-slate-500 uppercase">Téléch.</th>
-                    <th className="text-center py-2 px-2 text-xs font-semibold text-slate-500 uppercase">Écriture</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {aclModal.permissions.map(p => {
-                    const locked = p.is_owner || p.is_espace_admin;
-                    return (
-                      <tr key={p.user_id}>
-                        <td className="py-2 px-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-cyan-500 text-white flex items-center justify-center text-xs font-bold">
-                              {(p.nom || p.email)[0].toUpperCase()}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '0.5px solid var(--wings-border)' }}>
+                      {['Membre', 'Lecture', 'Téléch.', 'Écriture'].map(h => (
+                        <th key={h} style={{
+                          textAlign: h === 'Membre' ? 'left' : 'center',
+                          padding: '8px 10px',
+                          fontSize: 10, fontWeight: 600,
+                          color: 'var(--wings-text-muted)',
+                          textTransform: 'uppercase', letterSpacing: '0.5px',
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {aclModal.permissions.map(p => {
+                      const locked = p.is_owner || p.is_espace_admin;
+                      return (
+                        <tr key={p.user_id} style={{ borderBottom: '0.5px solid var(--wings-border)' }}>
+                          <td style={{ padding: '10px 10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{
+                                width: 28, height: 28, borderRadius: '50%',
+                                background: 'var(--accent)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#fff', fontSize: 11, fontWeight: 600,
+                              }}>
+                                {(p.nom || p.email)[0].toUpperCase()}
+                              </div>
+                              <div>
+                                <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)', margin: 0 }}>
+                                  {p.nom}
+                                  {p.is_owner && (
+                                    <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--wings-blue)', fontWeight: 700 }}>PROPRIÉTAIRE</span>
+                                  )}
+                                  {p.is_espace_admin && !p.is_owner && (
+                                    <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--wings-gold)', fontWeight: 700 }}>ADMIN</span>
+                                  )}
+                                </p>
+                                <p style={{ fontSize: 11, color: 'var(--wings-text-muted)', margin: 0 }}>{p.email}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                {p.nom}
-                                {p.is_owner && <span className="ml-1 text-[10px] text-cyan-600 font-bold">PROPRIÉTAIRE</span>}
-                                {p.is_espace_admin && !p.is_owner && <span className="ml-1 text-[10px] text-amber-600 font-bold">ADMIN</span>}
-                              </p>
-                              <p className="text-xs text-slate-400">{p.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        {['lecture', 'download', 'ecriture'].map(perm => (
-                          <td key={perm} className="text-center py-2 px-2">
-                            <input
-                              type="checkbox"
-                              checked={locked ? true : p[perm]}
-                              disabled={locked || !aclModal.can_manage}
-                              onChange={() => handleToggleAcl(p.user_id, perm, p[perm])}
-                              className="accent-cyan-500 w-4 h-4 disabled:opacity-40"
-                            />
                           </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          {['lecture', 'download', 'ecriture'].map(perm => (
+                            <td key={perm} style={{ textAlign: 'center', padding: '10px 10px' }}>
+                              <input
+                                type="checkbox"
+                                checked={locked ? true : p[perm]}
+                                disabled={locked || !aclModal.can_manage}
+                                onChange={() => handleToggleAcl(p.user_id, perm, p[perm])}
+                                style={{ accentColor: accent, width: 14, height: 14, opacity: (locked || !aclModal.can_manage) ? 0.4 : 1 }}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-            <div className="flex justify-end mt-5">
-              <button
-                onClick={() => setAclModal(null)}
-                className="px-4 py-2 text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg"
-              >
-                Fermer
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+                <button
+                  onClick={() => setAclModal(null)}
+                  style={{
+                    padding: '8px 16px', fontSize: 13,
+                    background: 'transparent',
+                    border: '0.5px solid var(--wings-border)',
+                    borderRadius: 8, color: 'var(--wings-text)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Fermer
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {previewFile && (
-        <FilePreviewModal
-          file={previewFile}
-          onClose={() => setPreviewFile(null)}
-          onDownload={() => { handleDownload(previewFile); setPreviewFile(null); }}
-        />
-      )}
+        )}
+
+        {previewFile && (
+          <FilePreviewModal
+            file={previewFile}
+            onClose={() => setPreviewFile(null)}
+            onDownload={() => { handleDownload(previewFile); setPreviewFile(null); }}
+          />
+        )}
+      </div>
     </AppLayout>
   );
 }
