@@ -24,10 +24,12 @@ function FileItem({ file, status, progress, error, onRemove }) {
           : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
     >
       {/* Icon */}
-      <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold
-        ${isDone ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-          : isError ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
-            : 'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400'}`}
+      <div
+        className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold
+          ${isDone ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+            : isError ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
+              : ''}`}
+        style={(!isDone && !isError) ? { background: 'rgba(79,139,255,0.1)', color: 'var(--wings-blue)' } : {}}
       >
         {ext.toUpperCase().slice(0, 3)}
       </div>
@@ -45,7 +47,7 @@ function FileItem({ file, status, progress, error, onRemove }) {
         {isUploading && (
           <div className="mt-2 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-200"
+              className="h-full rounded-full transition-all duration-200" style={{ background: 'var(--wings-blue)' }}
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -57,7 +59,7 @@ function FileItem({ file, status, progress, error, onRemove }) {
         {isDone && <CheckCircle className="w-5 h-5 text-emerald-500" />}
         {isError && <AlertCircle className="w-5 h-5 text-red-500" />}
         {isUploading && (
-          <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 tabular-nums">
+          <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--wings-blue)' }}>
             {progress}%
           </span>
         )}
@@ -158,11 +160,14 @@ export default function UploadZone({ onSuccess, folderId }) {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onClick={() => inputRef.current?.click()}
-        className={`relative flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all
-          ${dragging
-            ? 'border-cyan-400 bg-cyan-50 dark:bg-cyan-900/10 scale-[1.01]'
-            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-cyan-300 dark:hover:border-cyan-600 hover:bg-cyan-50/50 dark:hover:bg-cyan-900/5'
-          }`}
+        className="relative flex flex-col items-center justify-center gap-3 p-8 cursor-pointer"
+        style={{
+          border: dragging ? '2px dashed var(--wings-blue)' : '0.5px dashed var(--wings-border)',
+          background: dragging ? 'rgba(79,139,255,0.05)' : 'var(--wings-surface)',
+          borderRadius: 12,
+          transition: 'all 0.2s',
+          transform: dragging ? 'scale(1.01)' : 'scale(1)',
+        }}
       >
         <input
           ref={inputRef}
@@ -171,17 +176,18 @@ export default function UploadZone({ onSuccess, folderId }) {
           className="hidden"
           onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
         />
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors
-          ${dragging ? 'bg-cyan-100 dark:bg-cyan-900/30' : 'bg-white dark:bg-slate-700 shadow-sm'}`}
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center transition-colors"
+          style={{ background: dragging ? 'rgba(79,139,255,0.15)' : 'var(--wings-surface)' }}
         >
-          <UploadCloud className={`w-7 h-7 transition-colors ${dragging ? 'text-cyan-500' : 'text-slate-400 dark:text-slate-500'}`} />
+          <UploadCloud className="w-7 h-7 transition-colors" style={{ color: dragging ? 'var(--wings-blue)' : 'var(--wings-text-muted)' }} />
         </div>
         <div className="text-center">
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
             {dragging ? 'Relâchez pour ajouter' : 'Glissez vos fichiers ici'}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-            ou <span className="text-cyan-500 font-medium">parcourez</span> — max {MAX_SIZE_MB} Mo par fichier
+            ou <span className="font-medium" style={{ color: 'var(--wings-blue)' }}>parcourez</span> — max {MAX_SIZE_MB} Mo par fichier
           </p>
         </div>
         <p className="text-[11px] text-slate-300 dark:text-slate-600">
@@ -216,7 +222,21 @@ export default function UploadZone({ onSuccess, folderId }) {
               <button
                 onClick={uploadAll}
                 disabled={uploading || pendingCount === 0}
-                className="flex items-center gap-2 px-5 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition shadow-sm"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 20px',
+                  background: (uploading || pendingCount === 0) ? 'var(--wings-text-muted)' : 'var(--wings-blue)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 999,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: (uploading || pendingCount === 0) ? 'not-allowed' : 'pointer',
+                  opacity: (uploading || pendingCount === 0) ? 0.5 : 1,
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => !(uploading || pendingCount === 0) && (e.currentTarget.style.background = 'var(--wings-blue-dark)')}
+                onMouseLeave={e => !(uploading || pendingCount === 0) && (e.currentTarget.style.background = 'var(--wings-blue)')}
               >
                 <UploadCloud className="w-4 h-4" />
                 {uploading ? 'Ajout en cours…' : `Ajouter ${pendingCount} fichier${pendingCount > 1 ? 's' : ''}`}

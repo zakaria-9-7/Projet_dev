@@ -96,6 +96,11 @@ def update_user(user_id):
     user = User.query.get(user_id)
     if user  is None :
       return  jsonify({'error' : 'utilisateur inexistant'}), 404
+
+    # SÉCURITÉ : un AdminGlobal ne peut pas modifier son propre rôle
+    if user.id == g.user['id']:
+        return jsonify({'error': 'Vous ne pouvez pas modifier votre propre rôle'}), 403
+
     else :
       data = request.get_json()
       new_email = data.get('email', user.email)
