@@ -13,6 +13,7 @@ from app.routes.folders import folders_bp
 from app.routes.version import versions_bp
 from app.routes.quota import quota_bp
 from app.routes.notifications import notifications_bp
+from app.routes.file_locks import file_locks_bp
 from flask_cors import CORS
 
 load_dotenv()
@@ -52,6 +53,7 @@ def create_app():
     app.register_blueprint(folders_bp)
     app.register_blueprint(versions_bp)
     app.register_blueprint(notifications_bp)
+    app.register_blueprint(file_locks_bp)
 
     with app.app_context():
         from app.models.user import User
@@ -64,6 +66,7 @@ def create_app():
         from app.models.acl import ACL
         from app.models.notification import Notification
         from app.models.otp import OTP
+        from app.models.file_lock import FileLock
 
         db.create_all()
 

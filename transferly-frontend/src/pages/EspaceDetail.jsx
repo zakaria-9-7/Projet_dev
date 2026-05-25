@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Users, Mail, Settings, Trash2, Edit2, ArrowLeft,
   UploadCloud, Download, FileText, Link2, Copy, UserMinus,
-  LogOut as ExitIcon, Shield, History, FilePen, Eye,
+  LogOut as ExitIcon, Shield, History, FilePen, Eye, Lock,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import FilePreviewModal from '../components/FilePreviewModal';
@@ -42,6 +42,7 @@ export default function EspaceDetail() {
   const [uploadAutorises, setUploadAutorises] = useState([]);
   const [aclModal, setAclModal] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
+  const [fileLocks, setFileLocks] = useState({});
 
   const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
   const isAdmin = espace && espace.admin_id === currentUserId;
@@ -100,6 +101,27 @@ export default function EspaceDetail() {
   };
 
   useEffect(() => { loadEspace(); }, [espaceId]);
+
+  useEffect(() => {
+    if (!fichiers || fichiers.length === 0) return;
+
+    const loadLocks = async () => {
+      const results = {};
+      await Promise.all(fichiers.map(async (f) => {
+        try {
+          const res = await API.get(`/files/${f.id}/lock`);
+          results[f.id] = res.data;
+        } catch (e) {
+          results[f.id] = { locked: false };
+        }
+      }));
+      setFileLocks(results);
+    };
+
+    loadLocks();
+    const interval = setInterval(loadLocks, 30000);
+    return () => clearInterval(interval);
+  }, [fichiers]);
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -516,6 +538,7 @@ export default function EspaceDetail() {
                     <div
                       key={f.id}
                       style={{
+                        position: 'relative',
                         background: 'var(--wings-surface)',
                         border: '0.5px solid var(--wings-border)',
                         borderRadius: 12,
@@ -523,6 +546,8 @@ export default function EspaceDetail() {
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 10,
+                        opacity: (fileLocks[f.id]?.locked && !fileLocks[f.id]?.is_mine) ? 0.65 : 1,
+                        transition: 'opacity 0.2s',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -533,6 +558,33 @@ export default function EspaceDetail() {
                           color: ftColor.color,
                           borderRadius: 6,
                         }}>{ext}</span>
+                        {fileLocks[f.id]?.locked && (
+                          <div
+                            title={fileLocks[f.id].is_mine
+                              ? 'Verrouillé par vous'
+                              : `Verrouillé par ${fileLocks[f.id].lock?.user_nom || fileLocks[f.id].lock?.user_email || 'un autre utilisateur'}`}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '3px 8px',
+                              borderRadius: 999,
+                              background: fileLocks[f.id].is_mine
+                                ? 'rgba(255,193,7,0.15)'
+                                : 'rgba(229,115,115,0.15)',
+                              border: `0.5px solid ${fileLocks[f.id].is_mine
+                                ? 'rgba(255,193,7,0.4)'
+                                : 'rgba(229,115,115,0.4)'}`,
+                              fontSize: 9,
+                              fontFamily: 'monospace',
+                              letterSpacing: '0.5px',
+                              color: fileLocks[f.id].is_mine ? 'var(--wings-gold)' : '#e57373',
+                            }}
+                          >
+                            <Lock size={9} />
+                            {fileLocks[f.id].is_mine ? 'VOUS' : 'VERROUILLÉ'}
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -572,7 +624,18 @@ export default function EspaceDetail() {
                           </button>
                         )}
                         {isEditable(f.nom) && perms.ecriture && (
-                          <button onClick={() => navigate(`/editor?fileId=${f.id}`)} title="Éditer" style={actionBtnStyle}>
+                          <button
+                            onClick={() => {
+                              const verrou = fileLocks[f.id];
+                              if (verrou?.locked && !verrou?.is_mine) {
+                                alert(`Ce fichier est verrouillé par ${verrou.lock?.user_nom || verrou.lock?.user_email || 'un autre utilisateur'}. Vous ne pouvez pas l'éditer pour l'instant.`);
+                                return;
+                              }
+                              navigate(`/editor?fileId=${f.id}`);
+                            }}
+                            title="Éditer"
+                            style={actionBtnStyle}
+                          >
                             <FilePen size={13} />
                           </button>
                         )}
