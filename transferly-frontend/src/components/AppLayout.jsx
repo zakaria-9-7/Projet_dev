@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Share2, FolderOpen, History,
@@ -79,6 +79,8 @@ function NavItem({ to, icon: Icon, label, onClick, active = false, extraClass = 
 
 export default function AppLayout({ children, titleNode }) {
   const [dark, setDark] = useState(() => localStorage.getItem('darkMode') === 'true');
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -90,6 +92,17 @@ export default function AppLayout({ children, titleNode }) {
     document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('darkMode', String(dark));
   }, [dark]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const handler = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [profileMenuOpen]);
 
   const getInitials = () => {
     if (nom) {
@@ -291,53 +304,135 @@ export default function AppLayout({ children, titleNode }) {
             </button>
 
             {/* Avatar utilisateur */}
-            <div
-              onClick={() => navigate('/settings')}
-              style={{
-                display: 'flex',
-                gap: '10px',
-                alignItems: 'center',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, var(--wings-blue), var(--wings-blue-dark))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontSize: '12px',
-                fontWeight: 600,
-                flexShrink: 0,
-              }}>
-                {getInitials()}
-              </div>
-              <div style={{ minWidth: 0 }}>
+            <div ref={profileMenuRef} style={{ position: 'relative' }}>
+              <div
+                onClick={() => setProfileMenuOpen(o => !o)}
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: 8,
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={ev => ev.currentTarget.style.background = 'var(--wings-surface)'}
+                onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
+              >
                 <div style={{
-                  color: 'var(--wings-text)',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, var(--wings-blue), var(--wings-blue-dark))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
                   fontSize: '12px',
-                  fontWeight: 500,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  maxWidth: '140px',
+                  fontWeight: 600,
+                  flexShrink: 0,
                 }}>
-                  {nom || email || '—'}
+                  {getInitials()}
                 </div>
-                <div style={{
-                  color: 'var(--wings-text-muted)',
-                  fontSize: '10px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  maxWidth: '140px',
-                }}>
-                  {email}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    color: 'var(--wings-text)',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '140px',
+                  }}>
+                    {nom || email || '—'}
+                  </div>
+                  <div style={{
+                    color: 'var(--wings-text-muted)',
+                    fontSize: '10px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '140px',
+                  }}>
+                    {email}
+                  </div>
                 </div>
               </div>
+
+              {/* POPOVER */}
+              {profileMenuOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  minWidth: 220,
+                  background: 'var(--wings-surface)',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 12,
+                  padding: 6,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                  zIndex: 100,
+                }}>
+                  <div style={{
+                    padding: '10px 12px',
+                    borderBottom: '0.5px solid var(--wings-border)',
+                    marginBottom: 4,
+                  }}>
+                    <div style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {nom || '—'}
+                    </div>
+                    <div style={{ color: 'var(--wings-text-muted)', fontSize: 11, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {email}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => { setProfileMenuOpen(false); navigate('/settings'); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      width: '100%',
+                      padding: '8px 12px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderRadius: 8,
+                      color: 'var(--wings-text)',
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                    onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(79,139,255,0.08)'}
+                    onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
+                  >
+                    <Settings size={14} style={{ color: 'var(--wings-text-muted)' }} />
+                    Mon profil
+                  </button>
+
+                  <button
+                    onClick={() => { setProfileMenuOpen(false); handleLogout(); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      width: '100%',
+                      padding: '8px 12px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderRadius: 8,
+                      color: '#e57373',
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                    onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(220,80,80,0.08)'}
+                    onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
+                  >
+                    <LogOut size={14} style={{ color: '#e57373' }} />
+                    Déconnexion
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
