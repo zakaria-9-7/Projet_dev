@@ -5,6 +5,7 @@ import {
   Users, LayoutGrid, Files, BarChart3, Settings, LogOut,
   Sun, Moon,
 } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 import cicada from '../assets/cicada.svg';
 import './AppLayout.css';
 
@@ -302,6 +303,8 @@ export default function AppLayout({ children, titleNode }) {
             >
               {dark ? <Sun size={14} /> : <Moon size={14} />}
             </button>
+
+            <NotificationBell />
 
             {/* Avatar utilisateur */}
             <div ref={profileMenuRef} style={{ position: 'relative' }}>

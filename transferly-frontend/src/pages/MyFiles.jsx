@@ -211,31 +211,49 @@ export default function MyFiles() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleUpload}
-            className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 18px',
+              background: 'var(--wings-blue)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 999,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--wings-blue-dark)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--wings-blue)'}
           >
             <UploadCloud className="w-4 h-4" />
             Téléverser
           </button>
 
           {/* View toggle */}
-          <div className="flex bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
+          <div style={{ display: 'flex', border: '0.5px solid var(--wings-border)', borderRadius: 8, overflow: 'hidden' }}>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 transition-colors ${
-                viewMode === 'grid'
-                  ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
-                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-              }`}
+              style={{
+                padding: 8,
+                background: viewMode === 'grid' ? 'var(--wings-surface)' : 'transparent',
+                border: 'none',
+                color: viewMode === 'grid' ? 'var(--wings-text)' : 'var(--wings-text-muted)',
+                cursor: 'pointer',
+              }}
             >
               <Grid className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 border-l border-slate-200 dark:border-slate-600 transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600'
-                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
-              }`}
+              style={{
+                padding: 8,
+                background: viewMode === 'list' ? 'var(--wings-surface)' : 'transparent',
+                border: 'none',
+                borderLeft: '0.5px solid var(--wings-border)',
+                color: viewMode === 'list' ? 'var(--wings-text)' : 'var(--wings-text-muted)',
+                cursor: 'pointer',
+              }}
             >
               <List className="w-4 h-4" />
             </button>
@@ -252,7 +270,7 @@ export default function MyFiles() {
         <div className="flex flex-col items-center justify-center h-64 gap-3 text-red-400">
           <FileIcon className="w-12 h-12" />
           <p className="text-sm font-medium">{error}</p>
-          <button onClick={fetchFiles} className="text-xs text-cyan-600 hover:underline">Réessayer</button>
+          <button onClick={fetchFiles} className="text-xs hover:underline" style={{ color: 'var(--wings-blue)' }}>Réessayer</button>
         </div>
       ) : files.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400 dark:text-slate-500">
@@ -270,7 +288,7 @@ export default function MyFiles() {
               key={file.id ?? i}
               ref={el => (cardsRef.current[i] = el)}
               style={{ opacity: 0 }}
-              className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md hover:border-cyan-200 dark:hover:border-cyan-700 transition-all group relative ${
+              className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md transition-all group relative ${
                 viewMode === 'list'
                   ? 'flex items-center gap-4 p-4'
                   : 'flex flex-col p-4 min-h-[160px]'
@@ -318,7 +336,7 @@ export default function MyFiles() {
                       {isEditable(file.name) && (!file.perms || file.perms.ecriture) && (
                         <button
                           onClick={() => { setOpenMenu(null); navigate(`/editor?fileId=${file.id}`); }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700" style={{ color: 'var(--wings-blue)' }}
                         >
                           <FilePen className="w-3.5 h-3.5" /> Éditer
                         </button>
@@ -376,7 +394,20 @@ export default function MyFiles() {
               {file.type === 'file' && viewMode === 'grid' && (
                 <button
                   onClick={() => navigate(`/versions?fileId=${file.id}`)}
-                  className="absolute bottom-3 right-3 p-1.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-cyan-600 hover:border-cyan-200 dark:hover:border-cyan-700 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{
+                    position: 'absolute', bottom: 12, right: 12,
+                    padding: 6,
+                    background: 'var(--wings-surface)',
+                    border: '0.5px solid var(--wings-border)',
+                    borderRadius: 6,
+                    color: 'var(--wings-text-muted)',
+                    opacity: 0,
+                    cursor: 'pointer',
+                    transition: 'opacity 0.15s, color 0.15s',
+                  }}
+                  className="group-hover:opacity-100"
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--wings-blue)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--wings-text-muted)'}
                   title="Historique des versions"
                 >
                   <History className="w-3.5 h-3.5" />
@@ -449,7 +480,7 @@ export default function MyFiles() {
 
 function FileTypeIcon({ file, listMode }) {
   const base = `stroke-[1.5] ${listMode ? 'w-6 h-6' : 'w-10 h-10 mb-4'}`;
-  if (file.type === 'folder')             return <Folder          className={`${base} text-cyan-400`}   />;
+  if (file.type === 'folder')             return <Folder          className={base} style={{ color: 'var(--wings-gold)' }} />;
   if (file.ft === 'PDF' || file.ft === 'PPT') return <FileText    className={`${base} text-slate-400`}  />;
   if (file.ft === 'XLS')                  return <FileSpreadsheet className={`${base} text-slate-400`}  />;
   if (file.ft === 'IMG')                  return <ImageIcon       className={`${base} text-slate-400`}  />;

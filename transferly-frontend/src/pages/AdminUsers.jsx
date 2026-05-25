@@ -316,7 +316,7 @@ function Toast({ message, type, onClose }) {
   );
 }
 
-function EditModal({ user, onClose, onSave }) {
+function EditModal({ user, onClose, onSave, isSelfEdit = false }) {
   const [form, setForm] = useState({ email: user.email, role: user.role, statut: user.statut });
   const [loading, setLoading] = useState(false);
 
@@ -372,12 +372,33 @@ function EditModal({ user, onClose, onSave }) {
             <select
               value={form.role}
               onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-              style={selectStyle}
+              disabled={isSelfEdit}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                background: isSelfEdit ? 'var(--wings-bg)' : 'var(--wings-surface)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 8,
+                color: 'var(--wings-text)',
+                fontSize: 13,
+                cursor: isSelfEdit ? 'not-allowed' : 'pointer',
+                opacity: isSelfEdit ? 0.5 : 1,
+              }}
             >
               <option value="Utilisateur">Utilisateur</option>
               <option value="AdminEspace">AdminEspace</option>
               <option value="AdminGlobal">AdminGlobal</option>
             </select>
+            {isSelfEdit && (
+              <p style={{
+                margin: '4px 0 0 0',
+                fontSize: 11,
+                color: 'var(--wings-text-muted)',
+                fontStyle: 'italic',
+              }}>
+                Vous ne pouvez pas modifier votre propre rôle
+              </p>
+            )}
           </div>
           <div>
             <label style={labelStyle}>Statut</label>
@@ -856,7 +877,7 @@ export default function AdminUsers() {
       </div>
 
       {showCreate && <CreateUserModal onClose={() => setShowCreate(false)} onCreated={handleCreated} />}
-      {editUser   && <EditModal  user={editUser}  onClose={() => setEditUser(null)}  onSave={handleEditSave}  />}
+      {editUser   && <EditModal  user={editUser}  onClose={() => setEditUser(null)}  onSave={handleEditSave}  isSelfEdit={editUser.id === currentUserId} />}
       {quotaUser  && <QuotaModal user={quotaUser} onClose={() => setQuotaUser(null)} onSave={handleQuotaSave} />}
       {toast      && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </AppLayout>
