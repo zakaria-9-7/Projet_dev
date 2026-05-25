@@ -422,6 +422,7 @@ def accept_invitation(token):
 @admin_espace_bp.route('/espaces/all-mine', methods=['GET'])
 def list_all_my_espaces():
     from app.models.membership import Membership
+    from app.models.fichier import Fichier
 
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
@@ -434,12 +435,24 @@ def list_all_my_espaces():
     espaces_membre_ids = [m.espace_id for m in memberships]
     espaces_membre = Espace.query.filter(Espace.id.in_(espaces_membre_ids)).all() if espaces_membre_ids else []
 
+    def serialize(e, role):
+        nb_membres = Membership.query.filter_by(espace_id=e.id).count() + 1  # +1 pour l'admin
+        nb_fichiers = Fichier.query.filter_by(espace_id=e.id).count()
+        return {
+            'id': e.id,
+            'nom': e.nom,
+            'role': role,
+            'admin_id': e.admin_id,
+            'nb_membres': nb_membres,
+            'nb_fichiers': nb_fichiers,
+        }
+
     result = []
     for e in espaces_admin:
-        result.append({'id': e.id, 'nom': e.nom, 'role': 'admin', 'admin_id': e.admin_id})
+        result.append(serialize(e, 'admin'))
     for e in espaces_membre:
         if e.id not in [x['id'] for x in result]:
-            result.append({'id': e.id, 'nom': e.nom, 'role': 'membre', 'admin_id': e.admin_id})
+            result.append(serialize(e, 'membre'))
 
     return jsonify(result), 200
 

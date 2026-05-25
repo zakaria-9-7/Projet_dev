@@ -471,7 +471,7 @@ function UserSection({ email, myFiles, myEspaces, sharedWithMe, quota, navigate 
                 return (
                   <div
                     key={esp.id}
-                    onClick={() => navigate(`/espaces/${esp.id}`)}
+                    onClick={() => navigate(`/espace/${esp.id}`)}
                     role="button"
                     tabIndex={0}
                     style={{
@@ -597,7 +597,7 @@ export default function Dashboard() {
     API.get('/files/')
       .then(r => setMyFiles(Array.isArray(r.data) ? r.data : (r.data?.files || [])))
       .catch(() => {});
-    API.get('/espaces/')
+    API.get('/espaces/all-mine')
       .then(r => setMyEspaces(Array.isArray(r.data) ? r.data : (r.data?.espaces || [])))
       .catch(() => {});
     API.get('/files/shared-with-me')
