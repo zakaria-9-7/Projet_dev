@@ -101,8 +101,13 @@ export default function UploadZone({ onSuccess, folderId }) {
     addFiles(e.dataTransfer.files);
   };
 
+  const handleDragEnter = (e) => { e.preventDefault(); setDragging(true); };
   const handleDragOver = (e) => { e.preventDefault(); setDragging(true); };
-  const handleDragLeave = () => setDragging(false);
+  const handleDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragging(false);
+    }
+  };
 
   const removeItem = (file) => {
     setQueue(prev => prev.filter(q => q.file !== file));
@@ -157,6 +162,7 @@ export default function UploadZone({ onSuccess, folderId }) {
       {/* Drop zone */}
       <div
         onDrop={handleDrop}
+        onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onClick={() => inputRef.current?.click()}

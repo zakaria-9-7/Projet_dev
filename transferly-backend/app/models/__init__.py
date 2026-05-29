@@ -74,5 +74,6 @@ from app.models.invitation import Invitation
 from app.models.notification import Notification
 from app.models.folder import Folder
 from app.models.file_lock import FileLock
+from app.models.quota_request import QuotaRequest
 
-__all__ = ['db', 'User', 'OTP', 'Espace', 'Fichier', 'ACL', 'Log', 'VersionFichier', 'Membership', 'Invitation', 'Notification', 'Folder', 'FileLock']
+__all__ = ['db', 'User', 'OTP', 'Espace', 'Fichier', 'ACL', 'Log', 'VersionFichier', 'Membership', 'Invitation', 'Notification', 'Folder', 'FileLock', 'QuotaRequest']

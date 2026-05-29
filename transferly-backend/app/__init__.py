@@ -14,6 +14,7 @@ from app.routes.version import versions_bp
 from app.routes.quota import quota_bp
 from app.routes.notifications import notifications_bp
 from app.routes.file_locks import file_locks_bp
+from app.routes.quota_requests import quota_requests_bp
 from flask_cors import CORS
 
 load_dotenv()
@@ -39,7 +40,7 @@ def create_app():
     db.init_app(app)
     bcrypt.init_app(app)
     mail.init_app(app)
-    CORS(app, origins='*', supports_credentials=True)
+    CORS(app, origins=['http://localhost:5173', 'http://127.0.0.1:5173'], supports_credentials=True)
 
     register_middleware(app)
 
@@ -54,6 +55,7 @@ def create_app():
     app.register_blueprint(versions_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(file_locks_bp)
+    app.register_blueprint(quota_requests_bp)
 
     with app.app_context():
         from app.models.user import User
@@ -67,6 +69,7 @@ def create_app():
         from app.models.notification import Notification
         from app.models.otp import OTP
         from app.models.file_lock import FileLock
+        from app.models.quota_request import QuotaRequest
 
         db.create_all()
 

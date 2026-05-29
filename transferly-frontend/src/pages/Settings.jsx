@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Lock, Bell, Shield, ChevronRight, Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
+import { User, Lock, Bell, Shield, ChevronRight, Eye, EyeOff, Check, AlertCircle, X, TrendingUp } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 
@@ -137,6 +137,13 @@ export default function Settings() {
     confidentialite_historique_connexion: true,
   });
   const [quota, setQuota] = useState(null);
+  const [quotaRequests, setQuotaRequests] = useState([]);
+  const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [selectedPalier, setSelectedPalier] = useState(null);
+  const [quotaRaison, setQuotaRaison] = useState('');
+  const [quotaModalError, setQuotaModalError] = useState('');
+  const [quotaModalLoading, setQuotaModalLoading] = useState(false);
+  const [quotaSuccess, setQuotaSuccess] = useState(false);
 
   useEffect(() => {
     API.get('/me').then(r => {
@@ -151,6 +158,9 @@ export default function Settings() {
     API.get('/quota/me')
       .then(res => setQuota(res.data))
       .catch(err => console.error('quota err', err));
+    API.get('/quota/requests/mine')
+      .then(res => setQuotaRequests(res.data))
+      .catch(err => console.error('quota requests err', err));
   }, []);
 
   const handleToggle = async (key) => {
@@ -206,6 +216,48 @@ export default function Settings() {
       setError(err.response?.data?.error || 'Une erreur est survenue');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchQuotaRequests = async () => {
+    try {
+      const res = await API.get('/quota/requests/mine');
+      setQuotaRequests(res.data);
+    } catch (e) {
+      console.error('quota requests err', e);
+    }
+  };
+
+  const handleSubmitQuotaRequest = async () => {
+    if (!selectedPalier) return;
+    setQuotaModalLoading(true);
+    setQuotaModalError('');
+    try {
+      await API.post('/quota/requests', {
+        quota_demande: selectedPalier,
+        raison: quotaRaison.trim() || null,
+        espace_id: null,
+      });
+      setShowQuotaModal(false);
+      setSelectedPalier(null);
+      setQuotaRaison('');
+      setQuotaSuccess(true);
+      setTimeout(() => setQuotaSuccess(false), 3000);
+      fetchQuotaRequests();
+    } catch (e) {
+      setQuotaModalError(e.response?.data?.error || 'Une erreur est survenue');
+    } finally {
+      setQuotaModalLoading(false);
+    }
+  };
+
+  const handleCancelRequest = async (id) => {
+    if (!window.confirm('Annuler cette demande ?')) return;
+    try {
+      await API.delete(`/quota/requests/${id}`);
+      fetchQuotaRequests();
+    } catch (e) {
+      alert(e.response?.data?.error || "Erreur lors de l'annulation");
     }
   };
 
@@ -285,6 +337,134 @@ export default function Settings() {
             <p style={{ color: 'var(--wings-text-muted)', fontSize: 11, marginTop: 6, marginBottom: 0 }}>
               {quotaPct}% de votre espace utilisé
             </p>
+
+            <div style={{ marginTop: 14 }}>
+              <button
+                title={quotaPct < 50 ? "Disponible à partir de 50% d'utilisation" : undefined}
+                disabled={quotaPct < 50}
+                onClick={quotaPct >= 50 ? () => { setShowQuotaModal(true); setQuotaModalError(''); setSelectedPalier(null); setQuotaRaison(''); } : undefined}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px',
+                  background: 'var(--wings-blue)',
+                  border: 'none', borderRadius: 999,
+                  color: '#fff', fontSize: 12, fontWeight: 500,
+                  cursor: quotaPct < 50 ? 'not-allowed' : 'pointer',
+                  opacity: quotaPct < 50 ? 0.45 : 1,
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                <TrendingUp size={13} />
+                Demander une augmentation
+              </button>
+            </div>
+
+            {quotaSuccess && (
+              <div style={{
+                marginTop: 8, display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 12px', borderRadius: 8, fontSize: 12,
+                background: 'rgba(5,150,105,0.08)',
+                border: '0.5px solid rgba(5,150,105,0.3)',
+                color: '#059669',
+              }}>
+                <Check size={12} />
+                Demande envoyée avec succès !
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mes demandes d'augmentation */}
+        {quota && (
+          <div style={{
+            background: 'var(--wings-surface)',
+            border: '0.5px solid var(--wings-border)',
+            borderRadius: 16, overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '14px 22px',
+              borderBottom: '0.5px solid var(--wings-border)',
+            }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: 8,
+                background: 'rgba(79,139,255,0.08)',
+                border: '0.5px solid rgba(79,139,255,0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <TrendingUp size={14} color="var(--wings-blue)" />
+              </div>
+              <span style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500 }}>
+                Mes demandes d'augmentation
+              </span>
+            </div>
+            <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {quotaRequests.length === 0 ? (
+                <p style={{ color: 'var(--wings-text-muted)', fontSize: 12, margin: 0, textAlign: 'center', padding: '4px 0' }}>
+                  Aucune demande pour le moment.
+                </p>
+              ) : quotaRequests.map(req => {
+                const badgeStyle = req.statut === 'approved'
+                  ? { color: '#059669', background: 'rgba(5,150,105,0.08)', border: '0.5px solid rgba(5,150,105,0.3)' }
+                  : req.statut === 'rejected'
+                  ? { color: '#e57373', background: 'rgba(229,115,115,0.08)', border: '0.5px solid rgba(229,115,115,0.3)' }
+                  : { color: 'var(--wings-gold)', background: 'rgba(212,175,55,0.08)', border: '0.5px solid rgba(212,175,55,0.3)' };
+                const badgeLabel = req.statut === 'approved' ? 'Approuvée' : req.statut === 'rejected' ? 'Rejetée' : 'En attente';
+                return (
+                  <div key={req.id} style={{
+                    padding: '12px 14px',
+                    background: 'var(--wings-bg)',
+                    border: '0.5px solid var(--wings-border)',
+                    borderRadius: 10,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500 }}>
+                          {req.quota_demande} Go
+                        </span>
+                        <span style={{
+                          fontSize: 10, fontFamily: 'monospace', letterSpacing: '1px',
+                          textTransform: 'uppercase', borderRadius: 999,
+                          padding: '2px 8px', ...badgeStyle,
+                        }}>
+                          {badgeLabel}
+                        </span>
+                      </div>
+                      {req.statut === 'pending' && (
+                        <button
+                          onClick={() => handleCancelRequest(req.id)}
+                          style={{
+                            fontSize: 11, color: 'var(--wings-text-muted)',
+                            background: 'none', border: '0.5px solid var(--wings-border)',
+                            borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                          }}
+                        >
+                          Annuler
+                        </button>
+                      )}
+                    </div>
+                    <p style={{ color: 'var(--wings-text-muted)', fontSize: 11, margin: 0 }}>
+                      Demandé le {new Date(req.created_at).toLocaleDateString('fr-FR')}
+                    </p>
+                    {(req.statut === 'approved' || req.statut === 'rejected') && (
+                      <div style={{ marginTop: 6 }}>
+                        {req.traite_at && (
+                          <p style={{ color: 'var(--wings-text-muted)', fontSize: 11, margin: 0 }}>
+                            Traité le {new Date(req.traite_at).toLocaleDateString('fr-FR')}
+                          </p>
+                        )}
+                        {req.reponse_admin && (
+                          <p style={{ color: 'var(--wings-text-muted)', fontSize: 11, margin: '4px 0 0 0', fontStyle: 'italic' }}>
+                            "{req.reponse_admin}"
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -364,6 +544,161 @@ export default function Settings() {
         </div>
 
       </div>
+
+      {/* Modal demande d'augmentation de quota */}
+      {showQuotaModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20,
+          }}
+          onClick={() => setShowQuotaModal(false)}
+        >
+          <div
+            style={{
+              background: 'var(--wings-surface)',
+              border: '0.5px solid var(--wings-border)',
+              borderRadius: 20, width: '100%', maxWidth: 440,
+              padding: '28px 28px 24px', position: 'relative',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowQuotaModal(false)}
+              style={{
+                position: 'absolute', top: 16, right: 16,
+                background: 'none', border: 'none',
+                color: 'var(--wings-text-muted)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 4, borderRadius: 6,
+              }}
+            >
+              <X size={16} />
+            </button>
+
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+              Demander une augmentation
+            </h2>
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 12, margin: 0, marginBottom: 20 }}>
+              Choisissez le quota souhaité. Un administrateur examinera votre demande.
+            </p>
+
+            <div style={{
+              padding: '10px 14px', borderRadius: 10, marginBottom: 16,
+              background: 'var(--wings-bg)',
+              border: '0.5px solid var(--wings-border)',
+              fontSize: 12, color: 'var(--wings-text-muted)',
+            }}>
+              Quota actuel :&nbsp;
+              <strong style={{ color: 'var(--wings-text)' }}>
+                {(quota.quota_total_mb / 1024).toFixed(2)} Go
+              </strong>
+            </div>
+
+            <p style={{ fontSize: 11, fontFamily: 'monospace', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--wings-gold)', margin: 0, marginBottom: 10 }}>
+              Quota souhaité
+            </p>
+            {(() => {
+              const quotaActuelGo = quota.quota_total_mb / 1024;
+              const paliers = [5, 10, 20, 50].filter(p => p > quotaActuelGo);
+              return paliers.length === 0 ? (
+                <p style={{ color: 'var(--wings-text-muted)', fontSize: 12, marginBottom: 16 }}>
+                  Aucun palier disponible supérieur à votre quota actuel.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                  {paliers.map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setSelectedPalier(p)}
+                      style={{
+                        padding: '8px 18px', borderRadius: 999, fontSize: 13,
+                        cursor: 'pointer', fontWeight: 500, border: '0.5px solid',
+                        transition: 'all 0.15s',
+                        background: selectedPalier === p ? 'var(--wings-blue)' : 'var(--wings-bg)',
+                        borderColor: selectedPalier === p ? 'var(--wings-blue)' : 'var(--wings-border)',
+                        color: selectedPalier === p ? '#fff' : 'var(--wings-text)',
+                      }}
+                    >
+                      {p} Go
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+
+            <p style={{ fontSize: 11, fontFamily: 'monospace', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--wings-gold)', margin: 0, marginBottom: 8 }}>
+              Raison{' '}
+              <span style={{ color: 'var(--wings-text-muted)', textTransform: 'none', letterSpacing: 0, fontFamily: 'inherit' }}>
+                (optionnel)
+              </span>
+            </p>
+            <textarea
+              value={quotaRaison}
+              onChange={e => setQuotaRaison(e.target.value)}
+              maxLength={500}
+              placeholder="Décrivez pourquoi vous avez besoin de plus d'espace…"
+              rows={3}
+              style={{
+                width: '100%', resize: 'vertical',
+                padding: '10px 14px',
+                background: 'var(--wings-bg)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 10, color: 'var(--wings-text)',
+                fontSize: 12, outline: 'none', boxSizing: 'border-box',
+                fontFamily: 'inherit', marginBottom: 4,
+              }}
+              onFocus={e => e.target.style.borderColor = 'var(--wings-blue)'}
+              onBlur={e => e.target.style.borderColor = 'var(--wings-border)'}
+            />
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 10, margin: 0, marginBottom: 16, textAlign: 'right' }}>
+              {quotaRaison.length}/500
+            </p>
+
+            {quotaModalError && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14,
+                background: 'rgba(229,115,115,0.08)',
+                border: '0.5px solid rgba(229,115,115,0.3)',
+                color: '#e57373',
+              }}>
+                <AlertCircle size={12} style={{ flexShrink: 0 }} />
+                {quotaModalError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowQuotaModal(false)}
+                style={{
+                  padding: '9px 18px', borderRadius: 999, fontSize: 12,
+                  background: 'none', border: '0.5px solid var(--wings-border)',
+                  color: 'var(--wings-text-muted)', cursor: 'pointer',
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSubmitQuotaRequest}
+                disabled={!selectedPalier || quotaModalLoading}
+                style={{
+                  padding: '9px 20px', borderRadius: 999, fontSize: 12, fontWeight: 500,
+                  background: 'var(--wings-blue)', border: 'none',
+                  color: '#fff',
+                  cursor: !selectedPalier || quotaModalLoading ? 'not-allowed' : 'pointer',
+                  opacity: !selectedPalier || quotaModalLoading ? 0.5 : 1,
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                {quotaModalLoading ? 'Envoi…' : 'Envoyer la demande'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
