@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import {
   Grid, List, UploadCloud, Eye,
   Folder, FileText, FileSpreadsheet, ImageIcon,
   FileIcon, MoreVertical, History, Download, Trash2, Share2, X, FilePen,
-  Move, ChevronRight, CheckSquare, FolderInput, ChevronDown,
+  Move, ChevronRight, CheckSquare, FolderInput, ChevronDown, Search,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import FolderTree from '../components/FolderTree';
@@ -63,6 +63,7 @@ export default function MyFiles() {
   const [moveTargetFolderId, setMoveTargetFolderId] = useState(null);
   const [expandedFolders,    setExpandedFolders]    = useState(new Set());
   const [moving,             setMoving]             = useState(false);
+  const [searchQuery,        setSearchQuery]        = useState('');
   const selectAllRef = useRef(null);
   const cardsRef = useRef([]);
   const navigate  = useNavigate();
@@ -87,7 +88,7 @@ export default function MyFiles() {
   };
 
   // Rechargement fichiers à chaque changement de dossier courant
-  useEffect(() => { fetchFiles(currentFolder); setSelectedIds(new Set()); setSelectionMode(false); }, [currentFolder]);
+  useEffect(() => { fetchFiles(currentFolder); setSelectedIds(new Set()); setSelectionMode(false); setSearchQuery(''); }, [currentFolder]);
 
   // Chargement des dossiers au mount
   useEffect(() => {
@@ -253,6 +254,15 @@ export default function MyFiles() {
     }
   }, [loading, viewMode]);
 
+  const normalizedQuery = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery]);
+
+  const filteredFiles = useMemo(
+    () => normalizedQuery
+      ? files.filter(f => (f.name || '').toLowerCase().includes(normalizedQuery))
+      : files,
+    [files, normalizedQuery],
+  );
+
   return (
     <AppLayout>
       {toast && (
@@ -310,6 +320,26 @@ export default function MyFiles() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Rechercher dans ce dossier..."
+              className="pl-9 pr-8 py-2 rounded-lg text-sm w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[var(--wings-blue)] transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                title="Effacer la recherche"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
           <button
             onClick={handleUpload}
             style={{
@@ -459,10 +489,14 @@ export default function MyFiles() {
           <p className="text-sm font-medium">{error}</p>
           <button onClick={fetchFiles} className="text-xs hover:underline" style={{ color: 'var(--wings-blue)' }}>Réessayer</button>
         </div>
-      ) : files.length === 0 ? (
+      ) : filteredFiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400 dark:text-slate-500">
           <FileIcon className="w-12 h-12" />
-          <p className="text-sm font-medium">Aucun fichier pour le moment</p>
+          {searchQuery ? (
+            <p className="text-sm font-medium">Aucun résultat pour «&nbsp;{searchQuery}&nbsp;»</p>
+          ) : (
+            <p className="text-sm font-medium">Aucun fichier pour le moment</p>
+          )}
         </div>
       ) : (
         <div className={
@@ -470,7 +504,7 @@ export default function MyFiles() {
             ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'
             : 'flex flex-col gap-2'
         }>
-          {files.map((file, i) => (
+          {filteredFiles.map((file, i) => (
             <div
               key={file.id ?? i}
               ref={el => (cardsRef.current[i] = el)}
