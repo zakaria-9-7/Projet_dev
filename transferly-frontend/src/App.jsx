@@ -14,6 +14,7 @@ import AdminGlobal    from './pages/AdminGlobal';
 import AdminPanel     from './pages/AdminPanel';
 import SharedWithMe   from './pages/SharedWithMe';
 import FileVersions   from './pages/FileVersions';
+import History        from './pages/History';
 import AdminEspace    from './pages/AdminEspace';
 import MyEspaces     from './pages/MyEspaces';
 import Logs           from './pages/Logs';
@@ -70,7 +71,8 @@ function AnimatedRoutes() {
         <Route path="/dashboard"            element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/files"                element={<PrivateRoute><MyFiles /></PrivateRoute>} />
         <Route path="/shared"               element={<PrivateRoute><SharedWithMe /></PrivateRoute>} />
-        <Route path="/versions"             element={<PrivateRoute><FileVersions /></PrivateRoute>} />
+        <Route path="/versions"             element={<PrivateRoute><History /></PrivateRoute>} />
+        <Route path="/file-versions"        element={<PrivateRoute><FileVersions /></PrivateRoute>} />
         <Route path="/admin"                element={<PrivateRoute><AdminPanel /></PrivateRoute>} />
         <Route path="/admin-espace"         element={<PrivateRoute><MyEspaces /></PrivateRoute>} />
         <Route path="/acl"                  element={<PrivateRoute><AdminEspace /></PrivateRoute>} />

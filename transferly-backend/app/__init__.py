@@ -15,6 +15,7 @@ from app.routes.quota import quota_bp
 from app.routes.notifications import notifications_bp
 from app.routes.file_locks import file_locks_bp
 from app.routes.quota_requests import quota_requests_bp
+from app.routes.history import history_bp
 from flask_cors import CORS
 
 load_dotenv()
@@ -56,6 +57,7 @@ def create_app():
     app.register_blueprint(notifications_bp)
     app.register_blueprint(file_locks_bp)
     app.register_blueprint(quota_requests_bp)
+    app.register_blueprint(history_bp)
 
     with app.app_context():
         from app.models.user import User
