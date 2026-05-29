@@ -5,7 +5,7 @@ import {
   Grid, List, UploadCloud, Eye,
   Folder, FileText, FileSpreadsheet, ImageIcon,
   FileIcon, MoreVertical, History, Download, Trash2, Share2, X, FilePen,
-  Move, ChevronRight,
+  Move, ChevronRight, CheckSquare, FolderInput, ChevronDown,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import FolderTree from '../components/FolderTree';
@@ -54,7 +54,16 @@ export default function MyFiles() {
   const [toast,          setToast]          = useState(null);
   const [moveModal,      setMoveModal]      = useState({ open: false, file: null });
   const [allFolders,     setAllFolders]     = useState([]);
-  const [previewFile,    setPreviewFile]    = useState(null);
+  const [previewFile,      setPreviewFile]      = useState(null);
+  const [selectedIds,      setSelectedIds]      = useState(new Set());
+  const [showBatchConfirm, setShowBatchConfirm] = useState(false);
+  const [batchDeleting,    setBatchDeleting]    = useState(false);
+  const [selectionMode,      setSelectionMode]      = useState(false);
+  const [showMoveModal,      setShowMoveModal]      = useState(false);
+  const [moveTargetFolderId, setMoveTargetFolderId] = useState(null);
+  const [expandedFolders,    setExpandedFolders]    = useState(new Set());
+  const [moving,             setMoving]             = useState(false);
+  const selectAllRef = useRef(null);
   const cardsRef = useRef([]);
   const navigate  = useNavigate();
 
@@ -78,7 +87,7 @@ export default function MyFiles() {
   };
 
   // Rechargement fichiers à chaque changement de dossier courant
-  useEffect(() => { fetchFiles(currentFolder); }, [currentFolder]);
+  useEffect(() => { fetchFiles(currentFolder); setSelectedIds(new Set()); setSelectionMode(false); }, [currentFolder]);
 
   // Chargement des dossiers au mount
   useEffect(() => {
@@ -133,6 +142,98 @@ export default function MyFiles() {
       .catch(err => alert(err.response?.data?.error || 'Erreur suppression'));
   };
 
+  const toggleSelect = (fileId) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(fileId)) next.delete(fileId);
+      else next.add(fileId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === files.length && files.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(files.map(f => f.id)));
+    }
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const toggleSelectionMode = () => {
+    if (selectionMode) clearSelection();
+    setSelectionMode(s => !s);
+  };
+
+  const buildFolderTree = () => {
+    const map = {};
+    folders.forEach(f => { map[f.id] = { ...f, children: [] }; });
+    const roots = [];
+    folders.forEach(f => {
+      if (f.parent_id && map[f.parent_id]) {
+        map[f.parent_id].children.push(map[f.id]);
+      } else {
+        roots.push(map[f.id]);
+      }
+    });
+    return roots;
+  };
+
+  const toggleExpand = (folderId) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderId)) next.delete(folderId);
+      else next.add(folderId);
+      return next;
+    });
+  };
+
+  const handleBatchMove = async () => {
+    setMoving(true);
+    try {
+      const fichier_ids = Array.from(selectedIds);
+      await API.put('/folders/move-files', {
+        fichier_ids,
+        folder_id: moveTargetFolderId,
+      });
+      fetchFiles(currentFolder);
+      clearSelection();
+      setSelectionMode(false);
+      setShowMoveModal(false);
+      setMoveTargetFolderId(null);
+    } catch (err) {
+      console.error('Batch move error:', err);
+      alert(err.response?.data?.error || 'Erreur lors du déplacement');
+    } finally {
+      setMoving(false);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    setBatchDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await API.delete('/files/batch', { data: { ids } });
+      fetchFiles(currentFolder);
+      clearSelection();
+      setSelectionMode(false);
+      setShowBatchConfirm(false);
+      showToast(`${ids.length} fichier${ids.length > 1 ? 's' : ''} supprimé${ids.length > 1 ? 's' : ''}`);
+    } catch (err) {
+      console.error('Batch delete error:', err);
+      showToast(err.response?.data?.error || 'Erreur lors de la suppression', 'error');
+    } finally {
+      setBatchDeleting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectAllRef.current) return;
+    const all = files.length > 0 && selectedIds.size === files.length;
+    const none = selectedIds.size === 0;
+    selectAllRef.current.indeterminate = !all && !none;
+  }, [selectedIds, files]);
 
   useEffect(() => {
     if (!openMenu) return;
@@ -230,6 +331,23 @@ export default function MyFiles() {
             Téléverser
           </button>
 
+          <button
+            onClick={toggleSelectionMode}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px',
+              background: selectionMode ? 'rgba(220,38,38,0.08)' : 'transparent',
+              border: `0.5px solid ${selectionMode ? 'rgba(220,38,38,0.4)' : 'var(--wings-border)'}`,
+              borderRadius: 999,
+              color: selectionMode ? '#dc2626' : 'var(--wings-text-muted)',
+              fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            {selectionMode ? <X className="w-4 h-4" /> : <CheckSquare className="w-4 h-4" />}
+            {selectionMode ? 'Annuler' : 'Sélectionner'}
+          </button>
+
           {/* View toggle */}
           <div style={{ display: 'flex', border: '0.5px solid var(--wings-border)', borderRadius: 8, overflow: 'hidden' }}>
             <button
@@ -261,6 +379,75 @@ export default function MyFiles() {
         </div>
       </div>
 
+      {/* Barre d'actions batch */}
+      {selectionMode && selectedIds.size > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px', marginBottom: 12,
+          background: 'var(--wings-surface)',
+          border: '0.5px solid var(--wings-border)',
+          borderRadius: 12,
+          position: 'sticky', top: 0, zIndex: 10,
+        }}>
+          <span style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500 }}>
+            {selectedIds.size} fichier{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={clearSelection}
+              style={{
+                padding: '6px 14px', borderRadius: 999, fontSize: 12,
+                background: 'none', border: '0.5px solid var(--wings-border)',
+                color: 'var(--wings-text-muted)', cursor: 'pointer',
+              }}
+            >
+              Tout désélectionner
+            </button>
+            <button
+              onClick={() => setShowMoveModal(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 500,
+                background: 'rgba(79,139,255,0.08)',
+                border: '0.5px solid rgba(79,139,255,0.4)',
+                color: 'var(--wings-blue)', cursor: 'pointer',
+              }}
+            >
+              <FolderInput className="w-3.5 h-3.5" />
+              Déplacer vers...
+            </button>
+            <button
+              onClick={() => setShowBatchConfirm(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 500,
+                background: '#dc2626', border: 'none',
+                color: '#fff', cursor: 'pointer',
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Supprimer la sélection
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header Tout sélectionner */}
+      {selectionMode && !loading && !error && files.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <input
+            ref={selectAllRef}
+            type="checkbox"
+            checked={files.length > 0 && selectedIds.size === files.length}
+            onChange={toggleSelectAll}
+            style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--wings-blue)' }}
+          />
+          <span style={{ color: 'var(--wings-text-muted)', fontSize: 12 }}>
+            Tout sélectionner
+          </span>
+        </div>
+      )}
+
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center h-64 text-slate-400 dark:text-slate-500">
@@ -287,13 +474,34 @@ export default function MyFiles() {
             <div
               key={file.id ?? i}
               ref={el => (cardsRef.current[i] = el)}
-              style={{ opacity: 0 }}
+              style={{
+                opacity: 0,
+                outline: selectionMode && selectedIds.has(file.id) ? '2px solid var(--wings-blue)' : 'none',
+                outlineOffset: '-2px',
+              }}
               className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md transition-all group relative ${
+                openMenu === file.id ? 'z-40' : ''
+              } ${
                 viewMode === 'list'
                   ? 'flex items-center gap-4 p-4'
                   : 'flex flex-col p-4 min-h-[160px]'
               }`}
             >
+              {/* Checkbox sélection batch */}
+              {selectionMode && (
+                <div
+                  style={{ position: 'absolute', top: 8, left: 8, zIndex: 5 }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(file.id)}
+                    onChange={() => toggleSelect(file.id)}
+                    style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--wings-blue)' }}
+                  />
+                </div>
+              )}
+
               {file.type === 'file' && (
                 <div className="absolute top-3 right-3">
                   <button
@@ -305,7 +513,7 @@ export default function MyFiles() {
                   </button>
                   {openMenu === file.id && (
                     <div
-                      className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-10 py-1"
+                      className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 py-1"
                       onClick={e => e.stopPropagation()}
                     >
                       {/* Download — shown if owner or has download perm */}
@@ -460,6 +668,155 @@ export default function MyFiles() {
 
         </div>{/* fin contenu principal */}
       </div>{/* fin layout flex */}
+
+      {/* Modal confirmation suppression batch */}
+      {showBatchConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border"
+               style={{ borderColor: 'var(--wings-border)' }}>
+            <div className="px-6 py-5 border-b" style={{ borderColor: 'var(--wings-border)' }}>
+              <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">
+                Confirmer la suppression
+              </h2>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Vous allez supprimer définitivement{' '}
+                <strong className="text-slate-900 dark:text-slate-100">
+                  {selectedIds.size} fichier{selectedIds.size > 1 ? 's' : ''}
+                </strong>.
+                {' '}Cette action est irréversible.
+              </p>
+            </div>
+            <div className="px-6 py-4 flex justify-end gap-3 border-t" style={{ borderColor: 'var(--wings-border)' }}>
+              <button
+                onClick={() => setShowBatchConfirm(false)}
+                className="px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleBatchDelete}
+                disabled={batchDeleting}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {batchDeleting ? 'Suppression…' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal déplacement batch */}
+      {showMoveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md max-h-[80vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border overflow-hidden"
+               style={{ borderColor: 'var(--wings-border)' }}>
+
+            {/* Header */}
+            <div className="px-6 py-4 border-b flex items-center justify-between flex-shrink-0"
+                 style={{ borderColor: 'var(--wings-border)' }}>
+              <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">
+                Déplacer {selectedIds.size} fichier{selectedIds.size > 1 ? 's' : ''} vers...
+              </h2>
+              <button
+                onClick={() => { setShowMoveModal(false); setMoveTargetFolderId(null); }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body scrollable */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {/* Option Racine */}
+              <div
+                onClick={() => setMoveTargetFolderId(null)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                  marginBottom: 4,
+                  background: moveTargetFolderId === null ? 'rgba(79,139,255,0.1)' : 'transparent',
+                  border: moveTargetFolderId === null ? '0.5px solid rgba(79,139,255,0.3)' : '0.5px solid transparent',
+                }}
+              >
+                <Folder className="w-4 h-4" style={{ color: 'var(--wings-gold)', flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)' }}>Racine</span>
+                {currentFolder === null && (
+                  <span style={{ fontSize: 11, color: 'var(--wings-text-muted)', fontStyle: 'italic', marginLeft: 4 }}>(dossier actuel)</span>
+                )}
+              </div>
+
+              {/* Arborescence */}
+              {folders.length === 0 ? (
+                <p style={{ color: 'var(--wings-text-muted)', fontSize: 12, padding: '8px 10px' }}>
+                  Aucun dossier — seule la racine est disponible.
+                </p>
+              ) : (
+                (() => {
+                  const renderNode = (node, depth) => (
+                    <div key={node.id}>
+                      <div
+                        onClick={() => setMoveTargetFolderId(node.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '7px 10px', paddingLeft: 10 + depth * 16,
+                          borderRadius: 8, cursor: 'pointer',
+                          background: moveTargetFolderId === node.id ? 'rgba(79,139,255,0.1)' : 'transparent',
+                          border: moveTargetFolderId === node.id ? '0.5px solid rgba(79,139,255,0.3)' : '0.5px solid transparent',
+                        }}
+                      >
+                        {node.children.length > 0 ? (
+                          <button
+                            onClick={e => { e.stopPropagation(); toggleExpand(node.id); }}
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--wings-text-muted)', display: 'flex', flexShrink: 0 }}
+                          >
+                            {expandedFolders.has(node.id)
+                              ? <ChevronDown className="w-3.5 h-3.5" />
+                              : <ChevronRight className="w-3.5 h-3.5" />}
+                          </button>
+                        ) : (
+                          <span style={{ width: 14, flexShrink: 0, display: 'inline-block' }} />
+                        )}
+                        <Folder className="w-4 h-4" style={{ color: 'var(--wings-gold)', flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, color: 'var(--wings-text)', flex: 1 }}>{node.nom}</span>
+                        {node.id === currentFolder && (
+                          <span style={{ fontSize: 11, color: 'var(--wings-text-muted)', fontStyle: 'italic' }}>(dossier actuel)</span>
+                        )}
+                      </div>
+                      {expandedFolders.has(node.id) && node.children.map(child => renderNode(child, depth + 1))}
+                    </div>
+                  );
+                  return buildFolderTree().map(n => renderNode(n, 0));
+                })()
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 flex justify-end gap-3 border-t flex-shrink-0"
+                 style={{ borderColor: 'var(--wings-border)' }}>
+              <button
+                onClick={() => { setShowMoveModal(false); setMoveTargetFolderId(null); }}
+                className="px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleBatchMove}
+                disabled={moving}
+                style={{
+                  padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  background: 'var(--wings-blue)', border: 'none', color: '#fff',
+                  cursor: moving ? 'not-allowed' : 'pointer',
+                  opacity: moving ? 0.6 : 1, transition: 'opacity 0.2s',
+                }}
+              >
+                {moving ? 'Déplacement…' : 'Déplacer ici'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {moveModal.open && (
         <MoveFileModal

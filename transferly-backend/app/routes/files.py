@@ -390,6 +390,96 @@ def preview_file(fichier_id):
         return jsonify({'error': str(e)}), 500
     
     
+# ── DELETE /files/batch ──────────────────────────────────────────
+@files_bp.route('/batch', methods=['DELETE'])
+def delete_files_batch():
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+
+    user_id = g.user['id']
+    data = request.get_json(silent=True) or {}
+    ids = data.get('ids')
+
+    if not isinstance(ids, list) or len(ids) == 0:
+        return jsonify({'error': 'ids doit être une liste non vide d\'entiers'}), 400
+    if len(ids) > 500:
+        return jsonify({'error': 'Trop de fichiers (maximum 500 par requête)'}), 400
+
+    from app.acl_engine import check_permission
+
+    to_delete      = []   # dicts: id, taille_mb, chemin_principal, chemins_versions
+    skipped        = []
+    acquired_locks = {}
+
+    try:
+        for file_id in ids:
+            if not isinstance(file_id, int):
+                skipped.append({'id': file_id, 'raison': 'Identifiant invalide'})
+                continue
+
+            fichier = Fichier.query.get(file_id)
+            if fichier is None:
+                skipped.append({'id': file_id, 'raison': 'Fichier introuvable'})
+                continue
+
+            if not check_permission(user_id, file_id, 'suppression'):
+                skipped.append({'id': file_id, 'raison': 'Accès refusé'})
+                continue
+
+            lock = get_file_lock(file_id)
+            if not lock.acquire(blocking=False):
+                skipped.append({'id': file_id, 'raison': "Fichier en cours d'utilisation"})
+                continue
+            acquired_locks[file_id] = lock
+
+            chemin_principal = fichier.chemin
+            chemins_versions = [
+                v.chemin for v in fichier.versions
+                if v.chemin and v.chemin != chemin_principal and os.path.exists(v.chemin)
+            ]
+            to_delete.append({
+                'id':               fichier.id,
+                'taille_mb':        fichier.taille or 0.0,
+                'chemin_principal': chemin_principal,
+                'chemins_versions': chemins_versions,
+            })
+            db.session.delete(fichier)  # cascade : versions + ACLs
+
+        if to_delete:
+            db.session.commit()  # un seul commit pour tous les fichiers
+
+            total_mb = 0.0
+            for item in to_delete:
+                for chemin in item['chemins_versions']:
+                    try:
+                        os.remove(chemin)
+                    except OSError:
+                        pass
+                if item['chemin_principal'] and os.path.exists(item['chemin_principal']):
+                    try:
+                        os.remove(item['chemin_principal'])
+                    except OSError:
+                        pass
+                total_mb += item['taille_mb']
+                log_action(user_id, 'suppression', resource_id=item['id'], statut='succes')
+
+            if total_mb > 0:
+                update_quota(user_id, total_mb, is_upload=False)
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        for lock in acquired_locks.values():
+            lock.release()
+
+    return jsonify({
+        'deleted_count': len(to_delete),
+        'skipped_count': len(skipped),
+        'skipped':        skipped,
+    }), 200
+
+
 # ── DELETE /files/<fichier_id> ────────────────────────────────────
 @files_bp.route('/<int:fichier_id>', methods=['DELETE'])
 @require_permission('suppression')
