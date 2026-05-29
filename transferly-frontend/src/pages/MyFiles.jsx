@@ -438,7 +438,7 @@ export default function MyFiles() {
 	{/* Upload modal */}
 	{showUpload && (
 		<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-			<div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+			<div className="w-full max-w-lg max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
 				<div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
 					<div>
 						<h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Téléverser des fichiers</h2>
@@ -451,7 +451,7 @@ export default function MyFiles() {
 						<X className="w-5 h-5" />
 					</button>
 				</div>
-				<div className="p-6">
+				<div className="p-6 overflow-y-auto flex-1">
 					<UploadZone folderId={currentFolder} onSuccess={() => { fetchFiles(currentFolder); setShowUpload(false); }} />
 				</div>
 			</div>

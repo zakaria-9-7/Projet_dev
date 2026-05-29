@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Share2, FolderOpen, History,
   Users, LayoutGrid, Files, BarChart3, Settings, LogOut,
-  Sun, Moon,
+  Sun, Moon, Inbox,
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import cicada from '../assets/cicada.svg';
@@ -18,7 +18,8 @@ const PAGE_TITLES = {
   '/admin-users':        'Utilisateurs',
   '/admin-espaces-all':  'Tous les espaces',
   '/admin-fichiers-all': 'Tous les fichiers',
-  '/admin-quotas':       'Quotas',
+  '/admin-quotas':            'Quotas',
+  '/admin-quota-requests':   'Demandes de quota',
   '/logs':               'Journaux',
   '/settings':           'Paramètres',
   '/editor':             'Éditeur',
@@ -39,7 +40,8 @@ const NAV_ADMIN = [
   { to: '/admin-users',        icon: Users,      label: 'Utilisateurs'     },
   { to: '/admin-espaces-all',  icon: LayoutGrid, label: 'Tous les espaces'  },
   { to: '/admin-fichiers-all', icon: Files,      label: 'Tous les fichiers' },
-  { to: '/admin-quotas',       icon: BarChart3,  label: 'Quotas'            },
+  { to: '/admin-quotas',           icon: BarChart3, label: 'Quotas'            },
+  { to: '/admin-quota-requests',  icon: Inbox,     label: 'Demandes de quota' },
 ];
 
 function SectionLabel({ children }) {

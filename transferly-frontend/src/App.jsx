@@ -24,6 +24,7 @@ import JoinEspace     from './pages/JoinEspace';
 import AdminEspacesAll  from './pages/AdminEspacesAll';
 import AdminFichiersAll from './pages/AdminFichiersAll';
 import AdminQuotas          from './pages/AdminQuotas';
+import AdminQuotaRequests   from './pages/AdminQuotaRequests';
 import FileEditor            from './pages/FileEditor';
 import ForceResetPassword    from './pages/ForceResetPassword';
 
@@ -80,7 +81,8 @@ function AnimatedRoutes() {
         <Route path="/join/:token"          element={<JoinEspace />} />
         <Route path="/admin-espaces-all"    element={<PrivateRoute><AdminEspacesAll /></PrivateRoute>} />
         <Route path="/admin-fichiers-all"   element={<PrivateRoute><AdminFichiersAll /></PrivateRoute>} />
-        <Route path="/admin-quotas"         element={<PrivateRoute><AdminQuotas /></PrivateRoute>} />
+        <Route path="/admin-quotas"           element={<PrivateRoute><AdminQuotas /></PrivateRoute>} />
+        <Route path="/admin-quota-requests" element={<PrivateRoute><AdminQuotaRequests /></PrivateRoute>} />
         <Route path="/editor"               element={<PrivateRoute><FileEditor /></PrivateRoute>} />
         <Route path="/force-reset-password" element={<PrivateRoute><ForceResetPassword /></PrivateRoute>} />
       </Routes>
