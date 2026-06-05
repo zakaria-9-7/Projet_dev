@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Trash2, FolderOpen, User, FilePen, History } from 'lucide-react';
+import { FileText, Trash2, FolderOpen, User, FilePen, History, CheckSquare, X } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
@@ -9,10 +9,14 @@ import SearchBar from '../components/SearchBar';
 import { useDebounced } from '../hooks/useDebounced';
 
 export default function AdminFichiersAll() {
-  const [fichiers, setFichiers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [fichiers,         setFichiers]         = useState([]);
+  const [loading,          setLoading]          = useState(true);
+  const [toast,            setToast]            = useState(null);
+  const [searchTerm,       setSearchTerm]       = useState('');
+  const [selectedIds,      setSelectedIds]      = useState(new Set());
+  const [selectionMode,    setSelectionMode]    = useState(false);
+  const [showBatchConfirm, setShowBatchConfirm] = useState(false);
+  const [batchDeleting,    setBatchDeleting]    = useState(false);
   const debouncedSearch = useDebounced(searchTerm, 300);
   const navigate = useNavigate();
 
@@ -57,6 +61,47 @@ export default function AdminFichiersAll() {
     }
   };
 
+  const toggleSelect = (fileId) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(fileId)) next.delete(fileId);
+      else next.add(fileId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredFiles.length && filteredFiles.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredFiles.map(f => f.id)));
+    }
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const toggleSelectionMode = () => {
+    if (selectionMode) clearSelection();
+    setSelectionMode(s => !s);
+  };
+
+  const handleBatchDelete = async () => {
+    setBatchDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await API.delete('/admin/fichiers/batch', { data: { ids } });
+      await load();
+      clearSelection();
+      setSelectionMode(false);
+      setShowBatchConfirm(false);
+      showToast(`${ids.length} fichier${ids.length > 1 ? 's' : ''} supprimé${ids.length > 1 ? 's' : ''}`);
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Erreur lors de la suppression', 'error');
+    } finally {
+      setBatchDeleting(false);
+    }
+  };
+
   const colHeaderStyle = {
     fontFamily: 'monospace',
     fontSize: '10px',
@@ -91,11 +136,73 @@ export default function AdminFichiersAll() {
           </p>
         </div>
 
-        <SearchBar
-          value={searchTerm}
-          onChange={setSearchTerm}
-          placeholder="Rechercher un fichier, un propriétaire…"
-        />
+        {/* Barre outils : SearchBar + bouton Sélectionner */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <SearchBar
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Rechercher un fichier, un propriétaire…"
+            />
+          </div>
+          <button
+            onClick={toggleSelectionMode}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px',
+              background: selectionMode ? 'rgba(220,38,38,0.08)' : 'transparent',
+              border: `0.5px solid ${selectionMode ? 'rgba(220,38,38,0.4)' : 'var(--wings-border)'}`,
+              borderRadius: 999,
+              color: selectionMode ? '#dc2626' : 'var(--wings-text-muted)',
+              fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s',
+            }}
+          >
+            {selectionMode ? <X size={14} /> : <CheckSquare size={14} />}
+            {selectionMode ? 'Annuler' : 'Sélectionner'}
+          </button>
+        </div>
+
+        {/* Barre d'actions batch (sticky) */}
+        {selectionMode && selectedIds.size > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 14px',
+            background: 'var(--wings-surface)',
+            border: '0.5px solid var(--wings-border)',
+            borderRadius: 12,
+            position: 'sticky', top: 0, zIndex: 10,
+          }}>
+            <span style={{ color: 'var(--wings-text)', fontSize: 13, fontWeight: 500 }}>
+              {selectedIds.size} fichier{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={clearSelection}
+                style={{
+                  padding: '6px 14px', borderRadius: 999, fontSize: 12,
+                  background: 'none', border: '0.5px solid var(--wings-border)',
+                  color: 'var(--wings-text-muted)', cursor: 'pointer',
+                }}
+              >
+                Tout désélectionner
+              </button>
+              <button
+                onClick={() => setShowBatchConfirm(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 500,
+                  background: '#dc2626', border: 'none',
+                  color: '#fff', cursor: 'pointer',
+                }}
+              >
+                <Trash2 size={13} />
+                Supprimer la sélection
+              </button>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
@@ -108,8 +215,22 @@ export default function AdminFichiersAll() {
           </div>
         ) : (
           <div>
+            {/* Tout sélectionner */}
+            {selectionMode && filteredFiles.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, paddingLeft: 20 }}>
+                <input
+                  type="checkbox"
+                  checked={filteredFiles.length > 0 && selectedIds.size === filteredFiles.length}
+                  onChange={toggleSelectAll}
+                  style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--wings-blue)' }}
+                />
+                <span style={{ color: 'var(--wings-text-muted)', fontSize: 12 }}>Tout sélectionner</span>
+              </div>
+            )}
+
             {/* En-tête colonnes */}
             <div style={{ display: 'flex', alignItems: 'center', padding: '6px 20px', marginBottom: 6 }}>
+              {selectionMode && <span style={{ flex: '0 0 28px' }} />}
               <span style={{ ...colHeaderStyle, flex: '0 0 240px' }}>Fichier</span>
               <span style={{ ...colHeaderStyle, flex: 1 }}>Propriétaire</span>
               <span style={{ ...colHeaderStyle, flex: '0 0 160px' }}>Emplacement</span>
@@ -123,9 +244,27 @@ export default function AdminFichiersAll() {
                 <div key={f.id} style={{
                   display: 'flex', alignItems: 'center',
                   background: 'var(--wings-surface)',
-                  border: '0.5px solid var(--wings-border)',
+                  border: selectedIds.has(f.id)
+                    ? '0.5px solid rgba(79,139,255,0.5)'
+                    : '0.5px solid var(--wings-border)',
                   borderRadius: 12, padding: '14px 20px',
+                  outline: selectedIds.has(f.id) ? '1.5px solid rgba(79,139,255,0.15)' : 'none',
+                  outlineOffset: '-1px',
+                  transition: 'border-color 0.1s',
                 }}>
+
+                  {/* CHECKBOX sélection */}
+                  {selectionMode && (
+                    <div style={{ flex: '0 0 28px' }} onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(f.id)}
+                        onChange={() => toggleSelect(f.id)}
+                        style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--wings-blue)' }}
+                      />
+                    </div>
+                  )}
+
                   {/* NOM FICHIER */}
                   <div style={{ flex: '0 0 240px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     {(() => {
@@ -173,10 +312,12 @@ export default function AdminFichiersAll() {
                       </span>
                     </span>
                   </div>
+
                   {/* DATE */}
                   <div style={{ flex: '0 0 120px', color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 11 }}>
                     {formatRelativeTime(f.date_creation)}
                   </div>
+
                   {/* ACTIONS */}
                   <div style={{ flex: '0 0 100px', display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                     {isEditable(f.nom) && (
@@ -227,6 +368,72 @@ export default function AdminFichiersAll() {
           </div>
         )}
       </div>
+
+      {/* Modal confirmation suppression batch */}
+      {showBatchConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 50,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 16, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+        }}>
+          <div style={{
+            width: '100%', maxWidth: 440,
+            background: 'var(--wings-surface)',
+            border: '0.5px solid var(--wings-border)',
+            borderRadius: 16,
+            boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+            overflow: 'hidden',
+          }}>
+            <div style={{ padding: '18px 24px', borderBottom: '0.5px solid var(--wings-border)' }}>
+              <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 20, fontWeight: 400, color: 'var(--wings-text)', margin: 0 }}>
+                Confirmer la suppression
+              </h2>
+            </div>
+            <div style={{ padding: '16px 24px' }}>
+              <p style={{ fontSize: 13, color: 'var(--wings-text-muted)', margin: 0 }}>
+                Vous allez supprimer définitivement{' '}
+                <strong style={{ color: 'var(--wings-text)' }}>
+                  {selectedIds.size} fichier{selectedIds.size > 1 ? 's' : ''}
+                </strong>{' '}
+                appartenant à d'autres utilisateurs. Cette action de modération est irréversible.
+              </p>
+            </div>
+            <div style={{
+              display: 'flex', justifyContent: 'flex-end', gap: 10,
+              padding: '14px 24px',
+              borderTop: '0.5px solid var(--wings-border)',
+            }}>
+              <button
+                onClick={() => setShowBatchConfirm(false)}
+                style={{
+                  padding: '8px 20px', fontSize: 13,
+                  background: 'transparent',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 999,
+                  color: 'var(--wings-text-muted)',
+                  cursor: 'pointer',
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleBatchDelete}
+                disabled={batchDeleting}
+                style={{
+                  padding: '8px 24px', fontSize: 13, fontWeight: 500,
+                  background: '#dc2626', border: 'none',
+                  borderRadius: 999, color: '#fff',
+                  cursor: batchDeleting ? 'not-allowed' : 'pointer',
+                  opacity: batchDeleting ? 0.6 : 1,
+                  transition: 'opacity 0.15s',
+                }}
+              >
+                {batchDeleting ? 'Suppression…' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

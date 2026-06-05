@@ -160,7 +160,7 @@ export default function AdminPanel() {
             </h1>
           </div>
           <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>
-            Gestion globale de la plateforme Transferly
+            Gestion globale de la plateforme Wings
           </p>
         </div>
 
