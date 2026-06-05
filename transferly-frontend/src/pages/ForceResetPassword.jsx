@@ -111,7 +111,7 @@ export default function ForceResetPassword() {
             >
               <Share2 className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-bold text-white text-sm tracking-tight">Transferly</span>
+            <span className="font-bold text-white text-sm tracking-tight">Wings</span>
           </div>
 
           {!success ? (

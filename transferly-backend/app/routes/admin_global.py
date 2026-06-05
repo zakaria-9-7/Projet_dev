@@ -459,3 +459,80 @@ def admin_delete_fichier(fichier_id):
     db.session.commit()
 
     return jsonify({'message': 'Fichier supprimé'}), 200
+
+
+@admin_global_bp.route('/admin/fichiers/batch', methods=['DELETE'])
+def admin_delete_fichiers_batch():
+    from app.models.fichier import Fichier
+    from app.services.quota import update_quota
+    from app.services.logger import log_action
+    import os as os_module
+
+    if not hasattr(g, 'user') or g.user is None:
+        return jsonify({'error': 'Non authentifié'}), 401
+    if g.user['role'] != 'AdminGlobal':
+        return jsonify({'error': 'Accès réservé'}), 403
+
+    data = request.get_json(silent=True) or {}
+    ids = data.get('ids')
+
+    if not isinstance(ids, list) or len(ids) == 0:
+        return jsonify({'error': 'ids doit être une liste non vide d\'entiers'}), 400
+    if len(ids) > 500:
+        return jsonify({'error': 'Trop de fichiers (maximum 500 par requête)'}), 400
+
+    to_delete = []
+    skipped = []
+
+    try:
+        for file_id in ids:
+            if not isinstance(file_id, int):
+                skipped.append({'id': file_id, 'raison': 'Identifiant invalide'})
+                continue
+
+            fichier = Fichier.query.get(file_id)
+            if fichier is None:
+                skipped.append({'id': file_id, 'raison': 'Fichier introuvable'})
+                continue
+
+            chemin_principal = fichier.chemin
+            chemins_versions = [
+                v.chemin for v in fichier.versions
+                if v.chemin and v.chemin != chemin_principal and os_module.path.exists(v.chemin)
+            ]
+            to_delete.append({
+                'id':               fichier.id,
+                'user_id':          fichier.user_id,
+                'taille_mb':        fichier.taille or 0.0,
+                'chemin_principal': chemin_principal,
+                'chemins_versions': chemins_versions,
+            })
+            db.session.delete(fichier)  # cascade : versions + ACLs
+
+        if to_delete:
+            db.session.commit()
+
+            for item in to_delete:
+                for chemin in item['chemins_versions']:
+                    try:
+                        os_module.remove(chemin)
+                    except OSError:
+                        pass
+                if item['chemin_principal'] and os_module.path.exists(item['chemin_principal']):
+                    try:
+                        os_module.remove(item['chemin_principal'])
+                    except OSError:
+                        pass
+                if item['taille_mb'] > 0:
+                    update_quota(item['user_id'], item['taille_mb'], is_upload=False)
+                log_action(g.user['id'], 'suppression', resource_id=item['id'], statut='succes')
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+    return jsonify({
+        'deleted_count': len(to_delete),
+        'skipped_count': len(skipped),
+        'skipped':        skipped,
+    }), 200
