@@ -5,67 +5,209 @@ from app.models.fichier import Fichier
 
 folders_bp = Blueprint('folders', __name__)
 
+
+def _is_espace_admin(user_id, user_role, espace_id):
+    """Retourne True si l'utilisateur est AdminGlobal, admin de l'espace
+    (via Espace.admin_id), ou membre avec rôle 'admin'."""
+    from app.models.espace import Espace
+    from app.models.membership import Membership
+    if user_role == 'AdminGlobal':
+        return True
+    espace = Espace.query.get(espace_id)
+    if espace and espace.admin_id == user_id:
+        return True
+    membership = Membership.query.filter_by(user_id=user_id, espace_id=espace_id).first()
+    return membership is not None and membership.role == 'admin'
+
+
 @folders_bp.route('/folders', methods=['GET'])
 def list_folders():
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
+
+    user_id   = g.user['id']
+    user_role = g.user.get('role', '')
+    espace_id = request.args.get('espace_id', type=int)
     parent_id = request.args.get('parent_id', type=int)
-    query = Folder.query.filter_by(user_id=g.user['id'])
+
+    if espace_id is not None:
+        # Dossiers d'un espace : accessible à tout membre
+        from app.models.espace import Espace
+        from app.models.membership import Membership
+        espace = Espace.query.get(espace_id)
+        if espace is None:
+            return jsonify({'error': 'Espace introuvable'}), 404
+        is_member = (
+            user_role == 'AdminGlobal'
+            or espace.admin_id == user_id
+            or Membership.query.filter_by(user_id=user_id, espace_id=espace_id).first() is not None
+        )
+        if not is_member:
+            return jsonify({'error': 'Accès refusé'}), 403
+        query = Folder.query.filter_by(espace_id=espace_id)
+    else:
+        # Dossiers personnels (espace_id NULL)
+        query = Folder.query.filter_by(user_id=user_id, espace_id=None)
+
     if parent_id:
         query = query.filter_by(parent_id=parent_id)
     else:
         query = query.filter_by(parent_id=None)
+
     folders = query.order_by(Folder.nom).all()
     return jsonify([{
-        'id': f.id, 'nom': f.nom, 'parent_id': f.parent_id,
-        'date_creation': f.date_creation.isoformat() if f.date_creation else None
+        'id':           f.id,
+        'nom':          f.nom,
+        'parent_id':    f.parent_id,
+        'espace_id':    f.espace_id,
+        'date_creation': f.date_creation.isoformat() if f.date_creation else None,
     } for f in folders]), 200
+
 
 @folders_bp.route('/folders', methods=['POST'])
 def create_folder():
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
-    data = request.get_json(silent=True) or {}
-    nom = (data.get('nom') or '').strip()
+
+    data      = request.get_json(silent=True) or {}
+    nom       = (data.get('nom') or '').strip()
     if not nom:
         return jsonify({'error': 'Nom du dossier requis'}), 400
+
+    user_id   = g.user['id']
+    user_role = g.user.get('role', '')
+    espace_id = data.get('espace_id')
     parent_id = data.get('parent_id')
-    if parent_id:
-        parent = Folder.query.filter_by(id=parent_id, user_id=g.user['id']).first()
-        if not parent:
-            return jsonify({'error': 'Dossier parent introuvable'}), 404
-    folder = Folder(nom=nom, user_id=g.user['id'], parent_id=parent_id)
+
+    if espace_id is not None:
+        # Dossier d'espace : réservé aux admins
+        if not _is_espace_admin(user_id, user_role, espace_id):
+            return jsonify({'error': "Action réservée aux administrateurs de l'espace"}), 403
+        if parent_id:
+            parent = Folder.query.filter_by(id=parent_id, espace_id=espace_id).first()
+            if not parent:
+                return jsonify({'error': 'Dossier parent introuvable'}), 404
+    else:
+        # Dossier personnel
+        if parent_id:
+            parent = Folder.query.filter_by(id=parent_id, user_id=user_id).first()
+            if not parent:
+                return jsonify({'error': 'Dossier parent introuvable'}), 404
+
+    folder = Folder(nom=nom, user_id=user_id, parent_id=parent_id, espace_id=espace_id)
     db.session.add(folder)
     db.session.commit()
-    return jsonify({'id': folder.id, 'nom': folder.nom, 'parent_id': folder.parent_id}), 201
+    return jsonify({
+        'id':        folder.id,
+        'nom':       folder.nom,
+        'parent_id': folder.parent_id,
+        'espace_id': folder.espace_id,
+    }), 201
+
 
 @folders_bp.route('/folders/<int:folder_id>', methods=['PUT'])
 def rename_folder(folder_id):
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
-    folder = Folder.query.filter_by(id=folder_id, user_id=g.user['id']).first()
+
+    user_id   = g.user['id']
+    user_role = g.user.get('role', '')
+
+    folder = Folder.query.get(folder_id)
     if not folder:
         return jsonify({'error': 'Dossier introuvable'}), 404
+
+    if folder.espace_id is not None:
+        if not _is_espace_admin(user_id, user_role, folder.espace_id):
+            return jsonify({'error': "Action réservée aux administrateurs de l'espace"}), 403
+    else:
+        if folder.user_id != user_id:
+            return jsonify({'error': 'Dossier introuvable'}), 404
+
     data = request.get_json(silent=True) or {}
-    nom = (data.get('nom') or '').strip()
+    nom  = (data.get('nom') or '').strip()
     if not nom:
         return jsonify({'error': 'Nom requis'}), 400
     folder.nom = nom
     db.session.commit()
     return jsonify({'message': 'Dossier renommé', 'nom': folder.nom}), 200
 
+
 @folders_bp.route('/folders/<int:folder_id>', methods=['DELETE'])
 def delete_folder(folder_id):
+    import os as _os
+    from app.services.quota import update_quota
+
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
-    folder = Folder.query.filter_by(id=folder_id, user_id=g.user['id']).first()
+
+    user_id   = g.user['id']
+    user_role = g.user.get('role', '')
+
+    folder = Folder.query.get(folder_id)
     if not folder:
         return jsonify({'error': 'Dossier introuvable'}), 404
-    Fichier.query.filter_by(folder_id=folder_id).update({'folder_id': None})
-    Folder.query.filter_by(parent_id=folder_id).update({'parent_id': None})
+
+    if folder.espace_id is not None:
+        if not _is_espace_admin(user_id, user_role, folder.espace_id):
+            return jsonify({'error': "Action réservée aux administrateurs de l'espace"}), 403
+    else:
+        if folder.user_id != user_id:
+            return jsonify({'error': 'Dossier introuvable'}), 404
+
+    # 1. BFS : collecter tous les sous-dossiers et fichiers de la descendance
+    all_fichiers   = []
+    all_subfolders = []
+    stack = [folder_id]
+    while stack:
+        fid = stack.pop()
+        all_fichiers.extend(Fichier.query.filter_by(folder_id=fid).all())
+        children = Folder.query.filter_by(parent_id=fid).all()
+        for child in children:
+            all_subfolders.append(child)
+            stack.append(child.id)
+
+    # 2. Pré-collecter les infos disque AVANT toute suppression DB
+    disk_info = []
+    for f in all_fichiers:
+        versions_chemins = [
+            v.chemin for v in f.versions
+            if v.chemin and v.chemin != f.chemin and _os.path.exists(v.chemin)
+        ]
+        disk_info.append({
+            'chemin':           f.chemin,
+            'versions_chemins': versions_chemins,
+            'taille_mb':        f.taille or 0.0,
+            'user_id':          f.user_id,
+        })
+
+    # 3. Supprimer tout de la session (cascade SQLAlchemy : versions + ACLs)
+    for f in all_fichiers:
+        db.session.delete(f)
+    for sub in all_subfolders:
+        db.session.delete(sub)
     db.session.delete(folder)
+
+    # 4. Un seul commit
     db.session.commit()
+
+    # 5. Nettoyage disque et quota post-commit
+    for info in disk_info:
+        for chemin in info['versions_chemins']:
+            try:
+                _os.remove(chemin)
+            except OSError:
+                pass
+        if info['chemin'] and _os.path.exists(info['chemin']):
+            try:
+                _os.remove(info['chemin'])
+            except OSError:
+                pass
+        if info['taille_mb'] > 0:
+            update_quota(info['user_id'], info['taille_mb'], is_upload=False)
+
     return jsonify({'message': 'Dossier supprimé'}), 200
+
 
 @folders_bp.route('/folders/move-files', methods=['PUT'])
 def move_files_to_folder():
@@ -74,10 +216,10 @@ def move_files_to_folder():
 
     data = request.get_json(silent=True) or {}
     fichier_ids = data.get('fichier_ids')
-    folder_id = data.get('folder_id')
+    folder_id   = data.get('folder_id')
 
     if not isinstance(fichier_ids, list) or len(fichier_ids) == 0:
-        return jsonify({'error': 'fichier_ids doit être une liste non vide d\'entiers'}), 400
+        return jsonify({'error': "fichier_ids doit être une liste non vide d'entiers"}), 400
     if len(fichier_ids) > 500:
         return jsonify({'error': 'Trop de fichiers (maximum 500 par requête)'}), 400
 
@@ -114,10 +256,10 @@ def move_files_to_folder():
 def move_file_to_folder():
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
-    data = request.get_json(silent=True) or {}
+    data       = request.get_json(silent=True) or {}
     fichier_id = data.get('fichier_id')
-    folder_id = data.get('folder_id')
-    fichier = Fichier.query.filter_by(id=fichier_id, user_id=g.user['id']).first()
+    folder_id  = data.get('folder_id')
+    fichier    = Fichier.query.filter_by(id=fichier_id, user_id=g.user['id']).first()
     if not fichier:
         return jsonify({'error': 'Fichier introuvable'}), 404
     if folder_id:

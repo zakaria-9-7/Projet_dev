@@ -8,4 +8,5 @@ class Folder(db.Model):
     nom = db.Column(db.String(150), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     parent_id = db.Column(db.Integer, db.ForeignKey('folders.id'), nullable=True)
+    espace_id = db.Column(db.Integer, db.ForeignKey('espaces.id'), nullable=True)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)

@@ -4,6 +4,7 @@ import {
   Users, Mail, Settings, Trash2, Edit2, ArrowLeft,
   UploadCloud, Download, FileText, Link2, Copy, UserMinus,
   LogOut as ExitIcon, Shield, History, FilePen, Eye, Lock,
+  FolderPlus, Folder, ChevronRight, MoreVertical, Pencil,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import FilePreviewModal from '../components/FilePreviewModal';
@@ -43,10 +44,17 @@ export default function EspaceDetail() {
   const [aclModal, setAclModal] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
   const [fileLocks, setFileLocks] = useState({});
+  const [currentFolder,       setCurrentFolder]       = useState(null);
+  const [folders,             setFolders]             = useState([]);
+  const [folderPath,          setFolderPath]          = useState([]);
+  const [openFolderMenuId,      setOpenFolderMenuId]    = useState(null);
+  const [folderMenuPos,       setFolderMenuPos]       = useState({ top: 0, left: 0 });
+  const [folderDeleteConfirm, setFolderDeleteConfirm] = useState(null);
 
   const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
   const isAdmin = espace && espace.admin_id === currentUserId;
   const { accent, faint } = colorFromName(espace?.nom || '');
+  const isEspaceAdmin = isAdmin || espace?.role === 'admin' || localStorage.getItem('role') === 'AdminGlobal';
 
   const canUpload = (() => {
     if (!details) return true;
@@ -100,7 +108,125 @@ export default function EspaceDetail() {
     }
   };
 
-  useEffect(() => { loadEspace(); }, [espaceId]);
+  useEffect(() => {
+    setCurrentFolder(null);
+    setFolderPath([]);
+    setFolders([]);
+    loadEspace();
+  }, [espaceId]);
+
+  const loadFoldersForEspace = async () => {
+    try {
+      const params = { espace_id: parseInt(espaceId) };
+      if (currentFolder !== null) params.parent_id = currentFolder;
+      const res = await API.get('/folders', { params });
+      setFolders(res.data || []);
+    } catch {
+      setFolders([]);
+    }
+  };
+
+  useEffect(() => {
+    if (espaceId) loadFoldersForEspace();
+  }, [espaceId, currentFolder]);
+
+  const enterFolder = (folder) => {
+    setFolderPath(prev => [...prev, { id: folder.id, nom: folder.nom }]);
+    setCurrentFolder(folder.id);
+  };
+
+  const navigateTo = (breadcrumbIndex) => {
+    if (breadcrumbIndex === 0) {
+      setCurrentFolder(null);
+      setFolderPath([]);
+    } else {
+      const target = folderPath[breadcrumbIndex - 1];
+      setCurrentFolder(target.id);
+      setFolderPath(prev => prev.slice(0, breadcrumbIndex));
+    }
+  };
+
+  useEffect(() => {
+    if (!openFolderMenuId) return;
+    const close = () => setOpenFolderMenuId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openFolderMenuId]);
+
+  const handleFolderKebabClick = (e, folderId) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setFolderMenuPos({ top: rect.bottom + 4, left: rect.right - 188 });
+    setOpenFolderMenu(prev => prev === folderId ? null : folderId);
+  };
+
+  const handleFolderNewSubfolder = async (e, folder) => {
+    e.stopPropagation();
+    setOpenFolderMenuId(null);
+    const nom = prompt('Nom du sous-dossier ?');
+    if (!nom?.trim()) return;
+    try {
+      await API.post('/folders', { nom: nom.trim(), parent_id: folder.id, espace_id: parseInt(espaceId) });
+      showToast('Sous-dossier créé');
+      loadFoldersForEspace();
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Erreur création', 'error');
+    }
+  };
+
+  const handleFolderRename = async (e, folder) => {
+    e.stopPropagation();
+    setOpenFolderMenuId(null);
+    const newNom = prompt('Nouveau nom ?', folder.nom);
+    if (!newNom?.trim() || newNom.trim() === folder.nom) return;
+    try {
+      await API.put(`/folders/${folder.id}`, { nom: newNom.trim() });
+      showToast('Dossier renommé');
+      loadFoldersForEspace();
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Erreur renommage', 'error');
+    }
+  };
+
+  const handleFolderDelete = async () => {
+    if (!folderDeleteConfirm) return;
+    const { id, nom } = folderDeleteConfirm;
+    try {
+      await API.delete(`/folders/${id}`);
+      showToast(`"${nom}" supprimé`);
+      setFolderDeleteConfirm(null);
+      loadFoldersForEspace();
+      if (currentFolder === id) {
+        const idx = folderPath.findIndex(f => f.id === id);
+        if (idx > 0) {
+          setCurrentFolder(folderPath[idx - 1].id);
+          setFolderPath(prev => prev.slice(0, idx));
+        } else {
+          setCurrentFolder(null);
+          setFolderPath([]);
+        }
+      }
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Erreur suppression', 'error');
+      setFolderDeleteConfirm(null);
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    const nom = prompt('Nom du nouveau dossier :');
+    if (!nom?.trim()) return;
+    try {
+      await API.post('/folders', {
+        nom:       nom.trim(),
+        parent_id: currentFolder,
+        espace_id: parseInt(espaceId),
+      });
+      showToast('Dossier créé');
+      loadFoldersForEspace();
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Erreur création dossier', 'error');
+    }
+  };
 
   useEffect(() => {
     if (!fichiers || fichiers.length === 0) return;
@@ -129,6 +255,7 @@ export default function EspaceDetail() {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('espace_id', espaceId);
+    if (currentFolder !== null) fd.append('folder_id', currentFolder);
     try {
       await API.post('/files/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       showToast('Fichier uploadé');
@@ -351,6 +478,12 @@ export default function EspaceDetail() {
     );
   }
 
+  const visibleFichiers = currentFolder !== null
+    ? fichiers.filter(f => f.folder_id === currentFolder)
+    : fichiers.filter(f => !f.folder_id);
+
+  const breadcrumb = [{ id: null, nom: 'Racine' }, ...folderPath];
+
   const tabs = [
     { id: 'fichiers',    label: 'Fichiers',    icon: FileText, count: fichiers.length },
     { id: 'membres',     label: 'Membres',     icon: Users,    count: membres.length },
@@ -464,42 +597,90 @@ export default function EspaceDetail() {
         {/* ── Onglet Fichiers ── */}
         {tab === 'fichiers' && (
           <div>
+            {/* Fil d'Ariane */}
+            {breadcrumb.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 14, flexWrap: 'wrap' }}>
+                {breadcrumb.map((segment, i) => (
+                  <span key={segment.id ?? 'root'} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button
+                      onClick={() => navigateTo(i)}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                        fontSize: 13,
+                        color: i === breadcrumb.length - 1 ? 'var(--wings-text)' : 'var(--wings-text-muted)',
+                        fontWeight: i === breadcrumb.length - 1 ? 500 : 400,
+                      }}
+                    >
+                      {segment.nom}
+                    </button>
+                    {i < breadcrumb.length - 1 && (
+                      <ChevronRight size={12} style={{ color: 'var(--wings-text-muted)', opacity: 0.5 }} />
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Barre outils */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <span style={{ fontSize: 13, color: 'var(--wings-text-muted)' }}>
-                {fichiers.length} fichier{fichiers.length !== 1 ? 's' : ''}
+                {visibleFichiers.length} fichier{visibleFichiers.length !== 1 ? 's' : ''}
+                {folders.length > 0 && ` · ${folders.length} dossier${folders.length !== 1 ? 's' : ''}`}
               </span>
-              {canUpload ? (
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 18px',
-                  background: 'var(--wings-blue)',
-                  color: '#fff',
-                  borderRadius: 999,
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  border: 'none',
-                  transition: 'opacity 0.15s',
-                }}>
-                  <UploadCloud size={14} /> Téléverser dans l'espace
-                  <input type="file" onChange={handleUpload} style={{ display: 'none' }} />
-                </label>
-              ) : (
-                <div
-                  title="Vous n'avez pas l'autorisation de téléverser dans cet espace"
-                  style={{
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {isEspaceAdmin && currentFolder === null && (
+                  <button
+                    onClick={handleCreateFolder}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '8px 14px',
+                      background: 'rgba(212,170,82,0.07)',
+                      border: '0.5px solid rgba(212,170,82,0.35)',
+                      color: 'var(--wings-gold)',
+                      borderRadius: 999,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(212,170,82,0.15)'; e.currentTarget.style.borderColor = 'var(--wings-gold)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(212,170,82,0.07)'; e.currentTarget.style.borderColor = 'rgba(212,170,82,0.35)'; }}
+                  >
+                    <FolderPlus size={14} /> Nouveau dossier
+                  </button>
+                )}
+                {canUpload ? (
+                  <label style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '8px 18px',
-                    background: 'var(--wings-surface)',
-                    border: '0.5px solid var(--wings-border)',
-                    color: 'var(--wings-text-muted)',
+                    background: 'var(--wings-blue)',
+                    color: '#fff',
                     borderRadius: 999,
                     fontSize: 13,
-                    cursor: 'not-allowed',
-                  }}
-                >
-                  <UploadCloud size={14} /> Téléversement non autorisé
-                </div>
-              )}
+                    cursor: 'pointer',
+                    border: 'none',
+                    transition: 'opacity 0.15s',
+                  }}>
+                    <UploadCloud size={14} /> Téléverser dans l'espace
+                    <input type="file" onChange={handleUpload} style={{ display: 'none' }} />
+                  </label>
+                ) : (
+                  <div
+                    title="Vous n'avez pas l'autorisation de téléverser dans cet espace"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '8px 18px',
+                      background: 'var(--wings-surface)',
+                      border: '0.5px solid var(--wings-border)',
+                      color: 'var(--wings-text-muted)',
+                      borderRadius: 999,
+                      fontSize: 13,
+                      cursor: 'not-allowed',
+                    }}
+                  >
+                    <UploadCloud size={14} /> Téléversement non autorisé
+                  </div>
+                )}
+              </div>
             </div>
 
             {!canUpload && (
@@ -516,15 +697,145 @@ export default function EspaceDetail() {
               </div>
             )}
 
-            {fichiers.length === 0 ? (
+            {/* Grille de dossiers */}
+            {folders.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10, marginBottom: 20 }}>
+                {folders.map(folder => (
+                  <div
+                    key={folder.id}
+                    onClick={() => enterFolder(folder)}
+                    style={{
+                      position: 'relative',
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      background: 'var(--wings-surface)',
+                      border: '0.5px solid var(--wings-border)',
+                      borderRadius: 12, padding: '12px 14px',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.15s, background 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = faint; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--wings-border)'; e.currentTarget.style.background = 'var(--wings-surface)'; }}
+                  >
+                    <Folder size={18} style={{ color: 'var(--wings-gold)', flexShrink: 0 }} />
+                    <span style={{
+                      fontSize: 13, fontWeight: 500, color: 'var(--wings-text)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      flex: 1,
+                    }}>
+                      {folder.nom}
+                    </span>
+
+                    {/* Bouton 3 points — admins uniquement */}
+                    {isEspaceAdmin && (
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setOpenFolderMenuId(openFolderMenuId === folder.id ? null : folder.id);
+                        }}
+                        title="Actions"
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          padding: '2px 3px', borderRadius: 4, flexShrink: 0,
+                          color: 'var(--wings-text-muted)',
+                          display: 'flex', alignItems: 'center',
+                          transition: 'color 0.15s',
+                        }}
+                        onMouseEnter={e => { e.stopPropagation(); e.currentTarget.style.color = 'var(--wings-text)'; }}
+                        onMouseLeave={e => { e.stopPropagation(); e.currentTarget.style.color = 'var(--wings-text-muted)'; }}
+                      >
+                        <MoreVertical size={14} />
+                      </button>
+                    )}
+
+                    {/* Popover — position absolute dans la carte */}
+                    {isEspaceAdmin && openFolderMenuId === folder.id && (
+                      <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                          position: 'absolute',
+                          top: '100%', right: 0,
+                          zIndex: 50,
+                          marginTop: 4,
+                          background: 'var(--wings-surface)',
+                          border: '0.5px solid var(--wings-border)',
+                          borderRadius: 8,
+                          padding: 4,
+                          minWidth: 188,
+                          boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+                        }}
+                      >
+                        {[
+                          {
+                            label: 'Nouveau sous-dossier',
+                            icon: <FolderPlus size={14} style={{ flexShrink: 0 }} />,
+                            onClick: e => handleFolderNewSubfolder(e, folder),
+                            danger: false,
+                          },
+                          {
+                            label: 'Renommer',
+                            icon: <Pencil size={14} style={{ flexShrink: 0 }} />,
+                            onClick: e => handleFolderRename(e, folder),
+                            danger: false,
+                          },
+                          {
+                            label: 'Supprimer',
+                            icon: <Trash2 size={14} style={{ flexShrink: 0 }} />,
+                            onClick: e => { e.stopPropagation(); setOpenFolderMenuId(null); setFolderDeleteConfirm({ id: folder.id, nom: folder.nom }); },
+                            danger: true,
+                          },
+                        ].map(item => (
+                          <button
+                            key={item.label}
+                            onClick={item.onClick}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              width: '100%', padding: '8px 12px',
+                              background: 'none', border: 'none', borderRadius: 5,
+                              fontSize: 12, cursor: 'pointer', textAlign: 'left',
+                              fontFamily: 'inherit',
+                              color: item.danger ? 'var(--wings-gold)' : 'var(--wings-text-muted)',
+                              transition: 'background 0.1s, color 0.1s',
+                            }}
+                            onMouseEnter={e => {
+                              if (item.danger) {
+                                e.currentTarget.style.background = 'rgba(255,80,80,0.08)';
+                                e.currentTarget.style.color = '#ff7a7a';
+                              } else {
+                                e.currentTarget.style.background = 'rgba(79,139,255,0.08)';
+                                e.currentTarget.style.color = 'var(--wings-text)';
+                              }
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.background = 'none';
+                              e.currentTarget.style.color = item.danger ? 'var(--wings-gold)' : 'var(--wings-text-muted)';
+                            }}
+                          >
+                            {item.icon}
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Grille de fichiers (filtrée par dossier courant) */}
+            {visibleFichiers.length === 0 && folders.length === 0 ? (
               <div style={{ textAlign: 'center', paddingTop: 72, paddingBottom: 72 }}>
                 <FileText size={40} style={{ color: 'var(--wings-text-muted)', opacity: 0.4, margin: '0 auto 12px', display: 'block' }} />
                 <p style={{ fontSize: 14, color: 'var(--wings-text-muted)', margin: '0 0 4px' }}>Aucun fichier dans cet espace</p>
                 <p style={{ fontSize: 12, color: 'var(--wings-text-muted)', opacity: 0.6, margin: 0 }}>Téléversez votre premier fichier pour démarrer la collaboration</p>
               </div>
+            ) : visibleFichiers.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--wings-text-muted)', textAlign: 'center', paddingTop: 24, paddingBottom: 24 }}>
+                Aucun fichier dans ce dossier
+              </p>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
-                {fichiers.map(f => {
+                {visibleFichiers.map(f => {
                   const isOwner = f.owner_id === currentUserId;
                   const perms = (isOwner || isAdmin)
                     ? { lecture: true, download: true, ecriture: true, partage: true, suppression: true }
@@ -1100,6 +1411,66 @@ export default function EspaceDetail() {
             onClose={() => setPreviewFile(null)}
             onDownload={() => { handleDownload(previewFile); setPreviewFile(null); }}
           />
+        )}
+
+        {/* ── Modal confirmation suppression dossier ── */}
+        {folderDeleteConfirm && (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 300,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 16, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+            }}
+            onClick={() => setFolderDeleteConfirm(null)}
+          >
+            <div
+              style={{
+                width: '100%', maxWidth: 440,
+                background: 'var(--wings-surface)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 16,
+                boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+                overflow: 'hidden',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ padding: '18px 24px', borderBottom: '0.5px solid var(--wings-border)' }}>
+                <h2 style={{
+                  fontFamily: 'Georgia, serif', fontSize: 20, fontWeight: 400,
+                  color: 'var(--wings-text)', margin: 0,
+                }}>
+                  Supprimer le dossier
+                </h2>
+              </div>
+              <div style={{ padding: '16px 24px' }}>
+                <p style={{ fontSize: 13, color: 'var(--wings-text-muted)', margin: 0 }}>
+                  Supprimer{' '}
+                  <strong style={{ color: 'var(--wings-text)' }}>
+                    &laquo;&nbsp;{folderDeleteConfirm.nom}&nbsp;&raquo;
+                  </strong>{' '}
+                  ? Les fichiers qu'il contient seront rattachés à la racine de l'espace. Cette action est irréversible.
+                </p>
+              </div>
+              <div style={{
+                display: 'flex', justifyContent: 'flex-end', gap: 10,
+                padding: '14px 24px',
+                borderTop: '0.5px solid var(--wings-border)',
+              }}>
+                <button
+                  onClick={() => setFolderDeleteConfirm(null)}
+                  className="px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleFolderDelete}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Supprimer
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </AppLayout>

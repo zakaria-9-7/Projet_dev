@@ -150,16 +150,34 @@ export default function AdminFichiersAll() {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 16px',
-              background: selectionMode ? 'rgba(220,38,38,0.08)' : 'transparent',
-              border: `0.5px solid ${selectionMode ? 'rgba(220,38,38,0.4)' : 'var(--wings-border)'}`,
+              background: selectionMode ? 'rgba(220,38,38,0.08)' : 'rgba(212,170,82,0.07)',
+              border: `0.5px solid ${selectionMode ? 'rgba(220,38,38,0.4)' : 'rgba(212,170,82,0.45)'}`,
               borderRadius: 999,
-              color: selectionMode ? '#dc2626' : 'var(--wings-text-muted)',
+              color: selectionMode ? '#dc2626' : 'var(--wings-gold)',
               fontSize: 13, fontWeight: 500, cursor: 'pointer',
               whiteSpace: 'nowrap',
               transition: 'all 0.15s',
             }}
+            onMouseEnter={e => {
+              if (selectionMode) {
+                e.currentTarget.style.background = 'rgba(220,38,38,0.14)';
+                e.currentTarget.style.borderColor = 'rgba(220,38,38,0.6)';
+              } else {
+                e.currentTarget.style.background = 'rgba(212,170,82,0.15)';
+                e.currentTarget.style.borderColor = 'var(--wings-gold)';
+              }
+            }}
+            onMouseLeave={e => {
+              if (selectionMode) {
+                e.currentTarget.style.background = 'rgba(220,38,38,0.08)';
+                e.currentTarget.style.borderColor = 'rgba(220,38,38,0.4)';
+              } else {
+                e.currentTarget.style.background = 'rgba(212,170,82,0.07)';
+                e.currentTarget.style.borderColor = 'rgba(212,170,82,0.45)';
+              }
+            }}
           >
-            {selectionMode ? <X size={14} /> : <CheckSquare size={14} />}
+            {selectionMode ? <X size={14} /> : <CheckSquare size={14} style={{ color: 'var(--wings-gold)' }} />}
             {selectionMode ? 'Annuler' : 'Sélectionner'}
           </button>
         </div>
