@@ -118,6 +118,7 @@ function Toggle({ label, description, checked, onChange }) {
 }
 
 export default function Settings() {
+  const userRole = localStorage.getItem('role') || 'Utilisateur';
   const [nom, setNom] = useState('');
   const [email, setEmail] = useState('');
   const [originalNom, setOriginalNom] = useState('');
@@ -339,24 +340,30 @@ export default function Settings() {
             </p>
 
             <div style={{ marginTop: 14 }}>
-              <button
-                title={quotaPct < 50 ? "Disponible à partir de 50% d'utilisation" : undefined}
-                disabled={quotaPct < 50}
-                onClick={quotaPct >= 50 ? () => { setShowQuotaModal(true); setQuotaModalError(''); setSelectedPalier(null); setQuotaRaison(''); } : undefined}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '8px 16px',
-                  background: 'var(--wings-blue)',
-                  border: 'none', borderRadius: 999,
-                  color: '#fff', fontSize: 12, fontWeight: 500,
-                  cursor: quotaPct < 50 ? 'not-allowed' : 'pointer',
-                  opacity: quotaPct < 50 ? 0.45 : 1,
-                  transition: 'opacity 0.2s',
-                }}
-              >
-                <TrendingUp size={13} />
-                Demander une augmentation
-              </button>
+              {userRole === 'AdminGlobal' ? (
+                <p style={{ color: 'var(--wings-text-muted)', fontSize: 11, fontStyle: 'italic', margin: 0 }}>
+                  Quota géré par le système d'administration.
+                </p>
+              ) : (
+                <button
+                  title={quotaPct < 50 ? "Disponible à partir de 50% d'utilisation" : undefined}
+                  disabled={quotaPct < 50}
+                  onClick={quotaPct >= 50 ? () => { setShowQuotaModal(true); setQuotaModalError(''); setSelectedPalier(null); setQuotaRaison(''); } : undefined}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '8px 16px',
+                    background: 'var(--wings-blue)',
+                    border: 'none', borderRadius: 999,
+                    color: '#fff', fontSize: 12, fontWeight: 500,
+                    cursor: quotaPct < 50 ? 'not-allowed' : 'pointer',
+                    opacity: quotaPct < 50 ? 0.45 : 1,
+                    transition: 'opacity 0.2s',
+                  }}
+                >
+                  <TrendingUp size={13} />
+                  Demander une augmentation
+                </button>
+              )}
             </div>
 
             {quotaSuccess && (
@@ -375,7 +382,7 @@ export default function Settings() {
         )}
 
         {/* Mes demandes d'augmentation */}
-        {quota && (
+        {quota && userRole !== 'AdminGlobal' && (
           <div style={{
             background: 'var(--wings-surface)',
             border: '0.5px solid var(--wings-border)',

@@ -4,6 +4,7 @@ from app.models.user import User
 from app.models.otp import OTP
 from app.models.log import Log
 from app.services.mailer import send_otp_email, send_welcome_email, send_password_changed_email, send_account_deleted_email
+from app.services.logger import log_action
 import jwt, os, re, pyotp
 from datetime import datetime, timedelta
 
@@ -53,8 +54,15 @@ def login():
 
     user = User.query.filter_by(email=email).first()
 
-    if not user or not bcrypt.check_password_hash(user.password, password):
-        log_action(user_id=None, action='connexion_echouee', resource_id=None, statut='echec', details=f"Tentative de connexion échouée pour l'email: {email}")
+    if not user:
+        # L'utilisateur n'existe pas du tout : tentative brute anonyme.
+        # On assigne à l'ID 1 (Super Admin) pour satisfaire la contrainte de clé étrangère
+        log_action(user_id=1, action='connexion_echouee', statut='echec', details=f"Tentative brute - Compte inexistant : {email}")
+        return jsonify({'error': 'Identifiants incorrects'}), 401
+
+    if not bcrypt.check_password_hash(user.password, password):
+        # L'utilisateur existe mais le mot de passe est faux !
+        log_action(user_id=user.id, action='connexion_echouee', statut='echec', details=f"Mot de passe incorrect pour le compte : {email}")
         return jsonify({'error': 'Identifiants incorrects'}), 401
 
     if user.statut == 'bloque':

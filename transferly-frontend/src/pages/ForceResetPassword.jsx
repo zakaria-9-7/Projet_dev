@@ -1,14 +1,93 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Lock, Eye, EyeOff, Share2, ShieldAlert, CheckCircle } from 'lucide-react';
+import { Lock, Eye, EyeOff, ShieldAlert, CheckCircle } from 'lucide-react';
 import { changePassword } from '../api/auth';
+import CicadaProtective from '../components/CicadaProtective';
+import './Login.css';
+
+const labelStyle = {
+  display:       'block',
+  fontFamily:    'monospace',
+  fontSize:      11,
+  fontWeight:    700,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  color:         'var(--wings-gold)',
+  marginBottom:  8,
+};
+
+const inputBase = {
+  width:       '100%',
+  boxSizing:   'border-box',
+  padding:     '12px 16px',
+  borderRadius: 12,
+  border:      '1px solid var(--wings-border)',
+  background:  'var(--wings-surface)',
+  color:       'var(--wings-text)',
+  fontSize:    14,
+  fontFamily:  'inherit',
+  outline:     'none',
+  transition:  'border-color 0.2s ease, box-shadow 0.2s ease',
+};
+
+const focusedExtra = {
+  borderColor: 'var(--wings-blue)',
+  boxShadow:   '0 0 0 3px rgba(79,139,255,0.15)',
+};
+
+function Field({ label, type = 'text', value, onChange, show, onToggleShow, focused, onFocus, onBlur, ...props }) {
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <div style={{ position: 'relative' }}>
+        <input
+          type={type === 'password' && !show ? 'password' : 'text'}
+          value={value}
+          onChange={onChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          style={{
+            ...inputBase,
+            ...(focused ? focusedExtra : {}),
+            paddingRight: type === 'password' ? 64 : 16,
+          }}
+          {...props}
+        />
+        {type === 'password' && (
+          <button
+            type="button"
+            onClick={onToggleShow}
+            style={{
+              position:   'absolute',
+              right:      12,
+              top:        '50%',
+              transform:  'translateY(-50%)',
+              background: 'none',
+              border:     'none',
+              cursor:     'pointer',
+              fontFamily: 'monospace',
+              fontSize:   10,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              color:      'var(--wings-text-muted)',
+              padding:    '2px 4px',
+              transition: 'color 0.2s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; }}
+          >
+            {show ? 'CACHER' : 'VOIR'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ForceResetPassword() {
   const navigate = useNavigate();
 
-  // Le mot de passe temporaire peut être pré-récupéré depuis localStorage
-  // (conservé par OTP.jsx lorsque must_reset_password=true)
   const tempPassword = localStorage.getItem('password_pending') || '';
 
   const [currentPwd,  setCurrentPwd]  = useState(tempPassword);
@@ -17,6 +96,9 @@ export default function ForceResetPassword() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew,     setShowNew]     = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [foc1, setFoc1] = useState(false);
+  const [foc2, setFoc2] = useState(false);
+  const [foc3, setFoc3] = useState(false);
   const [error,       setError]       = useState('');
   const [loading,     setLoading]     = useState(false);
   const [success,     setSuccess]     = useState(false);
@@ -41,7 +123,6 @@ export default function ForceResetPassword() {
     setLoading(true);
     try {
       await changePassword({ current_password: currentPwd, new_password: newPwd });
-      // Nettoyer les flags de force-reset du localStorage
       localStorage.removeItem('must_reset_password');
       localStorage.removeItem('password_pending');
       localStorage.removeItem('email_pending');
@@ -55,182 +136,184 @@ export default function ForceResetPassword() {
 
   const goToDashboard = () => navigate('/dashboard', { replace: true });
 
-  const inputCls = 'w-full py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition';
-
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
-      style={{ background: '#0a0a0f' }}
+      className="login-page"
+      style={{
+        minHeight:      '100vh',
+        background:     'var(--wings-bg)',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        padding:        '48px 16px',
+      }}
     >
-      {/* Glow effects */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Grid texture */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
-          `,
-          backgroundSize: '48px 48px',
-        }}
-      />
+      <div className="login-grid" />
+      <div className="login-halo-blue" />
+      <div className="login-glow-gold" />
 
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-md"
+        style={{ width: '100%', maxWidth: 440, position: 'relative', zIndex: 1 }}
       >
-        {/* Bannière d'avertissement */}
-        <div
-          className="flex items-start gap-3 px-4 py-3 rounded-xl mb-4 text-sm"
-          style={{
-            background: 'rgba(251,146,60,0.08)',
-            border: '1px solid rgba(251,146,60,0.25)',
-            color: '#fb923c',
-          }}
-        >
-          <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
-          <span>
-            <strong>Sécurité requise.</strong> Votre mot de passe doit être changé avant de pouvoir
-            accéder à la plateforme. Vous ne pouvez pas naviguer ailleurs tant que cette étape
-            n'est pas terminée.
-          </span>
+        {/* Cigale + halo focal */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, position: 'relative' }}>
+          <div
+            style={{
+              position:     'absolute',
+              top:          '50%',
+              left:         '50%',
+              transform:    'translate(-50%, -50%)',
+              width:        260,
+              height:       260,
+              borderRadius: '50%',
+              background:   'radial-gradient(circle, rgba(79,139,255,0.18) 0%, transparent 70%)',
+              filter:       'blur(30px)',
+              pointerEvents:'none',
+            }}
+          />
+          <CicadaProtective size={200} />
         </div>
 
-        {/* Card principale */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-8">
-          {/* Logo */}
-          <div className="flex items-center justify-center gap-2 mb-7">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #06b6d4, #a78bfa)' }}
-            >
-              <Share2 className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="font-bold text-white text-sm tracking-tight">Wings</span>
-          </div>
+        <h1
+          style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontSize:   38,
+            fontWeight: 400,
+            color:      'var(--wings-text)',
+            textAlign:  'center',
+            margin:     '24px 0 0',
+            lineHeight: 1.15,
+          }}
+        >
+          Sécurisez votre envol.
+        </h1>
+        <p
+          style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontStyle:  'italic',
+            fontSize:   14,
+            color:      'var(--wings-text-muted)',
+            textAlign:  'center',
+            margin:     '8px 0 32px',
+          }}
+        >
+          La cigale protège tes accès.
+        </p>
 
+        {/* Bannière d'avertissement */}
+        {!success && (
+          <div
+            className="flex items-start gap-3 px-4 py-3 rounded-xl mb-6 text-sm"
+            style={{
+              background: 'rgba(255,185,0,0.08)',
+              border: '1px solid rgba(255,185,0,0.25)',
+              color: 'var(--wings-gold)',
+            }}
+          >
+            <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
+            <span>
+              <strong>Sécurité requise.</strong> Change ton mot de passe avant d'accéder à ton espace.
+            </span>
+          </div>
+        )}
+
+        {/* Card principale */}
+        <div
+          style={{
+            background:   'var(--wings-surface)',
+            border:       '1px solid var(--wings-border)',
+            borderRadius: 20,
+            padding:      '32px 28px',
+          }}
+        >
           {!success ? (
             <>
-              {/* Lock icon */}
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
-                style={{ background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.2)' }}
-              >
-                <Lock className="w-7 h-7" style={{ color: '#fb923c' }} />
-              </div>
-
-              <h2 className="text-2xl font-extrabold text-white mb-1 text-center">
-                Changer votre mot de passe
-              </h2>
-              <p className="text-slate-400 text-sm mb-7 text-center">
-                Choisissez un mot de passe personnel fort d'au moins 8 caractères.
-              </p>
-
               {error && (
                 <div
-                  className="px-4 py-3 rounded-lg mb-5 text-sm"
                   style={{
-                    background: 'rgba(239,68,68,0.08)',
-                    border: '1px solid rgba(239,68,68,0.2)',
-                    color: '#f87171',
+                    padding:      '12px 16px',
+                    borderRadius: 10,
+                    marginBottom: 20,
+                    fontSize:     13,
+                    background:   'rgba(239,68,68,0.08)',
+                    border:       '1px solid rgba(239,68,68,0.25)',
+                    color:        '#f87171',
                   }}
                 >
                   {error}
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                {/* Mot de passe actuel (temporaire) */}
-                <div>
-                  <label className="block text-xs font-semibold text-white/60 mb-2">
-                    Mot de passe temporaire actuel
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
-                    <input
-                      type={showCurrent ? 'text' : 'password'}
-                      placeholder="Mot de passe temporaire reçu"
-                      value={currentPwd}
-                      onChange={e => setCurrentPwd(e.target.value)}
-                      required
-                      className={`${inputCls} pl-10 pr-10`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrent(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                    >
-                      {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <Field
+                  label="Clé temporaire reçue"
+                  type="password"
+                  value={currentPwd}
+                  onChange={e => setCurrentPwd(e.target.value)}
+                  show={showCurrent}
+                  onToggleShow={() => setShowCurrent(v => !v)}
+                  focused={foc1}
+                  onFocus={() => setFoc1(true)}
+                  onBlur={() => setFoc1(false)}
+                  required
+                />
 
-                {/* Nouveau mot de passe */}
-                <div>
-                  <label className="block text-xs font-semibold text-white/60 mb-2">
-                    Nouveau mot de passe
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
-                    <input
-                      type={showNew ? 'text' : 'password'}
-                      placeholder="Min. 8 caractères"
-                      value={newPwd}
-                      onChange={e => setNewPwd(e.target.value)}
-                      required
-                      className={`${inputCls} pl-10 pr-10`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNew(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                    >
-                      {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
+                <Field
+                  label="Nouveau mot de passe personnel"
+                  type="password"
+                  value={newPwd}
+                  onChange={e => setNewPwd(e.target.value)}
+                  show={showNew}
+                  onToggleShow={() => setShowNew(v => !v)}
+                  focused={foc2}
+                  onFocus={() => setFoc2(true)}
+                  onBlur={() => setFoc2(false)}
+                  required
+                />
 
-                {/* Confirmer le nouveau mot de passe */}
-                <div>
-                  <label className="block text-xs font-semibold text-white/60 mb-2">
-                    Confirmer le nouveau mot de passe
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
-                    <input
-                      type={showConfirm ? 'text' : 'password'}
-                      placeholder="Répéter le mot de passe"
-                      value={confirmPwd}
-                      onChange={e => setConfirmPwd(e.target.value)}
-                      required
-                      className={`${inputCls} pl-10 pr-10`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirm(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                    >
-                      {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
+                <Field
+                  label="Confirmation"
+                  type="password"
+                  value={confirmPwd}
+                  onChange={e => setConfirmPwd(e.target.value)}
+                  show={showConfirm}
+                  onToggleShow={() => setShowConfirm(v => !v)}
+                  focused={foc3}
+                  onFocus={() => setFoc3(true)}
+                  onBlur={() => setFoc3(false)}
+                  required
+                />
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 rounded-lg text-sm font-semibold transition-all mt-1 disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110"
                   style={{
-                    background: '#fb923c',
-                    color: '#0a0a0f',
-                    boxShadow: '0 0 24px rgba(251,146,60,0.3)',
+                    width:       '100%',
+                    padding:     '14px 24px',
+                    borderRadius: 9999,
+                    border:      'none',
+                    background:  'var(--wings-blue)',
+                    color:       '#fff',
+                    fontSize:    14,
+                    fontWeight:  600,
+                    fontFamily:  'inherit',
+                    cursor:      loading ? 'not-allowed' : 'pointer',
+                    opacity:     loading ? 0.6 : 1,
+                    transition:  'background 0.2s ease, box-shadow 0.2s ease',
+                    marginTop:   4,
+                    boxShadow:   '0 4px 12px rgba(79,139,255,0.2)',
+                  }}
+                  onMouseEnter={e => {
+                    if (!loading) e.currentTarget.style.background = 'var(--wings-blue-dark)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'var(--wings-blue)';
                   }}
                 >
-                  {loading ? 'Modification en cours…' : 'Changer mon mot de passe'}
+                  {loading ? 'Finalisation…' : 'Valider mon mot de passe →'}
                 </button>
               </form>
             </>
@@ -244,22 +327,31 @@ export default function ForceResetPassword() {
                 <CheckCircle className="w-8 h-8" style={{ color: '#34d399' }} />
               </div>
 
-              <h2 className="text-2xl font-extrabold text-white mb-2">Mot de passe modifié !</h2>
+              <h2 className="text-2xl font-extrabold text-white mb-2" style={{ fontFamily: 'Georgia, serif', fontWeight: 400 }}>Accès prêt !</h2>
               <p className="text-slate-400 text-sm mb-7">
-                Votre mot de passe a été mis à jour avec succès. Vous pouvez maintenant accéder à
+                Votre mot de passe a été mis à jour. Le ciel est dégagé, vous pouvez maintenant accéder à
                 la plateforme.
               </p>
 
               <button
                 onClick={goToDashboard}
-                className="w-full py-3 rounded-lg text-sm font-semibold transition-all hover:brightness-110"
                 style={{
-                  background: '#06b6d4',
-                  color: '#0a0a0f',
-                  boxShadow: '0 0 24px rgba(6,182,212,0.3)',
+                  width:       '100%',
+                  padding:     '14px 24px',
+                  borderRadius: 9999,
+                  border:      'none',
+                  background:  'var(--wings-blue)',
+                  color:       '#fff',
+                  fontSize:    14,
+                  fontWeight:  500,
+                  fontFamily:  'inherit',
+                  cursor:      'pointer',
+                  transition:  'background 0.2s ease, box-shadow 0.2s ease',
                 }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--wings-blue-dark)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--wings-blue)'; }}
               >
-                Accéder au tableau de bord
+                Accéder au tableau de bord →
               </button>
             </div>
           )}
