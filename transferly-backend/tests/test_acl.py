@@ -89,7 +89,7 @@ def _h(token):
 def _upload(client, token, content=b"Contenu test", filename="test.txt"):
     """Upload un fichier via l'endpoint."""
     return client.post(
-        "/files/upload",
+        "/files/",
         headers=_h(token),
         data={"file": (io.BytesIO(content), filename)},
         content_type="multipart/form-data"
@@ -260,13 +260,13 @@ class TestUpload:
         _, token = _create_user(app, "Ext", "ext@test.com")
         resp = _upload(client, token,
                        content=b"MZ\x90\x00", filename="virus.exe")
-        assert resp.status_code == 415
+        assert resp.status_code == 400
 
     def test_upload_refuse_extension_sh(self, app, client):
         _, token = _create_user(app, "Sh", "sh@test.com")
         resp = _upload(client, token,
                        content=b"#!/bin/bash", filename="hack.sh")
-        assert resp.status_code == 415
+        assert resp.status_code == 400
 
     def test_upload_refuse_quota_depasse(self, app, client):
         uid, token = _create_user(app, "Quota", "quota@test.com")
@@ -283,7 +283,7 @@ class TestUpload:
 
     def test_upload_sans_fichier_renvoie_400(self, app, client):
         _, token = _create_user(app, "NoFile", "nofile@test.com")
-        resp = client.post("/files/upload", headers=_h(token),
+        resp = client.post("/files/", headers=_h(token),
                            data={}, content_type="multipart/form-data")
         assert resp.status_code == 400
 
