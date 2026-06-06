@@ -93,6 +93,8 @@ export default function AppLayout({ children, titleNode }) {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
+    // Synchronisation avec les tokens de Wings :
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     localStorage.setItem('darkMode', String(dark));
   }, [dark]);
 
