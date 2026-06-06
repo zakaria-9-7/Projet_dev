@@ -21,8 +21,29 @@ file_locks = {}
 lock_mutex = threading.Lock()
 
 ALLOWED_EXTENSIONS = {
-    'pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt',
-    'txt', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'csv', 'md',
+    # Documents & Office
+    'pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'txt', 'csv', 'md',
+    # Images
+    'png', 'jpg', 'jpeg', 'gif', 'webp',
+    # Archives
+    'zip', 'rar', '7z', 'tar', 'gz',
+    # Code & Développement
+    'py', 'js', 'jsx', 'ts', 'tsx', 'java', 'c', 'cpp', 'h', 'hpp',
+    'html', 'css', 'json', 'xml', 'sql', 'rb', 'go', 'rs'
+}
+
+FORBIDDEN_EXTENSIONS = {
+    'exe', 'bat', 'sh', 'cmd', 'msi', 'php', 'com', 'vbs', 'scr', 'gadget'
+}
+
+MAGIC_BYTES_SIGNATURES = {
+    'pdf': b'%PDF',
+    'png': b'\x89PNG',
+    'jpg': b'\xff\xd8\xff',
+    'jpeg': b'\xff\xd8\xff',
+    'zip': b'PK\x03\x04',
+    'docx': b'PK\x03\x04',
+    'xlsx': b'PK\x03\x04'
 }
 
 
@@ -119,9 +140,30 @@ def upload_file():
         if not uploaded:
             return jsonify({'error': 'Champ file manquant'}), 400
 
-        if _ext(uploaded.filename) not in ALLOWED_EXTENSIONS:
-            return jsonify({'error': f"Type de fichier non autorisé (.{_ext(uploaded.filename)})"}), 415
+        extension = _ext(uploaded.filename)
+        if not extension:
+            return jsonify({'error': 'Le fichier doit avoir une extension'}), 400
 
+        if extension in FORBIDDEN_EXTENSIONS:
+            return jsonify({'error': f"Le format .{extension} est strictement interdit pour des raisons de sécurité"}), 400
+
+        if extension not in ALLOWED_EXTENSIONS:
+            return jsonify({'error': f"Type de fichier non autorisé (.{extension})"}), 400
+
+        # --- Validation du Type MIME (Niveau 2) ---
+        if extension in MAGIC_BYTES_SIGNATURES:
+            mimetype = uploaded.content_type
+            if mimetype and extension not in mimetype.lower():
+                return jsonify({'error': "Le type MIME ne correspond pas à l'extension déclarée"}), 400
+
+        # --- Verification des Magic Bytes (Niveau 3) ---
+        if extension in MAGIC_BYTES_SIGNATURES:
+            header = uploaded.read(4)
+            uploaded.seek(0)
+            if not header.startswith(MAGIC_BYTES_SIGNATURES[extension]):
+                return jsonify({'error': "La signature binaire ne correspond pas à l'extension déclarée (Tentative de masquage détectée)"}), 400
+
+        uploaded.seek(0)
         file_content = uploaded.read()
         file_size_mb = len(file_content) / (1024 * 1024)
 
