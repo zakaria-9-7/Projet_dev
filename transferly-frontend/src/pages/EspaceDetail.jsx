@@ -1558,7 +1558,7 @@ export default function EspaceDetail() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '0.5px solid var(--wings-border)' }}>
-                      {['Membre', 'Lecture', 'Téléch.', 'Écriture'].map(h => (
+                      {['Membre', 'Lecture', 'Téléch.', 'Écriture', 'Partage', 'Suppression'].map(h => (
                         <th key={h} style={{
                           textAlign: h === 'Membre' ? 'left' : 'center',
                           padding: '8px 10px',
@@ -1598,7 +1598,7 @@ export default function EspaceDetail() {
                               </div>
                             </div>
                           </td>
-                          {['lecture', 'download', 'ecriture'].map(perm => (
+                          {['lecture', 'download', 'ecriture', 'partage', 'suppression'].map(perm => (
                             <td key={perm} style={{ textAlign: 'center', padding: '10px 10px' }}>
                               <input
                                 type="checkbox"

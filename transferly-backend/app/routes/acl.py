@@ -78,7 +78,13 @@ def _gere_ce_fichier(user, fichier_id: int) -> bool:
             id=fichier.espace_id,
             admin_id=user.id
         ).first()
-        return espace is not None
+        if espace is not None:
+            return True
+
+    # Vérification de la permission 'partage' explicite via ACL
+    acl = ACL.query.filter_by(user_id=user.id, fichier_id=fichier_id).first()
+    if acl and acl.partage:
+        return True
 
     return False
 
@@ -321,6 +327,7 @@ def get_acl_fichier_espace(fichier_id):
             'lecture': acl.lecture if acl else False,
             'download': acl.download if acl else False,
             'ecriture': acl.ecriture if acl else False,
+            'partage': acl.partage if acl else False,
             'suppression': acl.suppression if acl else False,
         })
 
@@ -365,6 +372,7 @@ def update_acl_membre(fichier_id, user_id):
     if 'lecture' in data:     acl.lecture = bool(data['lecture'])
     if 'download' in data:    acl.download = bool(data['download'])
     if 'ecriture' in data:    acl.ecriture = bool(data['ecriture'])
+    if 'partage' in data:     acl.partage = bool(data['partage'])
     if 'suppression' in data: acl.suppression = bool(data['suppression'])
 
     db.session.commit()

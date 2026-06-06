@@ -422,18 +422,10 @@ def delete_files_batch():
                 skipped.append({'id': file_id, 'raison': 'Fichier introuvable'})
                 continue
 
-            if fichier.espace_id is not None:
-                from app.routes.folders import _is_espace_admin
-                user_role = g.user.get('role', '')
-                is_owner  = (fichier.user_id == user_id)
-                is_admin  = _is_espace_admin(user_id, user_role, fichier.espace_id)
-                if not (is_owner or is_admin):
-                    skipped.append({'id': file_id, 'raison': 'Permission refusée'})
-                    continue
-            else:
-                if not check_permission(user_id, file_id, 'suppression'):
-                    skipped.append({'id': file_id, 'raison': 'Accès refusé'})
-                    continue
+            if not check_permission(user_id, file_id, 'suppression'):
+                skipped.append({'id': file_id, 'raison': 'Accès refusé'})
+                continue
+
 
             lock = get_file_lock(file_id)
             if not lock.acquire(blocking=False):

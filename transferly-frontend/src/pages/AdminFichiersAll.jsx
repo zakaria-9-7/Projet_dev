@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Trash2, FolderOpen, User, FilePen, History, CheckSquare, X } from 'lucide-react';
+import { FileText, Trash2, FolderOpen, User, FilePen, History, CheckSquare, X, Download, Eye } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import API from '../api/auth';
 import { formatRelativeTime } from '../utils/formatTime';
 import { getFileTypeColor, isEditable } from '../utils/fileType';
 import SearchBar from '../components/SearchBar';
 import { useDebounced } from '../hooks/useDebounced';
+import FilePreviewModal from '../components/FilePreviewModal';
 
 export default function AdminFichiersAll() {
   const [fichiers,         setFichiers]         = useState([]);
@@ -17,6 +18,7 @@ export default function AdminFichiersAll() {
   const [selectionMode,    setSelectionMode]    = useState(false);
   const [showBatchConfirm, setShowBatchConfirm] = useState(false);
   const [batchDeleting,    setBatchDeleting]    = useState(false);
+  const [previewFile,      setPreviewFile]      = useState(null);
   const debouncedSearch = useDebounced(searchTerm, 300);
   const navigate = useNavigate();
 
@@ -49,6 +51,18 @@ export default function AdminFichiersAll() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDownload = async (file) => {
+    try {
+      const res = await API.get(`/files/${file.id}/download`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = file.nom; a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Échec du téléchargement', 'error');
+    }
+  };
 
   const handleDelete = async (id, nom) => {
     if (!confirm(`Supprimer le fichier "${nom}" ? Action de modération irréversible.`)) return;
@@ -253,7 +267,7 @@ export default function AdminFichiersAll() {
               <span style={{ ...colHeaderStyle, flex: 1 }}>Propriétaire</span>
               <span style={{ ...colHeaderStyle, flex: '0 0 160px' }}>Emplacement</span>
               <span style={{ ...colHeaderStyle, flex: '0 0 120px' }}>Date</span>
-              <span style={{ ...colHeaderStyle, flex: '0 0 100px', textAlign: 'right' }}>Action</span>
+              <span style={{ ...colHeaderStyle, flex: '0 0 130px', textAlign: 'right' }}>Action</span>
             </div>
 
             {/* Lignes */}
@@ -337,7 +351,33 @@ export default function AdminFichiersAll() {
                   </div>
 
                   {/* ACTIONS */}
-                  <div style={{ flex: '0 0 100px', display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                  <div style={{ flex: '0 0 130px', display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                    <button
+                      onClick={() => setPreviewFile(f)}
+                      title="Aperçu"
+                      style={{
+                        background: 'none', border: 'none', padding: 4,
+                        color: 'var(--wings-text-muted)', cursor: 'pointer', borderRadius: 6,
+                        display: 'flex', alignItems: 'center',
+                      }}
+                      onMouseEnter={el => el.currentTarget.style.color = 'var(--wings-blue)'}
+                      onMouseLeave={el => el.currentTarget.style.color = 'var(--wings-text-muted)'}
+                    >
+                      <Eye size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDownload(f)}
+                      title="Télécharger"
+                      style={{
+                        background: 'none', border: 'none', padding: 4,
+                        color: 'var(--wings-text-muted)', cursor: 'pointer', borderRadius: 6,
+                        display: 'flex', alignItems: 'center',
+                      }}
+                      onMouseEnter={el => el.currentTarget.style.color = 'var(--wings-gold)'}
+                      onMouseLeave={el => el.currentTarget.style.color = 'var(--wings-text-muted)'}
+                    >
+                      <Download size={14} />
+                    </button>
                     {isEditable(f.nom) && (
                       <button
                         onClick={() => navigate(`/editor?fileId=${f.id}`)}
@@ -386,6 +426,14 @@ export default function AdminFichiersAll() {
           </div>
         )}
       </div>
+
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+          onDownload={() => { handleDownload(previewFile); setPreviewFile(null); }}
+        />
+      )}
 
       {/* Modal confirmation suppression batch */}
       {showBatchConfirm && (
