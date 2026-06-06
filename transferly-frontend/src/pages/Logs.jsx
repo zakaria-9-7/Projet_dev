@@ -25,37 +25,65 @@ const ACTION_BADGE = {
 };
 
 export default function Logs() {
-  const [logs, setLogs]     = useState([]);
-  const [error, setError]   = useState('');
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('Tous');
+  const [logs, setLogs]           = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
+  const [search, setSearch]       = useState('');
+  
+  // Nouveaux états de filtrage & pagination
+  const [selectedAction, setSelectedAction] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [startDate,      setStartDate]      = useState('');
+  const [endDate,        setEndDate]        = useState('');
+  const [page,           setPage]           = useState(1);
+  const LIMIT = 50;
+
+  const fetchLogs = () => {
+    setLoading(true);
+    const params = {
+      limit:      LIMIT,
+      offset:     (page - 1) * LIMIT,
+      action:     selectedAction || undefined,
+      statut:     selectedStatus || undefined,
+      start_date: startDate || undefined,
+      end_date:   endDate || undefined,
+    };
+
+    API.get('/logs/', { params })
+      .then(r => setLogs((r.data ?? []).map(l => ({ ...normalizeLog(l), original_statut: l.statut }))))
+      .catch(() => setError('Impossible de charger les journaux.'))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    API.get('/logs/?limit=200')
-      .then(r => setLogs((r.data ?? []).map(normalizeLog)))
-      .catch(() => setError('Impossible de charger les journaux.'));
-  }, []);
-
-  const actions = ['Tous', ...new Set(logs.map(l => l.action))];
+    fetchLogs();
+  }, [page, selectedAction, selectedStatus, startDate, endDate]);
 
   const exportCSV = () => {
-    const header = ['Utilisateur', 'Action', 'Fichier/Ressource', 'Horodatage', 'Statut'];
-    const rows = visible.map(l => [
-      l.utilisateur, l.action, l.fichier, l.horodatage, l.statut ? 'Succès' : 'Échec',
-    ]);
-    const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    const a = document.createElement('a');
-    a.href = url; a.download = 'logs_transferly.csv'; a.click();
-    URL.revokeObjectURL(url);
+    const params = {
+      action:     selectedAction || undefined,
+      statut:     selectedStatus || undefined,
+      start_date: startDate || undefined,
+      end_date:   endDate || undefined,
+      export:     'csv'
+    };
+    
+    API.get('/logs/', { params, responseType: 'blob' })
+      .then(res => {
+        const url = URL.createObjectURL(new Blob([res.data]));
+        const a = document.createElement('a');
+        a.href = url; a.download = `logs_export_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => alert('Erreur lors de l\'export CSV'));
   };
 
   const visible = logs.filter(l => {
-    const matchSearch = l.utilisateur.toLowerCase().includes(search.toLowerCase())
-      || l.action.toLowerCase().includes(search.toLowerCase())
-      || l.fichier.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'Tous' || l.action === filter;
-    return matchSearch && matchFilter;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return l.utilisateur.toLowerCase().includes(q)
+      || l.action.toLowerCase().includes(q)
+      || l.fichier.toLowerCase().includes(q);
   });
 
   const colHeaderStyle = {
@@ -67,39 +95,60 @@ export default function Logs() {
     textTransform: 'uppercase',
   };
 
+  const selectStyle = {
+    padding: '8px 12px',
+    background: 'var(--wings-surface)',
+    border: '0.5px solid var(--wings-border)',
+    borderRadius: 10,
+    color: 'var(--wings-text)',
+    fontSize: 13,
+    outline: 'none',
+    cursor: 'pointer',
+    minWidth: 140,
+  };
+
+  const inputDateStyle = {
+    ...selectStyle,
+    minWidth: 'auto',
+  };
+
   return (
     <AppLayout>
-      <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
         {/* En-tête */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
-            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 4 }}>
+            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 26, color: 'var(--wings-text)', fontWeight: 400, margin: 0, marginBottom: 6 }}>
               Journaux d'activité
             </h1>
-            <p style={{ color: 'var(--wings-text-muted)', fontSize: 13, margin: 0 }}>
-              Toutes les actions sur la plateforme
+            <p style={{ color: 'var(--wings-text-muted)', fontSize: 14, margin: 0 }}>
+              Audit global des actions et événements de sécurité
             </p>
           </div>
           <button
             onClick={exportCSV}
             style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '9px 16px',
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 20px',
               background: 'var(--wings-surface)',
               border: '0.5px solid var(--wings-border)',
-              borderRadius: 999, color: 'var(--wings-text-muted)',
-              fontSize: 13, cursor: 'pointer', flexShrink: 0,
+              borderRadius: 999, color: 'var(--wings-text)',
+              fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
             }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--wings-gold)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--wings-border)'}
           >
-            <Download size={13} />
-            Exporter
+            <Download size={14} />
+            Exporter CSV
           </button>
         </div>
 
         {error && (
           <div style={{
-            padding: '10px 14px', borderRadius: 10, fontSize: 13,
+            padding: '12px 16px', borderRadius: 12, fontSize: 13,
             background: 'rgba(229,115,115,0.08)',
             border: '0.5px solid rgba(229,115,115,0.3)',
             color: '#e57373',
@@ -108,125 +157,187 @@ export default function Logs() {
           </div>
         )}
 
-        {/* Filtres */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 200 }}>
-            <Search size={14} style={{
-              position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-              color: 'var(--wings-text-muted)', pointerEvents: 'none',
-            }} />
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher un utilisateur, action, fichier…"
-              style={{
-                width: '100%',
-                padding: '10px 14px 10px 38px',
-                background: 'var(--wings-surface)',
-                border: '0.5px solid var(--wings-border)',
-                borderRadius: 12,
-                color: 'var(--wings-text)',
-                fontSize: 13, outline: 'none',
-                boxSizing: 'border-box',
-              }}
-              onFocus={e => e.target.style.borderColor = 'var(--wings-blue)'}
-              onBlur={e => e.target.style.borderColor = 'var(--wings-border)'}
-            />
+        {/* BARRE DE FILTRES MULTI-CRITÈRES */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end',
+          padding: 20, background: 'var(--wings-surface)', border: '0.5px solid var(--wings-border)',
+          borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+          backdropFilter: 'blur(8px)',
+        }}>
+          {/* Recherche libre */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 200px' }}>
+            <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--wings-text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Recherche</label>
+            <div style={{ position: 'relative' }}>
+              <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--wings-text-muted)' }} />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Utilisateur, fichier..."
+                style={{ ...selectStyle, width: '100%', paddingLeft: 36 }}
+              />
+            </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <Filter size={13} style={{ color: 'var(--wings-text-muted)', flexShrink: 0 }} />
-            {actions.map(a => (
-              <button
-                key={a}
-                onClick={() => setFilter(a)}
-                style={{
-                  padding: '6px 12px',
-                  background: filter === a ? 'var(--wings-blue)' : 'var(--wings-surface)',
-                  border: `0.5px solid ${filter === a ? 'var(--wings-blue)' : 'var(--wings-border)'}`,
-                  borderRadius: 999,
-                  color: filter === a ? '#fff' : 'var(--wings-text-muted)',
-                  fontSize: 12, cursor: 'pointer',
-                }}
-              >
-                {a}
-              </button>
-            ))}
+          {/* Action */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--wings-text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Action</label>
+            <select
+              value={selectedAction}
+              onChange={e => { setSelectedAction(e.target.value); setPage(1); }}
+              style={selectStyle}
+            >
+              <option value="">Toutes les actions</option>
+              <option value="connexion">Connexions</option>
+              <option value="connexion_echouee">Échecs de connexion</option>
+              <option value="deconnexion">Déconnexions</option>
+              <option value="upload">Téléversements</option>
+              <option value="download">Téléchargements</option>
+              <option value="modification">Modifications</option>
+              <option value="suppression">Suppressions</option>
+              <option value="blocage_securite">Blocages sécurité</option>
+            </select>
           </div>
+
+          {/* Statut */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--wings-text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Statut</label>
+            <select
+              value={selectedStatus}
+              onChange={e => { setSelectedStatus(e.target.value); setPage(1); }}
+              style={selectStyle}
+            >
+              <option value="">Tous les statuts</option>
+              <option value="succes">Succès</option>
+              <option value="echec">Échec</option>
+              <option value="bloque">Bloqué</option>
+            </select>
+          </div>
+
+          {/* Dates */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--wings-text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Période</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }} style={inputDateStyle} />
+              <span style={{ color: 'var(--wings-text-muted)', fontSize: 12 }}>au</span>
+              <input type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }} style={inputDateStyle} />
+            </div>
+          </div>
+          
+          {(selectedAction || selectedStatus || startDate || endDate || search) && (
+             <button 
+               onClick={() => { setSelectedAction(''); setSelectedStatus(''); setStartDate(''); setEndDate(''); setSearch(''); setPage(1); }}
+               style={{ background: 'none', border: 'none', color: 'var(--wings-blue)', fontSize: 12, cursor: 'pointer', paddingBottom: 10, paddingLeft: 4 }}
+             >
+               Effacer
+             </button>
+          )}
         </div>
 
         {/* Liste */}
-        <div>
+        <div style={{ background: 'var(--wings-surface)', border: '0.5px solid var(--wings-border)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
           {/* En-tête colonnes */}
-          <div style={{ display: 'flex', alignItems: 'center', padding: '6px 20px', marginBottom: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', background: 'rgba(0,0,0,0.02)', borderBottom: '0.5px solid var(--wings-border)' }}>
             <span style={{ ...colHeaderStyle, flex: 1 }}>Utilisateur</span>
-            <span style={{ ...colHeaderStyle, flex: '0 0 140px' }}>Action</span>
-            <span style={{ ...colHeaderStyle, flex: '0 0 200px' }}>Fichier</span>
-            <span style={{ ...colHeaderStyle, flex: '0 0 130px' }}>Horodatage</span>
-            <span style={{ ...colHeaderStyle, flex: '0 0 90px', textAlign: 'right' }}>Statut</span>
+            <span style={{ ...colHeaderStyle, flex: '0 0 160px' }}>Action</span>
+            <span style={{ ...colHeaderStyle, flex: '0 0 200px' }}>Fichier / Détails</span>
+            <span style={{ ...colHeaderStyle, flex: '0 0 140px' }}>Date</span>
+            <span style={{ ...colHeaderStyle, flex: '0 0 100px', textAlign: 'right' }}>Statut</span>
           </div>
 
           {/* Lignes */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {visible.length === 0 ? (
-              <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 13 }}>
-                Aucun journal ne correspond à votre recherche
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {loading ? (
+              <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 14 }}>Chargement des journaux…</div>
+            ) : visible.length === 0 ? (
+              <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--wings-text-muted)', fontSize: 14, fontStyle: 'italic' }}>
+                Aucun journal ne correspond à vos critères
               </div>
-            ) : visible.map(log => (
+            ) : visible.map((log, idx) => (
               <div key={log.id} style={{
                 display: 'flex', alignItems: 'center',
-                background: 'var(--wings-surface)',
-                border: '0.5px solid var(--wings-border)',
-                borderRadius: 10, padding: '12px 20px',
-              }}>
-                {/* UTILISATEUR */}
+                padding: '14px 24px',
+                borderBottom: idx === visible.length - 1 ? 'none' : '0.5px solid var(--wings-border)',
+                transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(79,139,255,0.02)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
                 <div style={{ flex: 1, color: 'var(--wings-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>
                   {log.utilisateur}
                 </div>
 
-                {/* ACTION */}
-                <div style={{ flex: '0 0 140px' }}>
+                <div style={{ flex: '0 0 160px' }}>
                   <span style={{
-                    ...(ACTION_BADGE[log.action] ?? { background: 'rgba(255,255,255,0.04)', color: 'var(--wings-text-muted)', border: '0.5px solid var(--wings-border)' }),
-                    fontFamily: 'monospace', fontSize: 10,
+                    ...(ACTION_BADGE[log.action] ?? { background: 'rgba(0,0,0,0.05)', color: 'var(--wings-text-muted)', border: '1px solid var(--wings-border)' }),
+                    fontFamily: 'monospace', fontSize: 10, fontWeight: 700,
                     borderRadius: 6, padding: '3px 8px',
-                    display: 'inline-block', letterSpacing: '0.5px',
+                    display: 'inline-block', letterSpacing: '0.5px', textTransform: 'uppercase'
                   }}>
                     {log.action}
                   </span>
                 </div>
 
-                {/* FICHIER */}
                 <div style={{ flex: '0 0 200px', color: 'var(--wings-text-muted)', fontFamily: 'monospace', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>
                   {log.fichier}
                 </div>
 
-                {/* HORODATAGE */}
-                <div style={{ flex: '0 0 130px', color: 'var(--wings-text-muted)', fontSize: 12 }}>
+                <div style={{ flex: '0 0 140px', color: 'var(--wings-text-muted)', fontSize: 12 }}>
                   {log.horodatage}
                 </div>
 
-                {/* STATUT */}
-                <div style={{ flex: '0 0 90px', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                <div style={{ flex: '0 0 100px', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
                   <span style={{
-                    width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                    background: log.statut ? '#5dd39e' : '#e57373',
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: log.statut ? '#5dd39e' : (logs.find(x => x.id === log.id)?.original_statut === 'bloque' ? '#ff9800' : '#e57373'),
                   }} />
-                  <span style={{ fontSize: 12, color: log.statut ? '#5dd39e' : '#e57373' }}>
-                    {log.statut ? 'Succès' : 'Échec'}
+                  <span style={{ fontSize: 12, fontWeight: 600, color: log.statut ? '#5dd39e' : (logs.find(x => x.id === log.id)?.original_statut === 'bloque' ? '#ff9800' : '#e57373') }}>
+                    {log.statut ? 'Succès' : (logs.find(x => x.id === log.id)?.original_statut === 'bloque' ? 'Bloqué' : 'Échec')}
                   </span>
                 </div>
               </div>
             ))}
           </div>
-
-          {visible.length > 0 && (
-            <div style={{ padding: '10px 4px', marginTop: 6, fontSize: 12, color: 'var(--wings-text-muted)' }}>
-              {visible.length} entrée{visible.length !== 1 ? 's' : ''} affichée{visible.length !== 1 ? 's' : ''}
-            </div>
-          )}
         </div>
+
+        {/* PAGINATION */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 10 }}>
+          <button
+            disabled={page === 1 || loading}
+            onClick={() => setPage(p => p - 1)}
+            style={{
+              padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+              background: 'var(--wings-surface)', border: '0.5px solid var(--wings-border)',
+              color: page === 1 ? 'var(--wings-text-muted)' : 'var(--wings-text)',
+              cursor: page === 1 ? 'not-allowed' : 'pointer',
+              opacity: page === 1 ? 0.5 : 1, transition: 'all 0.15s'
+            }}
+          >
+            Précédent
+          </button>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--wings-text-muted)', fontFamily: 'monospace' }}>
+            PAGE {page}
+          </span>
+          <button
+            disabled={logs.length < LIMIT || loading}
+            onClick={() => setPage(p => p + 1)}
+            style={{
+              padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+              background: 'var(--wings-surface)', border: '0.5px solid var(--wings-border)',
+              color: logs.length < LIMIT ? 'var(--wings-text-muted)' : 'var(--wings-text)',
+              cursor: logs.length < LIMIT ? 'not-allowed' : 'pointer',
+              opacity: logs.length < LIMIT ? 0.5 : 1, transition: 'all 0.15s'
+            }}
+          >
+            Suivant
+          </button>
+        </div>
+
+        {!loading && (
+           <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--wings-text-muted)' }}>
+             Affichage de {visible.length} entrée{visible.length !== 1 ? 's' : ''} sur cette page
+           </div>
+        )}
       </div>
     </AppLayout>
   );

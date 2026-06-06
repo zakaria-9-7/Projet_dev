@@ -161,6 +161,7 @@ def upload_file():
             header = uploaded.read(4)
             uploaded.seek(0)
             if not header.startswith(MAGIC_BYTES_SIGNATURES[extension]):
+                log_action(user_id=user_id, action='blocage_securite', resource_id=None, statut='bloque', details=f"Fichier rejeté : signature binaire non conforme pour l'extension .{extension}")
                 return jsonify({'error': "La signature binaire ne correspond pas à l'extension déclarée (Tentative de masquage détectée)"}), 400
 
         uploaded.seek(0)

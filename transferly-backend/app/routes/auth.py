@@ -54,6 +54,7 @@ def login():
     user = User.query.filter_by(email=email).first()
 
     if not user or not bcrypt.check_password_hash(user.password, password):
+        log_action(user_id=None, action='connexion_echouee', resource_id=None, statut='echec', details=f"Tentative de connexion échouée pour l'email: {email}")
         return jsonify({'error': 'Identifiants incorrects'}), 401
 
     if user.statut == 'bloque':

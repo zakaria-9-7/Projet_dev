@@ -88,6 +88,7 @@ export default function History() {
           display: 'flex',
           border: '0.5px solid var(--wings-border)',
           borderRadius: 10, overflow: 'hidden',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
         }}>
           {SCOPES.map((s, i) => (
             <button
@@ -96,12 +97,12 @@ export default function History() {
               style={{
                 padding: '7px 16px',
                 fontSize: 12, fontWeight: 500,
-                background: scope === s.key ? 'var(--wings-blue)' : 'transparent',
+                background: scope === s.key ? 'var(--wings-blue)' : 'var(--wings-surface)',
                 color: scope === s.key ? '#fff' : 'var(--wings-text-muted)',
                 border: 'none',
                 borderLeft: i > 0 ? '0.5px solid var(--wings-border)' : 'none',
                 cursor: 'pointer',
-                transition: 'background 0.15s, color 0.15s',
+                transition: 'all 0.15s',
               }}
             >
               {s.label}
@@ -130,10 +131,16 @@ export default function History() {
               color: 'var(--wings-text)',
               fontSize: 12, outline: 'none',
               width: 230,
-              transition: 'border-color 0.15s',
+              transition: 'border-color 0.15s, box-shadow 0.15s',
             }}
-            onFocus={e => { e.target.style.borderColor = 'var(--wings-blue)'; }}
-            onBlur={e => { e.target.style.borderColor = 'var(--wings-border)'; }}
+            onFocus={e => {
+              e.target.style.borderColor = 'var(--wings-blue)';
+              e.target.style.boxShadow = '0 0 0 3px rgba(79,139,255,0.1)';
+            }}
+            onBlur={e => {
+              e.target.style.borderColor = 'var(--wings-border)';
+              e.target.style.boxShadow = 'none';
+            }}
           />
           {search && (
             <button
@@ -199,6 +206,7 @@ export default function History() {
           background: 'var(--wings-surface)',
           border: '0.5px solid var(--wings-border)',
           borderRadius: 16, overflow: 'hidden',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
         }}>
           {filteredItems.map((item, i) => (
             <HistoryRow
@@ -282,10 +290,10 @@ function HistoryRow({ item, last, onClick }) {
           {/* Badge version */}
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '2px 7px',
-            background: 'rgba(79,139,255,0.09)',
-            color: 'var(--wings-blue)',
-            border: '0.5px solid rgba(79,139,255,0.18)',
+            background: 'var(--wings-blue)',
+            color: '#fff',
             borderRadius: 999, flexShrink: 0,
+            boxShadow: '0 2px 4px rgba(79,139,255,0.2)',
           }}>
             v{item.numero_version}
           </span>
@@ -294,9 +302,9 @@ function HistoryRow({ item, last, onClick }) {
           {!item.is_mine && item.espace_nom && (
             <span style={{
               fontSize: 10, fontWeight: 600, padding: '2px 7px',
-              background: 'rgba(255,185,0,0.09)',
-              color: 'var(--wings-gold)',
-              border: '0.5px solid rgba(255,185,0,0.18)',
+              background: 'rgba(255,185,0,0.12)',
+              color: 'var(--wings-gold-dark)',
+              border: '0.5px solid rgba(255,185,0,0.3)',
               borderRadius: 999, flexShrink: 0,
             }}>
               {item.espace_nom}
