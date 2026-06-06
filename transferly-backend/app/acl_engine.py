@@ -60,6 +60,22 @@ def require_permission(action: str):
             if fichier_id is None:
                 return jsonify({"error": "Identifiant de fichier manquant"}), 400
 
+            from app.models.fichier import Fichier
+            fichier = Fichier.query.get(fichier_id)
+            if fichier is None:
+                return jsonify({"error": "Fichier introuvable"}), 404
+
+            # Propriétaire a toujours tous les droits
+            if fichier.user_id == user.id:
+                return f(*args, **kwargs)
+
+            # L'admin de l'espace a toujours tous les droits
+            if fichier.espace_id:
+                from app.models.espace import Espace
+                espace = Espace.query.get(fichier.espace_id)
+                if espace and espace.admin_id == user.id:
+                    return f(*args, **kwargs)
+
             # Chercher la règle ACL
             acl_entry = ACL.query.filter_by(
                 user_id=user.id,
@@ -90,11 +106,28 @@ def require_permission(action: str):
 def check_permission(user_id: int, fichier_id: int, action: str) -> bool:
     """Version programmatique sans décorateur."""
     from app.models.user import User
+    from app.models.fichier import Fichier
     user = User.query.get(user_id)
     if user is None:
         return False
     if user.role == "AdminGlobal":
         return True
+
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return False
+
+    # Propriétaire
+    if fichier.user_id == user_id:
+        return True
+
+    # Admin Espace
+    if fichier.espace_id:
+        from app.models.espace import Espace
+        espace = Espace.query.get(fichier.espace_id)
+        if espace and espace.admin_id == user_id:
+            return True
+
     acl = ACL.query.filter_by(user_id=user_id, fichier_id=fichier_id).first()
     if acl is None:
         return False

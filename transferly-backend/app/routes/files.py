@@ -426,6 +426,7 @@ def delete_files_batch():
                 skipped.append({'id': file_id, 'raison': 'Accès refusé'})
                 continue
 
+
             lock = get_file_lock(file_id)
             if not lock.acquire(blocking=False):
                 skipped.append({'id': file_id, 'raison': "Fichier en cours d'utilisation"})
