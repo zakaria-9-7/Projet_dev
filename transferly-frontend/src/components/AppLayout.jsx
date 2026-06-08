@@ -96,19 +96,9 @@ export default function AppLayout({ children, titleNode }) {
   const role  = localStorage.getItem('role')  || 'Utilisateur';
 
   useEffect(() => {
-<<<<<<< HEAD
-    if (dark) {
-      document.documentElement.removeAttribute('data-theme');
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.setAttribute('data-theme', 'light');
-      document.documentElement.classList.remove('dark');
-    }
-=======
     document.documentElement.classList.toggle('dark', dark);
     // Synchronisation avec les tokens de Wings :
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
->>>>>>> c12dacd4a3183aecc2f5dc0b0d952b1fcff7d95f
     localStorage.setItem('darkMode', String(dark));
   }, [dark]);
 
