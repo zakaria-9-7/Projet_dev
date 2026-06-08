@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Share2, Download, Eye, FilePen, FolderOpen, User, X } from "lucide-react";
+import { Share2, Download, Eye, FilePen, FolderOpen, User, X, Trash2 } from "lucide-react";
 import API from "../api/auth";
 import AppLayout from "../components/AppLayout";
 import { formatRelativeTime } from '../utils/formatTime';
@@ -68,6 +68,17 @@ export default function SharedWithMe() {
       showToast(`"${f.nom}" téléchargé`);
     } catch (e) { showToast(e.response?.data?.error || e.message, "error"); }
   };
+
+  const handleDelete = async (f) => {
+  if (!window.confirm(`Retirer "${f.nom}" de vos partages ?`)) return;
+  try {
+    await API.delete(`/files/${f.id}`);
+    setFichiers(prev => prev.filter(x => x.id !== f.id));
+    showToast(`"${f.nom}" retiré de vos partages`);
+  } catch (e) {
+    showToast(e.response?.data?.error || e.message, "error");
+  }
+};
 
   const affichés = fichiers.filter(f => {
     const perms = f.mes_permissions || {};
@@ -155,7 +166,9 @@ export default function SharedWithMe() {
                 onShare={() => setShareModal(f)}
                 onEdit={() => navigate(`/editor?fileId=${f.id}`)}
                 onApercu={() => navigate(`/editor?fileId=${f.id}&mode=read`)}
+                onDelete={() => handleDelete(f)}
               />
+
             ))}
           </div>
         )}
@@ -174,7 +187,7 @@ export default function SharedWithMe() {
 
 // ── Carte fichier ─────────────────────────────────────────────────
 
-function FileCard({ fichier, onDownload, onShare, onEdit, onApercu }) {
+function FileCard({ fichier, onDownload, onShare, onEdit, onApercu, onDelete }) {
   const perms  = fichier.mes_permissions || {};
   const ftColor = getFileTypeColor(fichier.nom);
   const ext    = fichier.nom?.split('.').pop()?.toUpperCase() || 'FILE';
@@ -275,6 +288,11 @@ function FileCard({ fichier, onDownload, onShare, onEdit, onApercu }) {
             <Share2 size={13} />
           </button>
         )}
+
+        {/* ✅ AJOUT : bouton supprimer — toujours visible */}
+          <button onClick={onDelete} title="Retirer de mes partages" style={{ ...actionBtnStyle, color: '#e57373' }}>
+            <Trash2 size={13} />
+          </button>
       </div>
     </div>
   );
