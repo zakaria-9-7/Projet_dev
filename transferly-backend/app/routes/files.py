@@ -541,19 +541,31 @@ def delete_files_batch():
 @require_permission('suppression')
 def delete_file(fichier_id):
     user_id = g.user['id']
+
+    # ✅ AJOUT : charger le fichier en premier pour vérifier qui est le propriétaire
+    fichier = Fichier.query.get(fichier_id)
+    if fichier is None:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+
+    # ✅ AJOUT : si ce n'est pas le propriétaire → révoquer uniquement l'ACL
+    if fichier.user_id != user_id:
+        from app.models.acl import ACL as ACLModel
+        acl_entry = ACLModel.query.filter_by(user_id=user_id, fichier_id=fichier_id).first()
+        if acl_entry:
+            db.session.delete(acl_entry)
+            db.session.commit()
+        log_action(user_id, 'suppression_acl', resource_id=fichier_id, statut='succes')
+        return jsonify({'message': 'Accès au fichier partagé révoqué'}), 200
+
+    # ✅ Le reste est INCHANGÉ — uniquement le propriétaire arrive ici
     lock = get_file_lock(fichier_id)
     if not lock.acquire(blocking=False):
         return jsonify({'error': "Fichier en cours d'utilisation"}), 423
 
     try:
-        fichier = Fichier.query.get(fichier_id)
-        if fichier is None:
-            return jsonify({'error': 'Fichier introuvable'}), 404
-
-        taille_mb    = fichier.taille or 0.0
+        taille_mb = fichier.taille or 0.0
         chemin_principal = fichier.chemin
 
-        # Collecte les chemins des versions archivées avant la suppression en cascade
         chemins_versions = [
             v.chemin for v in fichier.versions
             if v.chemin and v.chemin != chemin_principal and os.path.exists(v.chemin)
@@ -562,7 +574,6 @@ def delete_file(fichier_id):
         db.session.delete(fichier)  # cascade supprime versions + ACLs
         db.session.commit()
 
-        # Nettoyage disque après commit réussi
         for chemin in chemins_versions:
             os.remove(chemin)
         if chemin_principal and os.path.exists(chemin_principal):
