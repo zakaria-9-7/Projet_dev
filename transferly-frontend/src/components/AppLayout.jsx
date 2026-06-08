@@ -93,6 +93,7 @@ export default function AppLayout({ children, titleNode }) {
   const role  = localStorage.getItem('role')  || 'Utilisateur';
 
   const isDark = theme === 'dark';
+  const [logoAnim, setLogoAnim] = useState(false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -125,6 +126,7 @@ export default function AppLayout({ children, titleNode }) {
   const handleLogout = () => {
     localStorage.clear();
     document.documentElement.classList.remove('dark');
+    document.documentElement.removeAttribute('data-theme');
     navigate('/login');
   };
 
@@ -150,6 +152,8 @@ export default function AppLayout({ children, titleNode }) {
       }}>
 
         {/* BRAND ZONE */}
+        <Link to="/dashboard" style={{ textDecoration: 'none' }}>
+
         <div style={{
           padding: '28px 22px 22px',
           borderBottom: '0.5px solid var(--wings-border)',
@@ -157,16 +161,30 @@ export default function AppLayout({ children, titleNode }) {
           flexDirection: 'column',
           alignItems: 'center',
           flexShrink: 0,
+          cursor: 'pointer',
+
         }}>
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <img
               src={cicada}
               alt=""
+              onClick={() => {
+                setLogoAnim(true);
+                setTimeout(() => setLogoAnim(false), 600);
+              }}
+
               style={{
                 width: '64px',
                 height: '64px',
                 filter: 'drop-shadow(0 0 12px rgba(79,139,255,0.5))',
                 display: 'block',
+                cursor: 'pointer',
+                transition: 'transform 0.15s ease, filter 0.3s ease',
+                transform: logoAnim ? 'scale(1.2) rotate(-8deg)' : 'scale(1) rotate(0deg)',
+                filter: logoAnim
+                  ? 'drop-shadow(0 0 20px rgba(255,193,7,0.8))'
+                  : 'drop-shadow(0 0 12px rgba(79,139,255,0.5))',
+
               }}
             />
           </div>
@@ -192,6 +210,7 @@ export default function AppLayout({ children, titleNode }) {
             — JUST FLY IT —
           </div>
         </div>
+        </Link>
 
         {/* NAV SECTIONS */}
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: '18px', paddingBottom: '8px' }}>
@@ -415,7 +434,7 @@ export default function AppLayout({ children, titleNode }) {
                     onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
                   >
                     <Settings size={14} style={{ color: 'var(--wings-text-muted)' }} />
-                    Mon profil
+                    Paramètres
                   </button>
 
                   <button
