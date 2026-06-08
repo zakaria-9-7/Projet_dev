@@ -1,8 +1,34 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Lock, Eye, EyeOff, Share2, CheckCircle } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { resetPassword } from '../api/auth';
+import CicadaProtective from '../components/CicadaProtective';
+
+const labelStyle = {
+  display:       'block',
+  fontFamily:    'monospace',
+  fontSize:      11,
+  fontWeight:    700,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  color:         'var(--wings-gold)',
+  marginBottom:  8,
+};
+
+const inputBase = {
+  width:           '100%',
+  boxSizing:       'border-box',
+  padding:         '12px 16px',
+  borderRadius:    12,
+  border:          '1px solid var(--wings-border)',
+  background:      'var(--wings-surface)',
+  color:           'var(--wings-text)',
+  fontSize:        14,
+  fontFamily:      'inherit',
+  outline:         'none',
+  transition:      'border-color 0.2s ease, box-shadow 0.2s ease',
+};
 
 export default function ResetPassword() {
   const [password,        setPassword]        = useState('');
@@ -13,6 +39,9 @@ export default function ResetPassword() {
   const [success,         setSuccess]         = useState(false);
   const { token } = useParams();
   const navigate  = useNavigate();
+
+  const [pwdFocused, setPwdFocused] = useState(false);
+  const [confFocused, setConfFocused] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,19 +62,22 @@ export default function ResetPassword() {
     }
   };
 
-  const inputCls = 'w-full py-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition';
-
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
-      style={{ background: '#0a0a0f' }}
+      className="reset-password-page"
+      style={{
+        minHeight:      '100vh',
+        background:     'var(--wings-bg)',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        padding:        '48px 16px',
+        position:       'relative',
+        overflow:       'hidden',
+      }}
     >
-      {/* Glow effects */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Grid texture */}
-      <div
+      {/* Éléments décoratifs (même grille que Register) */}
+      <div 
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `
@@ -55,135 +87,197 @@ export default function ResetPassword() {
           backgroundSize: '48px 48px',
         }}
       />
+      <div className="register-halo-blue" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-8"
-      >
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+      <div style={{ width: '100%', maxWidth: 440, position: 'relative', zIndex: 1 }}>
+
+        {/* Cigale + halo */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, position: 'relative' }}>
           <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #06b6d4, #a78bfa)' }}
-          >
-            <Share2 className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className="font-bold text-white text-sm tracking-tight">Wings</span>
+            style={{
+              position:     'absolute',
+              top:          '50%',
+              left:         '50%',
+              transform:    'translate(-50%, -50%)',
+              width:        260,
+              height:       260,
+              borderRadius: '50%',
+              background:   'radial-gradient(circle, rgba(79,139,255,0.18) 0%, transparent 70%)',
+              filter:       'blur(30px)',
+              pointerEvents:'none',
+            }}
+          />
+          <CicadaProtective size={180} />
         </div>
 
-        {!success ? (
-          <>
-            {/* Lock icon */}
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
-              style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)' }}
-            >
-              <Lock className="w-7 h-7" style={{ color: '#06b6d4' }} />
-            </div>
+        {/* Header */}
+        <h1
+          style={{
+            fontFamily:  'Georgia, "Times New Roman", serif',
+            fontSize:    32,
+            fontWeight:  400,
+            color:       'var(--wings-text)',
+            textAlign:   'center',
+            margin:      '24px 0 0',
+            lineHeight:  1.15,
+          }}
+        >
+          {success ? 'Mot de passe modifié.' : 'Nouveau mot de passe.'}
+        </h1>
+        <p
+          style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontStyle:  'italic',
+            fontSize:   14,
+            color:      'var(--wings-text-muted)',
+            textAlign:  'center',
+            margin:     '8px 0 32px',
+          }}
+        >
+          {success ? 'Ton accès est désormais sécurisé.' : 'Sécurise ton accès. La cigale veille.'}
+        </p>
 
-            <h2 className="text-2xl font-extrabold text-white mb-1 text-center">Nouveau mot de passe</h2>
-            <p className="text-slate-400 text-sm mb-7 text-center">
-              Choisissez un mot de passe fort d'au moins 8 caractères.
-            </p>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            background:   'var(--wings-surface)',
+            border:       '1px solid var(--wings-border)',
+            borderRadius: 20,
+            padding:      '32px 28px',
+          }}
+        >
+          {!success ? (
+            <>
+              {error && (
+                <div
+                  style={{
+                    padding:      '12px 16px',
+                    borderRadius: 10,
+                    marginBottom: 20,
+                    fontSize:     13,
+                    background:   'rgba(239,68,68,0.08)',
+                    border:       '1px solid rgba(239,68,68,0.25)',
+                    color:        '#f87171',
+                  }}
+                >
+                  {error}
+                </div>
+              )}
 
-            {error && (
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div>
+                  <label style={labelStyle}>Nouveau mot de passe</label>
+                  <div className="relative">
+                    <input
+                      type={showPwd ? 'text' : 'password'}
+                      placeholder="8 caractères minimum"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      onFocus={() => setPwdFocused(true)}
+                      onBlur={() => setPwdFocused(false)}
+                      required
+                      style={{
+                        ...inputBase,
+                        ...(pwdFocused ? { borderColor: 'var(--wings-blue)', boxShadow: '0 0 0 3px rgba(79,139,255,0.15)' } : {}),
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPwd(v => !v)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors"
+                    >
+                      {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Confirmer le mot de passe</label>
+                  <div className="relative">
+                    <input
+                      type={showConfirm ? 'text' : 'password'}
+                      placeholder="Répète ton mot de passe"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      onFocus={() => setConfFocused(true)}
+                      onBlur={() => setConfFocused(false)}
+                      required
+                      style={{
+                        ...inputBase,
+                        ...(confFocused ? { borderColor: 'var(--wings-blue)', boxShadow: '0 0 0 3px rgba(79,139,255,0.15)' } : {}),
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm(v => !v)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors"
+                    >
+                      {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  style={{
+                    width:         '100%',
+                    padding:       '14px 24px',
+                    borderRadius:  9999,
+                    border:        'none',
+                    background:    'var(--wings-blue)',
+                    color:         '#ffffff',
+                    fontSize:      14,
+                    fontWeight:    500,
+                    fontFamily:    'inherit',
+                    cursor:        'pointer',
+                    transition:    'background 0.2s ease, box-shadow 0.2s ease',
+                    marginTop:     8,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--wings-blue-dark)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'var(--wings-blue)'}
+                >
+                  Décoller →
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="text-center">
               <div
-                className="px-4 py-3 rounded-lg mb-5 text-sm"
-                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
+                style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}
               >
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-white/60 mb-2">Nouveau mot de passe</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
-                  <input
-                    type={showPwd ? 'text' : 'password'}
-                    placeholder="Min. 8 caractères"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    className={`${inputCls} pl-10 pr-10`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPwd(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                  >
-                    {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+                <CheckCircle className="w-8 h-8" style={{ color: '#34d399' }} />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-white/60 mb-2">Confirmer le mot de passe</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
-                  <input
-                    type={showConfirm ? 'text' : 'password'}
-                    placeholder="Répéter le mot de passe"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    required
-                    className={`${inputCls} pl-10 pr-10`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                  >
-                    {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
+              <p style={{ color: 'var(--wings-text-muted)', fontSize: 14, marginBottom: 32 }}>
+                Ton mot de passe a été réinitialisé avec succès.
+              </p>
 
               <button
-                type="submit"
-                className="w-full py-3 rounded-lg text-sm font-semibold transition-all mt-1 hover:brightness-110"
+                onClick={() => navigate('/login')}
                 style={{
-                  background: '#06b6d4',
-                  color: '#0a0a0f',
-                  boxShadow: '0 0 24px rgba(6,182,212,0.3)',
+                  width:         '100%',
+                  padding:       '14px 24px',
+                  borderRadius:  9999,
+                  border:        'none',
+                  background:    'var(--wings-blue)',
+                  color:         '#ffffff',
+                  fontSize:      14,
+                  fontWeight:    500,
+                  fontFamily:    'inherit',
+                  cursor:        'pointer',
+                  transition:    'background 0.2s ease, box-shadow 0.2s ease',
                 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--wings-blue-dark)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--wings-blue)'}
               >
-                Réinitialiser le mot de passe
+                Se connecter
               </button>
-            </form>
-          </>
-        ) : (
-          <div className="text-center">
-            {/* Success icon */}
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-              style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}
-            >
-              <CheckCircle className="w-8 h-8" style={{ color: '#34d399' }} />
             </div>
-
-            <h2 className="text-2xl font-extrabold text-white mb-2">Mot de passe modifié !</h2>
-            <p className="text-slate-400 text-sm mb-7">
-              Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.
-            </p>
-
-            <button
-              onClick={() => navigate('/login')}
-              className="w-full py-3 rounded-lg text-sm font-semibold transition-all hover:brightness-110"
-              style={{
-                background: '#06b6d4',
-                color: '#0a0a0f',
-                boxShadow: '0 0 24px rgba(6,182,212,0.3)',
-              }}
-            >
-              Aller à la connexion
-            </button>
-          </div>
-        )}
-      </motion.div>
+          )}
+        </motion.div>
+      </div>
     </div>
   );
 }

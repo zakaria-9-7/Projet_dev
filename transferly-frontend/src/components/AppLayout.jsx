@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Share2, FolderOpen, History,
   Users, LayoutGrid, Files, BarChart3, Settings, LogOut,
-  Sun, Moon, Inbox,
+  Sun, Moon, Inbox, Activity,
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import cicada from '../assets/cicada.svg';
@@ -42,6 +42,7 @@ const NAV_ADMIN = [
   { to: '/admin-fichiers-all', icon: Files,      label: 'Tous les fichiers' },
   { to: '/admin-quotas',           icon: BarChart3, label: 'Quotas'            },
   { to: '/admin-quota-requests',  icon: Inbox,     label: 'Demandes de quota' },
+  { to: '/logs',                 icon: Activity,  label: "Journaux d'activité" },
 ];
 
 function SectionLabel({ children }) {
@@ -95,6 +96,7 @@ export default function AppLayout({ children, titleNode }) {
   const role  = localStorage.getItem('role')  || 'Utilisateur';
 
   useEffect(() => {
+<<<<<<< HEAD
     if (dark) {
       document.documentElement.removeAttribute('data-theme');
       document.documentElement.classList.add('dark');
@@ -102,6 +104,11 @@ export default function AppLayout({ children, titleNode }) {
       document.documentElement.setAttribute('data-theme', 'light');
       document.documentElement.classList.remove('dark');
     }
+=======
+    document.documentElement.classList.toggle('dark', dark);
+    // Synchronisation avec les tokens de Wings :
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+>>>>>>> c12dacd4a3183aecc2f5dc0b0d952b1fcff7d95f
     localStorage.setItem('darkMode', String(dark));
   }, [dark]);
 

@@ -25,6 +25,8 @@ class User(db.Model):
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
     _preferences = db.Column('preferences', db.Text, nullable=True)
     must_reset_password = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
+    two_factor_secret = db.Column(db.String(32), nullable=True)
+    two_factor_enabled = db.Column(db.Boolean, default=False, nullable=False)
 
     otps = db.relationship('OTP', backref='user', lazy=True, cascade='all, delete')
     fichiers = db.relationship('Fichier', backref='owner', lazy=True)

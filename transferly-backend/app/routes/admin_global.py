@@ -4,6 +4,14 @@ import string
 from flask import Blueprint, request, jsonify, g
 from app.decorators import require_role
 from app.models.user import User
+from app.models.fichier import Fichier
+from app.models.espace import Espace
+from app.models.membership import Membership
+from app.models.acl import ACL
+from app.models.version import VersionFichier
+from app.models.notification import Notification
+from app.models.quota_request import QuotaRequest
+from app.models.log import Log
 from app.extensions import db, bcrypt
 
 
@@ -54,9 +62,13 @@ def create_user():
 
     email = data.get('email', '').strip()
     nom = data.get('nom', '').strip()
+    role = data.get('role', 'Utilisateur').strip()
 
     if not email or not nom:
         return jsonify({'error': 'Champs manquants (email, nom)'}), 400
+
+    if role not in ['Utilisateur', 'AdminEspace', 'AdminGlobal']:
+        return jsonify({'error': 'Rôle non valide'}), 400
 
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Adresse email déjà utilisée'}), 409
@@ -67,15 +79,20 @@ def create_user():
     new_user = User(
         email=email,
         nom=nom,
-        role='Utilisateur',
+        role=role,
         password=hashed,
         must_reset_password=True,
     )
     db.session.add(new_user)
     db.session.commit()
 
-    from app.services.mailer import send_temp_password_email
-    email_envoye = send_temp_password_email(email, nom, temp_password)
+    email_envoye = False
+    try:
+        from app.services.mailer import send_temp_password_email
+        email_envoye = send_temp_password_email(email, nom, temp_password)
+    except Exception as mail_err:
+        print(f"Alerte Mail non envoyé : {str(mail_err)}")
+
     if email_envoye:
         print(f"[ADMIN] Email de bienvenue envoyé à {email}")
     else:
@@ -130,9 +147,33 @@ def delete_user(user_id):
       if nb_admins <= 1:
           return jsonify({'error': 'Impossible de supprimer le dernier administrateur global'}), 403
 
-  db.session.delete(user)
-  db.session.commit()
-  return  jsonify({'message' : 'utilisateur supprimé avec succès'}), 200
+  try:
+      # Nettoyage manuel des dépendances pour éviter les violations de clés étrangères
+      ACL.query.filter_by(user_id=user_id).delete()
+      Membership.query.filter_by(user_id=user_id).delete()
+      Notification.query.filter_by(user_id=user_id).delete()
+      QuotaRequest.query.filter_by(user_id=user_id).delete()
+      Log.query.filter_by(user_id=user_id).delete()
+
+      # Suppression des fichiers dont il est le propriétaire
+      fichiers = Fichier.query.filter_by(user_id=user_id).all()
+      for f in fichiers:
+          VersionFichier.query.filter_by(fichier_id=f.id).delete()
+          ACL.query.filter_by(fichier_id=f.id).delete()
+          db.session.delete(f)
+
+      # Suppression des espaces dont il est l'administrateur
+      espaces = Espace.query.filter_by(admin_id=user_id).all()
+      for e in espaces:
+          # Note: On pourrait réassigner l'espace, mais ici on choisit le nettoyage simple
+          db.session.delete(e)
+
+      db.session.delete(user)
+      db.session.commit()
+      return jsonify({'message': 'Utilisateur et ses données supprimés avec succès'}), 200
+  except Exception as e:
+      db.session.rollback()
+      return jsonify({'error': f"Erreur d'intégrité BDD : {str(e)}"}), 400
 
 
 @admin_global_bp.route('/admin/files', methods=['GET'])

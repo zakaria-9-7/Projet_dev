@@ -415,6 +415,7 @@ export default function MyFiles() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '10px 14px', marginBottom: 12,
           background: 'var(--wings-surface)',
+          backdropFilter: 'blur(10px)',
           border: '0.5px solid var(--wings-border)',
           borderRadius: 12,
           position: 'sticky', top: 0, zIndex: 10,
@@ -513,7 +514,7 @@ export default function MyFiles() {
                 outline: selectionMode && selectedIds.has(file.id) ? '2px solid var(--wings-blue)' : 'none',
                 outlineOffset: '-2px',
               }}
-              className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md transition-all group relative ${
+              className={`bg-white/80 backdrop-blur-md border border-slate-200/60 dark:bg-slate-800/50 dark:border-slate-700/50 rounded-xl hover:shadow-md transition-all group relative ${
                 openMenu === file.id ? 'z-40' : ''
               } ${
                 viewMode === 'list'
@@ -616,10 +617,10 @@ export default function MyFiles() {
                   {file.name}
                 </h3>
                 {file.type === 'folder' ? (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{file.count} fichiers</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{file.count} fichiers</p>
                 ) : (
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{file.size}</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">{file.size}</span>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded">
                       {file.ft}
                     </span>
@@ -879,9 +880,10 @@ function FileTypeIcon({ file, listMode }) {
 }
 
 const SHARE_PERMS = [
-  { key: 'lecture',  label: 'Lecture' },
-  { key: 'download', label: 'Téléchargement' },
-  { key: 'ecriture', label: 'Écriture' },
+  { key: 'lecture',     label: 'Lecture' },
+  { key: 'download',    label: 'Téléchargement' },
+  { key: 'ecriture',    label: 'Écriture' },
+  { key: 'partage',     label: 'Partage' },
 ];
 
 function ShareModal({ fichier, onClose, onSuccess }) {
@@ -892,6 +894,7 @@ function ShareModal({ fichier, onClose, onSuccess }) {
   const [submitting,  setSubmitting]  = useState(false);
   const [perms,       setPerms]       = useState({
     lecture: true, download: true, ecriture: false,
+    partage: false, suppression: false,
   });
 
   useEffect(() => {
@@ -917,8 +920,8 @@ function ShareModal({ fichier, onClose, onSuccess }) {
         lecture:     perms.lecture,
         ecriture:    perms.ecriture,
         download:    perms.download,
-        partage:     false,
-        suppression: false,
+        partage:     perms.partage,
+        suppression: perms.suppression,
         upload:      false,
       });
       onSuccess?.('Fichier partagé avec succès');

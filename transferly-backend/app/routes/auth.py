@@ -4,6 +4,7 @@ from app.models.user import User
 from app.models.otp import OTP
 from app.models.log import Log
 from app.services.mailer import send_otp_email, send_welcome_email, send_password_changed_email, send_account_deleted_email
+from app.services.logger import log_action
 import jwt, os, re, pyotp
 from datetime import datetime, timedelta
 
@@ -53,7 +54,15 @@ def login():
 
     user = User.query.filter_by(email=email).first()
 
-    if not user or not bcrypt.check_password_hash(user.password, password):
+    if not user:
+        # L'utilisateur n'existe pas du tout : tentative brute anonyme.
+        # On assigne à l'ID 1 (Super Admin) pour satisfaire la contrainte de clé étrangère
+        log_action(user_id=1, action='connexion_echouee', statut='echec', details=f"Tentative brute - Compte inexistant : {email}")
+        return jsonify({'error': 'Identifiants incorrects'}), 401
+
+    if not bcrypt.check_password_hash(user.password, password):
+        # L'utilisateur existe mais le mot de passe est faux !
+        log_action(user_id=user.id, action='connexion_echouee', statut='echec', details=f"Mot de passe incorrect pour le compte : {email}")
         return jsonify({'error': 'Identifiants incorrects'}), 401
 
     if user.statut == 'bloque':
@@ -95,6 +104,7 @@ def verify_otp():
     if not user:
         return jsonify({'error': 'Utilisateur inexistant'}), 404
 
+    # --- Logique classique OTP par mail ---
     otp = OTP.query.filter_by(user_id=user_id).order_by(OTP.id.desc()).first()
 
     if not otp:
@@ -117,15 +127,15 @@ def verify_otp():
         restantes = MAX_TENTATIVES - otp.tentatives
         return jsonify({'error': f'Code incorrect, {restantes} tentative(s) restante(s)'}), 401
 
-    # OTP valide → génère JWT
+    db.session.delete(otp)
+
+    # --- Succès : Génération du JWT ---
     token = jwt.encode({
         'user_id': user.id,
         'role': user.role,
         'email': user.email,
         'exp': datetime.utcnow() + timedelta(hours=2)
     }, os.getenv('SECRET_KEY', 'devsecret'), algorithm='HS256')
-
-    db.session.delete(otp)
 
     log = Log(action='connexion', statut='succes', user_id=user.id)
     db.session.add(log)

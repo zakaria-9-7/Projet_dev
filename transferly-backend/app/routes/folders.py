@@ -214,41 +214,73 @@ def move_files_to_folder():
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
 
-    data = request.get_json(silent=True) or {}
+    user_id   = g.user['id']
+    user_role = g.user.get('role', '')
+    data        = request.get_json(silent=True) or {}
     fichier_ids = data.get('fichier_ids')
     folder_id   = data.get('folder_id')
+    espace_id   = data.get('espace_id')
 
     if not isinstance(fichier_ids, list) or len(fichier_ids) == 0:
         return jsonify({'error': "fichier_ids doit être une liste non vide d'entiers"}), 400
     if len(fichier_ids) > 500:
         return jsonify({'error': 'Trop de fichiers (maximum 500 par requête)'}), 400
 
-    if folder_id is not None:
-        folder = Folder.query.filter_by(id=folder_id, user_id=g.user['id']).first()
-        if not folder:
-            return jsonify({'error': 'Dossier introuvable'}), 404
-
     moved   = 0
     skipped = []
 
-    for fid in fichier_ids:
-        if not isinstance(fid, int):
-            skipped.append({'id': fid, 'raison': 'Identifiant invalide'})
-            continue
-        fichier = Fichier.query.filter_by(id=fid, user_id=g.user['id']).first()
-        if not fichier:
-            skipped.append({'id': fid, 'raison': 'Fichier introuvable ou accès refusé'})
-            continue
-        fichier.folder_id = folder_id
-        moved += 1
+    if espace_id is not None:
+        # ── Contexte espace collaboratif ──────────────────────────────
+        if folder_id is not None:
+            folder = Folder.query.get(folder_id)
+            if not folder or folder.espace_id != espace_id:
+                return jsonify({'error': 'Dossier introuvable dans cet espace'}), 404
+
+        for fid in fichier_ids:
+            if not isinstance(fid, int):
+                skipped.append({'id': fid, 'raison': 'Identifiant invalide'})
+                continue
+            fichier = Fichier.query.get(fid)
+            if not fichier:
+                skipped.append({'id': fid, 'raison': 'Fichier introuvable'})
+                continue
+            if fichier.espace_id != espace_id:
+                skipped.append({'id': fid, 'raison': 'Fichier hors de l\'espace'})
+                continue
+            is_owner = (fichier.user_id == user_id)
+            is_admin = _is_espace_admin(user_id, user_role, espace_id)
+            if not (is_owner or is_admin):
+                skipped.append({'id': fid, 'raison': 'Permission refusée'})
+                continue
+            fichier.folder_id = folder_id
+            moved += 1
+
+    else:
+        # ── Contexte personnel (logique inchangée) ────────────────────
+        if folder_id is not None:
+            folder = Folder.query.filter_by(id=folder_id, user_id=user_id).first()
+            if not folder:
+                return jsonify({'error': 'Dossier introuvable'}), 404
+
+        for fid in fichier_ids:
+            if not isinstance(fid, int):
+                skipped.append({'id': fid, 'raison': 'Identifiant invalide'})
+                continue
+            fichier = Fichier.query.filter_by(id=fid, user_id=user_id).first()
+            if not fichier:
+                skipped.append({'id': fid, 'raison': 'Fichier introuvable ou accès refusé'})
+                continue
+            fichier.folder_id = folder_id
+            moved += 1
 
     db.session.commit()
 
     return jsonify({
         'moved_count':   moved,
         'skipped_count': len(skipped),
-        'skipped':        skipped,
-        'folder_id':      folder_id,
+        'skipped':       skipped,
+        'folder_id':     folder_id,
+        'espace_id':     espace_id,
     }), 200
 
 
