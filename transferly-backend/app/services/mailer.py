@@ -5,18 +5,9 @@ from app.extensions import mail
 
 def send_otp_email(to_email: str, code: str, nom: str = None):
     try:
-        nom_display = nom or to_email
-        body = f"""Bonjour {nom_display},
-
-Votre code de vérification Transferly : {code}
-
-Ce code expire dans 5 minutes. Ne le partagez avec personne.
-
-Si vous n'avez pas tenté de vous connecter, ignorez ce message.
-
-— L'équipe Transferly"""
+        body = f"Code de validation : {code}\n\nCe code est temporaire et expire dans 5 minutes.\n\nLa cigale veille."
         msg = Message(
-            subject="Transferly — Votre code de connexion",
+            subject="Wings — Code de validation",
             recipients=[to_email],
             body=body,
         )
@@ -29,19 +20,14 @@ Si vous n'avez pas tenté de vous connecter, ignorez ce message.
 
 def send_reset_email(to_email: str, reset_url: str, nom: str = None):
     try:
-        nom_display = nom or to_email
-        body = f"""Bonjour {nom_display},
+        body = f"""Une demande de modification de mot de passe a été initiée pour ton compte Wings.
 
-Vous avez demandé à réinitialiser votre mot de passe Transferly.
-
-Cliquez sur ce lien pour choisir un nouveau mot de passe :
+Utilise le lien suivant pour configurer ton nouveau mot de passe :
 {reset_url}
 
-Ce lien expire dans 15 minutes. Si vous n'avez pas demandé cette opération, ignorez ce message — votre mot de passe restera inchangé.
-
-— L'équipe Transferly"""
+L'équipe Wings."""
         msg = Message(
-            subject="Transferly — Réinitialisation de votre mot de passe",
+            subject="Wings — Modification de mot de passe",
             recipients=[to_email],
             body=body,
         )
@@ -54,19 +40,14 @@ Ce lien expire dans 15 minutes. Si vous n'avez pas demandé cette opération, ig
 
 def send_invitation_email(to_email: str, invite_url: str, espace_nom: str, nom: str = None):
     try:
-        nom_display = nom or to_email
-        body = f"""Bonjour {nom_display},
+        body = f"""Tu as été invité à rejoindre l'espace "{espace_nom}" sur Wings.
 
-Vous avez été invité à rejoindre l'espace "{espace_nom}" sur Transferly.
-
-Cliquez sur ce lien pour accepter l'invitation :
+Lien d'invitation :
 {invite_url}
 
-Ce lien expire dans 7 jours. Si vous n'attendiez pas cette invitation, vous pouvez ignorer ce message.
-
-— L'équipe Transferly"""
+L'équipe Wings."""
         msg = Message(
-            subject="Transferly — Invitation à rejoindre un espace",
+            subject=f"Wings — Invitation : {espace_nom}",
             recipients=[to_email],
             body=body,
         )
@@ -79,16 +60,11 @@ Ce lien expire dans 7 jours. Si vous n'attendiez pas cette invitation, vous pouv
 
 def send_welcome_email(to_email: str, nom: str = None):
     try:
-        nom_display = nom or to_email
-        body = f"""Bonjour {nom_display},
+        body = """Bienvenue sur Wings. Ton compte a été créé avec succès.
 
-Bienvenue sur Transferly ! Votre compte a bien été créé.
-
-Vous pouvez dès maintenant vous connecter et commencer à utiliser votre espace de stockage personnel.
-
-— L'équipe Transferly"""
+La cigale veille."""
         msg = Message(
-            subject="Transferly — Bienvenue",
+            subject="Wings — Bienvenue",
             recipients=[to_email],
             body=body,
         )
@@ -101,16 +77,13 @@ Vous pouvez dès maintenant vous connecter et commencer à utiliser votre espace
 
 def send_password_changed_email(to_email: str, nom: str = None):
     try:
-        nom_display = nom or to_email
-        body = f"""Bonjour {nom_display},
+        body = """Le mot de passe de ton compte Wings a été modifié.
 
-Votre mot de passe Transferly vient d'être modifié avec succès.
+Si tu n'es pas à l'origine de ce changement, contacte-nous immédiatement.
 
-Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement notre support.
-
-— L'équipe Transferly"""
+L'équipe Wings."""
         msg = Message(
-            subject="Transferly — Mot de passe modifié",
+            subject="Wings — Sécurité : Mot de passe modifié",
             recipients=[to_email],
             body=body,
         )
@@ -123,20 +96,17 @@ Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement notr
 
 def send_temp_password_email(to_email: str, nom: str, temp_password: str):
     try:
-        nom_display = nom or to_email
-        body = f"""Bonjour {nom_display},
+        body = f"""Ton compte Wings a été créé par un administrateur.
 
-Votre compte Transferly a été créé par un administrateur.
+Identifiants :
+  E-mail   : {to_email}
+  Pass     : {temp_password}
 
-Vos identifiants de connexion :
-  Adresse e-mail    : {to_email}
-  Mot de passe temporaire : {temp_password}
+Un changement de mot de passe sera requis à la première connexion.
 
-À votre première connexion, vous devrez obligatoirement changer ce mot de passe avant d'accéder à l'application.
-
-— L'équipe Transferly"""
+L'équipe Wings."""
         msg = Message(
-            subject="Transferly — Bienvenue, votre compte a été créé",
+            subject="Wings — Ton compte est prêt",
             recipients=[to_email],
             body=body,
         )
@@ -149,18 +119,11 @@ Vos identifiants de connexion :
 
 def send_account_deleted_email(to_email: str, nom: str = None):
     try:
-        nom_display = nom or to_email
-        body = f"""Bonjour {nom_display},
+        body = """Ton compte Wings a été supprimé. Toutes tes données ont été effacées.
 
-Votre compte Transferly a bien été supprimé. Nous vous remercions de nous avoir fait confiance.
-
-Toutes vos données personnelles ont été effacées de nos serveurs.
-
-Si vous souhaitez revenir, vous pouvez créer un nouveau compte à tout moment.
-
-— L'équipe Transferly"""
+L'équipe Wings."""
         msg = Message(
-            subject="Transferly — Compte supprimé",
+            subject="Wings — Compte supprimé",
             recipients=[to_email],
             body=body,
         )
