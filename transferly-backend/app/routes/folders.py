@@ -29,6 +29,7 @@ def list_folders():
     user_role = g.user.get('role', '')
     espace_id = request.args.get('espace_id', type=int)
     parent_id = request.args.get('parent_id', type=int)
+    fetch_all = request.args.get('all', type=int)
 
     if espace_id is not None:
         # Dossiers d'un espace : accessible à tout membre
@@ -49,10 +50,12 @@ def list_folders():
         # Dossiers personnels (espace_id NULL)
         query = Folder.query.filter_by(user_id=user_id, espace_id=None)
 
-    if parent_id:
-        query = query.filter_by(parent_id=parent_id)
-    else:
-        query = query.filter_by(parent_id=None)
+    if not fetch_all:
+        # Par défaut : un seul niveau (pour la navigation paresseuse)
+        if parent_id:
+            query = query.filter_by(parent_id=parent_id)
+        else:
+            query = query.filter_by(parent_id=None)
 
     folders = query.order_by(Folder.nom).all()
     return jsonify([{

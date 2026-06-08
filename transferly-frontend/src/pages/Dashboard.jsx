@@ -106,7 +106,7 @@ function StatCard({ icon: Icon, iconColor, iconBg, label, value, suffix, bar, ba
       </div>
       {bar && (
         <>
-          <div style={{ marginTop: 10, height: 4, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+          <div style={{ marginTop: 10, height: 4, borderRadius: 999, overflow: 'hidden', background: 'var(--wings-border)' }}>
             <div style={{
               height: '100%', borderRadius: 999,
               width: `${Math.min(100, barPct ?? 0)}%`,
@@ -264,7 +264,7 @@ function AdminSection({ allUsers, adminFiles, espacesCount, navigate }) {
                       </span>
                       <span style={{ fontSize: 11, color: barColor, fontFamily: 'monospace', flexShrink: 0 }}>{pct}%</span>
                     </div>
-                    <div style={{ height: 4, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+                    <div style={{ height: 4, borderRadius: 999, overflow: 'hidden', background: 'var(--wings-border)' }}>
                       <div style={{ height: '100%', width: `${Math.min(100, pct)}%`, background: barColor, borderRadius: 999 }} />
                     </div>
                   </div>

@@ -90,9 +90,11 @@ export default function MyFiles() {
   // Rechargement fichiers à chaque changement de dossier courant
   useEffect(() => { fetchFiles(currentFolder); setSelectedIds(new Set()); setSelectionMode(false); setSearchQuery(''); }, [currentFolder]);
 
-  // Chargement des dossiers au mount
+  // Chargement de l'arborescence complète des dossiers personnels au mount
+  // (le sidebar affiche tous les niveaux d'un coup, il faut donc la liste
+  // complète et pas seulement le niveau racine)
   useEffect(() => {
-    API.get('/folders')
+    API.get('/folders', { params: { all: 1 } })
       .then(res => setFolders(Array.isArray(res.data) ? res.data : []))
       .catch(() => setFolders([]));
   }, []);

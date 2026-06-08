@@ -39,6 +39,7 @@ COLUMNS = [
     ("logs",      "details",          "TEXT"),
 
     # Folders – table créée par db.create_all() ; aucune colonne retardée
+    ("folders",   "espace_id",        "INTEGER REFERENCES espaces(id)"),
     # ACL – colonnes upload / download / suppression / partage ajoutées après coup
     ("acls",      "upload",           "BOOLEAN DEFAULT 0"),
     ("acls",      "download",         "BOOLEAN DEFAULT 0"),
