@@ -167,7 +167,7 @@ function Nav({ theme, onToggleTheme }) {
         </Link>
 
         <Link
-          to="/login"
+          to="/register"
           style={{
             padding:       '8px 16px',
             borderRadius:  8,
@@ -444,7 +444,7 @@ export default function Landing() {
           </p>
 
           <Link
-            to="/login"
+            to="/register"
             style={{
               display:       'inline-block',
               padding:       '16px 48px',
