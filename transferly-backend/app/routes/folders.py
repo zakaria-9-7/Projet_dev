@@ -274,6 +274,7 @@ def move_files_to_folder():
                 skipped.append({'id': fid, 'raison': 'Fichier introuvable ou accès refusé'})
                 continue
             fichier.folder_id = folder_id
+            fichier.espace_id = folder.espace_id if (folder_id and folder) else None
             moved += 1
 
     db.session.commit()
@@ -298,9 +299,18 @@ def move_file_to_folder():
     if not fichier:
         return jsonify({'error': 'Fichier introuvable'}), 404
     if folder_id:
-        folder = Folder.query.filter_by(id=folder_id, user_id=g.user['id']).first()
+        folder = Folder.query.get(folder_id)
         if not folder:
             return jsonify({'error': 'Dossier introuvable'}), 404
-    fichier.folder_id = folder_id
+        fichier.folder_id = folder_id
+        # Ne mettre à jour espace_id QUE si le dossier cible appartient à un espace
+        # Si c'est un dossier personnel (espace_id=None), on conserve l'espace_id du fichier
+        if folder.espace_id is not None:
+            fichier.espace_id = folder.espace_id
+    else:
+        fichier.folder_id = None
+        # Déplacement vers la racine personnelle : on conserve l'espace_id
     db.session.commit()
     return jsonify({'message': 'Fichier déplacé'}), 200
+
+

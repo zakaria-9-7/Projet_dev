@@ -10,7 +10,7 @@ function buildTree(folders) {
   folders.forEach(f => {
     if (f.parent_id != null && map[f.parent_id]) {
       map[f.parent_id].children.push(map[f.id]);
-    } else {
+    } else {v
       roots.push(map[f.id]);
     }
   });
@@ -75,6 +75,10 @@ export default function MoveFileModal({ isOpen, file, folders, currentFolderId, 
 
   if (!isOpen || !file) return null;
 
+  const filteredFolders = file.espace_id
+    ? folders.filter(f => f.espace_id === file.espace_id)
+    : folders.filter(f => !f.espace_id);
+
   const tree = buildTree(folders);
 
   const handleToggle = (id) => {
@@ -91,6 +95,7 @@ export default function MoveFileModal({ isOpen, file, folders, currentFolderId, 
       await API.put('/folders/move-file', {
         fichier_id: file.id,
         folder_id: selectedTarget,
+        preserve_espace: true,
       });
       onMoved(selectedTarget);
       onClose();
