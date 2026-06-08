@@ -32,12 +32,16 @@ def get_history():
     mine_q = db.session.query(Fichier.id).filter(Fichier.user_id == user_id)
 
     # Fichiers des espaces dont l'utilisateur est membre
-    espace_ids_sq = (
+    espace_ids_membre = (
         db.session.query(Membership.espace_id)
         .filter(Membership.user_id == user_id)
-        .subquery()
     )
-    espaces_q = db.session.query(Fichier.id).filter(Fichier.espace_id.in_(espace_ids_sq))
+    espace_ids_admin = (
+        db.session.query(Espace.id)
+        .filter(Espace.admin_id == user_id)
+    )
+    espace_ids_union = espace_ids_membre.union(espace_ids_admin).subquery()
+    espaces_q = db.session.query(Fichier.id).filter(Fichier.espace_id.in_(espace_ids_union))
 
     if scope == 'mine':
         accessible_sq = mine_q.subquery()
