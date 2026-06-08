@@ -377,3 +377,4 @@ def update_acl_membre(fichier_id, user_id):
 
     db.session.commit()
     return jsonify({'message': 'Permissions mises à jour'}), 200
+
