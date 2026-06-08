@@ -187,9 +187,12 @@ def delete_folder(folder_id):
     # 3. Supprimer tout de la session (cascade SQLAlchemy : versions + ACLs)
     for f in all_fichiers:
         db.session.delete(f)
-    for sub in all_subfolders:
+# Supprimer les sous-dossiers du plus profond au moins profond
+# (all_subfolders est déjà dans l'ordre BFS, donc reversed() donne les feuilles en premier)
+    for sub in reversed(all_subfolders):
         db.session.delete(sub)
     db.session.delete(folder)
+
 
     # 4. Un seul commit
     db.session.commit()
@@ -295,6 +298,7 @@ def move_file_to_folder():
     data       = request.get_json(silent=True) or {}
     fichier_id = data.get('fichier_id')
     folder_id  = data.get('folder_id')
+    espace_id  = data.get('espace_id')
     fichier    = Fichier.query.filter_by(id=fichier_id, user_id=g.user['id']).first()
     if not fichier:
         return jsonify({'error': 'Fichier introuvable'}), 404
@@ -302,15 +306,14 @@ def move_file_to_folder():
         folder = Folder.query.get(folder_id)
         if not folder:
             return jsonify({'error': 'Dossier introuvable'}), 404
-        fichier.folder_id = folder_id
-        # Ne mettre à jour espace_id QUE si le dossier cible appartient à un espace
-        # Si c'est un dossier personnel (espace_id=None), on conserve l'espace_id du fichier
-        if folder.espace_id is not None:
-            fichier.espace_id = folder.espace_id
-    else:
-        fichier.folder_id = None
-        # Déplacement vers la racine personnelle : on conserve l'espace_id
+        # Vérifier que le dossier appartient au même contexte que le fichier
+        if folder.espace_id != espace_id:
+            return jsonify({'error': 'Dossier incompatible avec le contexte du fichier'}), 400
+
+    fichier.folder_id = folder_id
+    fichier.espace_id = espace_id  # ← AJOUTER : toujours préserver l'espace d'origine
     db.session.commit()
     return jsonify({'message': 'Fichier déplacé'}), 200
+
 
 
