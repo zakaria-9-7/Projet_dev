@@ -171,7 +171,7 @@ def create_acl():
         ecriture=bool(data.get("ecriture", False)),
         upload=bool(data.get("upload", False)),
         download=bool(data.get("download", False)),
-        suppression=bool(data.get("suppression", True)),
+        suppression=True,
         partage=bool(data.get("partage", False))
     )
     db.session.add(new_acl)
