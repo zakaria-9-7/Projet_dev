@@ -437,7 +437,13 @@ def list_all_my_espaces():
 
     def serialize(e, role):
         nb_membres = Membership.query.filter_by(espace_id=e.id).count() + 1  # +1 pour l'admin
-        nb_fichiers = Fichier.query.filter_by(espace_id=e.id).count()
+        
+        # Calcul de l'espace utilisé (en Go)
+        fichiers = Fichier.query.filter_by(espace_id=e.id).all()
+        nb_fichiers = len(fichiers)
+        utilise_mb = sum(f.taille or 0 for f in fichiers)
+        utilise_gb = utilise_mb / 1024.0
+
         return {
             'id': e.id,
             'nom': e.nom,
@@ -445,6 +451,8 @@ def list_all_my_espaces():
             'admin_id': e.admin_id,
             'nb_membres': nb_membres,
             'nb_fichiers': nb_fichiers,
+            'quota': e.quota,
+            'utilise_gb': utilise_gb,
         }
 
     result = []
@@ -737,6 +745,12 @@ def get_espace_details(espace_id):
     if espace.upload_autorises:
         autorises = [int(x) for x in espace.upload_autorises.split(',') if x.strip()]
 
+    # Calcul de l'espace utilisé (en Go)
+    from app.models.fichier import Fichier
+    fichiers = Fichier.query.filter_by(espace_id=espace.id).all()
+    utilise_mb = sum(f.taille or 0 for f in fichiers)
+    utilise_gb = utilise_mb / 1024.0
+
     return jsonify({
         'id': espace.id,
         'nom': espace.nom,
@@ -744,6 +758,8 @@ def get_espace_details(espace_id):
         'upload_policy': espace.upload_policy or 'tous',
         'upload_autorises': autorises,
         'is_admin': is_admin,
-        'mon_role': 'admin' if is_admin else 'membre'
+        'mon_role': 'admin' if is_admin else 'membre',
+        'quota': espace.quota,
+        'utilise_gb': utilise_gb,
     }), 200
 

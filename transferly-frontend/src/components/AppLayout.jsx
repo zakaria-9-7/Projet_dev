@@ -82,7 +82,7 @@ function NavItem({ to, icon: Icon, label, onClick, active = false, extraClass = 
 }
 
 export default function AppLayout({ children, titleNode }) {
-  const [dark, setDark] = useState(() => localStorage.getItem('darkMode') === 'true');
+  const [theme, setTheme] = useState(() => localStorage.getItem('wings-theme') || 'dark');
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
   const navigate = useNavigate();
@@ -92,12 +92,13 @@ export default function AppLayout({ children, titleNode }) {
   const email = localStorage.getItem('email') || '';
   const role  = localStorage.getItem('role')  || 'Utilisateur';
 
+  const isDark = theme === 'dark';
+
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    // Synchronisation avec les tokens de Wings :
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    localStorage.setItem('darkMode', String(dark));
-  }, [dark]);
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('wings-theme', theme);
+  }, [theme, isDark]);
 
   useEffect(() => {
     if (!profileMenuOpen) return;
@@ -289,9 +290,9 @@ export default function AppLayout({ children, titleNode }) {
 
           <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
             <button
-              onClick={() => setDark(d => !d)}
+              onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
               className="wings-theme-toggle"
-              title={dark ? 'Mode clair' : 'Mode sombre'}
+              title={isDark ? 'Mode clair' : 'Mode sombre'}
               style={{
                 width: '32px',
                 height: '32px',
@@ -306,7 +307,7 @@ export default function AppLayout({ children, titleNode }) {
                 transition: 'background 0.15s',
               }}
             >
-              {dark ? <Sun size={14} /> : <Moon size={14} />}
+              {isDark ? <Sun size={14} /> : <Moon size={14} />}
             </button>
 
             <NotificationBell />

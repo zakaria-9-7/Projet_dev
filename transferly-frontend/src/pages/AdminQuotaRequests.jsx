@@ -383,18 +383,30 @@ export default function AdminQuotaRequests() {
                             {req.user_email}
                           </span>
                         )}
-                        <span style={{
-                          fontSize: 11, color: 'var(--wings-text-muted)',
-                          background: 'rgba(168,180,212,0.08)',
-                          border: '0.5px solid var(--wings-border)',
-                          borderRadius: 6, padding: '1px 7px',
-                        }}>
-                          {req.espace_id ? `Espace : ${req.espace_nom}` : 'Quota personnel'}
-                        </span>
+                        {req.type === 'espace' ? (
+                          <span style={{
+                            fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.5px', textTransform: 'uppercase',
+                            color: 'var(--wings-gold)', background: 'rgba(212,175,55,0.08)',
+                            border: '0.5px solid rgba(212,175,55,0.3)',
+                            borderRadius: 6, padding: '2px 7px',
+                          }}>
+                            Espace : {req.nom_espace}
+                          </span>
+                        ) : (
+                          <span style={{
+                            fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.5px', textTransform: 'uppercase',
+                            color: 'var(--wings-blue)', background: 'rgba(79,139,255,0.08)',
+                            border: '0.5px solid rgba(79,139,255,0.3)',
+                            borderRadius: 6, padding: '2px 7px',
+                          }}>
+                            Utilisateur
+                          </span>
+                        )}
                       </div>
 
                       {/* Quota actuel → demandé */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: raison ? 6 : 0 }}>
+                        <span style={{ color: 'var(--wings-text-muted)', fontSize: 13 }}>Plafond demandé :</span>
                         <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--wings-text-muted)' }}>
                           {req.quota_actuel ?? '?'} Go
                         </span>

@@ -5,7 +5,7 @@ import {
   UploadCloud, Download, FileText, Link2, Copy, UserMinus,
   LogOut as ExitIcon, Shield, History, FilePen, Eye, Lock,
   FolderPlus, Folder, ChevronRight, ChevronDown, MoreVertical, Pencil,
-  CheckSquare, X, FolderInput, Move,
+  CheckSquare, X, FolderInput, Move, Share2,
 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import FilePreviewModal from '../components/FilePreviewModal';
@@ -44,6 +44,7 @@ export default function EspaceDetail() {
   const [uploadAutorises, setUploadAutorises] = useState([]);
   const [aclModal, setAclModal] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
+  const [shareFile, setShareFile] = useState(null);
   const [fileLocks, setFileLocks] = useState({});
   const [currentFolder,       setCurrentFolder]       = useState(null);
   const [folders,             setFolders]             = useState([]);
@@ -59,6 +60,7 @@ export default function EspaceDetail() {
   const [moveTargetFolderId, setMoveTargetFolderId] = useState(null);
   const [expandedFolders,    setExpandedFolders]    = useState(new Set());
   const [moving,             setMoving]             = useState(false);
+  const [quotaModalLoading,  setQuotaModalLoading]  = useState(false);
 
   const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
   const isAdmin = espace && espace.admin_id === currentUserId;
@@ -633,24 +635,8 @@ export default function EspaceDetail() {
           </button>
 
           {isAdmin ? (
-            <button
-              onClick={handleDeleteEspace}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                background: 'transparent',
-                border: '0.5px solid rgba(220,80,80,0.3)',
-                color: '#e57373',
-                padding: '6px 14px',
-                borderRadius: 999,
-                fontSize: 12,
-                cursor: 'pointer',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,80,80,0.06)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <Trash2 size={12} /> Supprimer l'espace
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            </div>
           ) : (
             <button
               onClick={handleLeave}
@@ -1184,6 +1170,13 @@ export default function EspaceDetail() {
                             <Trash2 size={13} />
                           </button>
                         )}
+                        {perms.partage && (
+                          <button onClick={() => setShareFile(f)} title="Partager" style={{ ...actionBtnStyle, flexShrink: 0 }}
+                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; }}>
+                            <Share2 size={13} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -1465,6 +1458,115 @@ export default function EspaceDetail() {
             >
               Enregistrer la politique
             </button>
+
+            {/* ── Info Quota Espace ── */}
+            {espace && (
+              <div style={{
+                marginTop: 32, padding: '16px 20px',
+                background: 'var(--wings-surface)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 12,
+                display: 'flex', flexDirection: 'column', gap: 12
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)' }}>Quota de l'espace</span>
+                  {(() => {
+                    const utiliseMb = fichiers.reduce((acc, f) => acc + (f.taille || 0), 0);
+                    const utiliseGb = utiliseMb / 1024;
+                    return (
+                      <span style={{ fontSize: 12, color: 'var(--wings-text-muted)', fontFamily: 'monospace' }}>
+                        {utiliseGb.toFixed(2)} Go / {espace.quota} Go
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                {(() => {
+                  const utiliseMb = fichiers.reduce((acc, f) => acc + (f.taille || 0), 0);
+                  const utiliseGb = utiliseMb / 1024;
+                  const pct = espace.quota > 0 ? Math.min(100, (utiliseGb / espace.quota) * 100) : 100;
+                  const isBlocked = pct < 80;
+
+                  return (
+                    <>
+                      <div style={{ width: '100%', height: 4, background: 'var(--wings-border)', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${pct}%`, height: '100%',
+                          background: isBlocked ? 'var(--wings-gold)' : 'var(--wings-blue)',
+                          transition: 'width 0.4s ease'
+                        }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <button
+                          disabled={isBlocked || quotaModalLoading}
+                          onClick={async () => {
+                            if (isBlocked) return;
+                            setQuotaModalLoading(true);
+                            try {
+                              await API.post('/quota/requests', {
+                                quota_demande: espace.quota + 10,
+                                raison: "Demande depuis le tableau de bord de l'espace",
+                                espace_id: espace.id,
+                              });
+                              showToast('Demande envoyée avec succès');
+                            } catch (e) {
+                              showToast(e.response?.data?.error || 'Erreur lors de la demande', 'error');
+                            } finally {
+                              setQuotaModalLoading(false);
+                            }
+                          }}
+                          style={{
+                            padding: '6px 14px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                            background: isBlocked ? 'transparent' : 'var(--wings-blue)',
+                            border: isBlocked ? '0.5px solid var(--wings-border)' : 'none',
+                            color: isBlocked ? 'var(--wings-text-muted)' : '#fff',
+                            cursor: isBlocked ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {quotaModalLoading ? 'Envoi...' : isBlocked ? 'Seuil de 80% requis' : 'Demander une extension (+10 Go) →'}
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* ── Zone de danger ── */}
+            <div style={{
+              marginTop: 32, padding: '16px 20px',
+              background: 'var(--wings-surface)',
+              border: '0.5px solid rgba(220,80,80,0.3)',
+              borderRadius: 12,
+              display: 'flex', flexDirection: 'column', gap: 12
+            }}>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#e57373', margin: '0 0 4px' }}>Zone de danger</p>
+              <p style={{ fontSize: 12, color: 'var(--wings-text-muted)', margin: 0 }}>
+                La suppression de l'espace est définitive et entraînera la perte de tous les fichiers et membres associés.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 8 }}>
+                <button
+                  onClick={handleDeleteEspace}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: 'transparent',
+                    border: '0.5px solid rgba(220,80,80,0.3)',
+                    color: '#e57373',
+                    padding: '8px 16px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,80,80,0.06)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <Trash2 size={14} /> Supprimer l'espace
+                </button>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -1846,7 +1948,350 @@ export default function EspaceDetail() {
             </div>
           </div>
         )}
+        {shareFile && (
+          <ShareModal
+            fichier={shareFile}
+            onClose={() => setShareFile(null)}
+            onSuccess={(msg, type) => {
+              showToast(msg, type);
+              if (!type || type === 'success') { setShareFile(null); fetchEspace(); }
+            }}
+          />
+        )}
       </div>
     </AppLayout>
+  );
+}
+
+const SHARE_PERMS = [
+  { key: 'lecture',     label: 'Lecture' },
+  { key: 'download',    label: 'Téléchargement' },
+  { key: 'ecriture',    label: 'Écriture' },
+  { key: 'partage',     label: 'Partage' },
+];
+
+function ShareModal({ fichier, onClose, onSuccess }) {
+  const [search,      setSearch]      = useState('');
+  const [results,     setResults]     = useState([]);
+  const [selected,    setSelected]    = useState(null);
+  const [loadingU,    setLoadingU]    = useState(false);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [perms,       setPerms]       = useState({
+    lecture: true, download: true, ecriture: false,
+    partage: false, suppression: false,
+  });
+
+  useEffect(() => {
+    if (search.length < 2) { setResults([]); return; }
+    const t = setTimeout(async () => {
+      setLoadingU(true);
+      try {
+        const res = await API.get(`/users/search?q=${encodeURIComponent(search)}`);
+        setResults(res.data);
+      } catch { setResults([]); }
+      finally { setLoadingU(false); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const submit = async () => {
+    if (!selected || submitting) return;
+    setSubmitting(true);
+    try {
+      await API.post('/acl/', {
+        user_id:     selected.id,
+        fichier_id:  fichier.id,
+        lecture:     perms.lecture,
+        ecriture:    perms.ecriture,
+        download:    perms.download,
+        partage:     perms.partage,
+        suppression: perms.suppression,
+        upload:      false,
+      });
+      onSuccess?.('Fichier partagé avec succès');
+    } catch (e) {
+      if (e.response?.status === 409) {
+        onSuccess?.('Ce fichier est déjà partagé avec cet utilisateur', 'error');
+      } else {
+        onSuccess?.(e.response?.data?.error || 'Erreur lors du partage', 'error');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: '100%', maxWidth: 440,
+          background: 'var(--wings-surface)',
+          border: '0.5px solid var(--wings-border)',
+          borderRadius: 16,
+          boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+          overflow: 'hidden',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '18px 24px',
+          borderBottom: '0.5px solid var(--wings-border)',
+        }}>
+          <h2 style={{
+            fontFamily: 'Georgia, serif',
+            fontSize: 20, fontWeight: 400,
+            color: 'var(--wings-text)',
+            margin: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            paddingRight: 16,
+          }}>
+            Partager &laquo;&nbsp;{fichier.nom || fichier.name}&nbsp;&raquo;
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--wings-text-muted)', padding: 6,
+              borderRadius: 8, flexShrink: 0,
+              display: 'flex', alignItems: 'center',
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div>
+            <label style={{
+              display: 'block',
+              fontFamily: 'monospace',
+              fontSize: 10, fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              color: 'var(--wings-gold)',
+              marginBottom: 8,
+            }}>
+              Destinataire
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '9px 12px',
+                  background: 'var(--wings-bg)',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 8,
+                  color: 'var(--wings-text)',
+                  fontSize: 13,
+                  outline: 'none',
+                  transition: 'border-color 0.15s',
+                }}
+                placeholder="Rechercher un utilisateur…"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setSelected(null); }}
+                onFocus={e => { e.target.style.borderColor = 'var(--wings-blue)'; }}
+                onBlur={e => { e.target.style.borderColor = 'var(--wings-border)'; }}
+                autoFocus
+              />
+              {search.length >= 2 && !selected && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0,
+                  marginTop: 4,
+                  background: 'var(--wings-surface)',
+                  border: '0.5px solid var(--wings-border)',
+                  borderRadius: 8,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  zIndex: 10,
+                  maxHeight: 176, overflowY: 'auto',
+                }}>
+                  {loadingU && (
+                    <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--wings-text-muted)', textAlign: 'center' }}>Recherche…</div>
+                  )}
+                  {!loadingU && results.length === 0 && (
+                    <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--wings-text-muted)', textAlign: 'center' }}>Aucun résultat</div>
+                  )}
+                  {results.map(u => (
+                    <button
+                      key={u.id}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        width: '100%', padding: '10px 14px',
+                        background: 'transparent', border: 'none',
+                        borderBottom: '0.5px solid var(--wings-border)',
+                        cursor: 'pointer', textAlign: 'left',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(79,139,255,0.06)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      onClick={() => { setSelected(u); setSearch(u.nom); setResults([]); }}
+                    >
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: 'var(--wings-blue)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0,
+                      }}>
+                        {u.nom[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)' }}>{u.nom}</div>
+                        <div style={{ fontSize: 11, color: 'var(--wings-text-muted)' }}>{u.email}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {selected && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                marginTop: 8, padding: '10px 12px',
+                background: 'rgba(79,139,255,0.06)',
+                border: '0.5px solid var(--wings-border)',
+                borderRadius: 8,
+              }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: 'var(--wings-blue)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0,
+                }}>
+                  {selected.nom[0].toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-text)' }}>{selected.nom}</div>
+                  <div style={{ fontSize: 11, color: 'var(--wings-text-muted)' }}>{selected.email}</div>
+                </div>
+                <button
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wings-text-muted)', padding: 4, display: 'flex', transition: 'color 0.15s' }}
+                  onClick={() => { setSelected(null); setSearch(''); }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--wings-text)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--wings-text-muted)'; }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{
+              display: 'block',
+              fontFamily: 'monospace',
+              fontSize: 10, fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              color: 'var(--wings-gold)',
+              marginBottom: 10,
+            }}>
+              Permissions
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {SHARE_PERMS.map(({ key, label }) => (
+                <label
+                  key={key}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 0',
+                    borderBottom: '0.5px solid var(--wings-border)',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: 'var(--wings-text)' }}>{label}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={perms[key]}
+                    onClick={() => setPerms(p => ({ ...p, [key]: !p[key] }))}
+                    style={{
+                      position: 'relative',
+                      width: 36, height: 20,
+                      borderRadius: 999,
+                      border: 'none', cursor: 'pointer',
+                      background: perms[key] ? 'var(--wings-blue)' : 'rgba(168,180,212,0.2)',
+                      transition: 'background 0.2s',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute',
+                      top: 2,
+                      left: perms[key] ? 18 : 2,
+                      width: 16, height: 16,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                      transition: 'left 0.2s',
+                      display: 'block',
+                    }} />
+                  </button>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          display: 'flex', justifyContent: 'flex-end', gap: 10,
+          padding: '14px 24px',
+          borderTop: '0.5px solid var(--wings-border)',
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 20px', fontSize: 13,
+              background: 'transparent',
+              border: '0.5px solid var(--wings-border)',
+              borderRadius: 999,
+              color: 'var(--wings-text-muted)',
+              cursor: 'pointer',
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'var(--wings-text-muted)';
+              e.currentTarget.style.color = 'var(--wings-text)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = 'var(--wings-border)';
+              e.currentTarget.style.color = 'var(--wings-text-muted)';
+            }}
+          >
+            Annuler
+          </button>
+          <button
+            onClick={submit}
+            disabled={!selected || submitting}
+            style={{
+              padding: '8px 24px', fontSize: 13, fontWeight: 500,
+              background: 'var(--wings-blue)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 999,
+              cursor: !selected || submitting ? 'not-allowed' : 'pointer',
+              opacity: !selected || submitting ? 0.5 : 1,
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => { if (selected && !submitting) e.currentTarget.style.background = 'var(--wings-blue-dark)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--wings-blue)'; }}
+          >
+            {submitting ? 'Envoi…' : 'Partager'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -326,7 +326,7 @@ export default function Settings() {
               </span>
             </div>
 
-            <div style={{ width: '100%', height: 6, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+            <div style={{ width: '100%', height: 6, borderRadius: 999, overflow: 'hidden', background: 'var(--wings-border)' }}>
               <div style={{
                 height: '100%', borderRadius: 999,
                 width: `${Math.min(100, quotaPct)}%`,
@@ -346,22 +346,23 @@ export default function Settings() {
                 </p>
               ) : (
                 <button
-                  title={quotaPct < 50 ? "Disponible à partir de 50% d'utilisation" : undefined}
-                  disabled={quotaPct < 50}
-                  onClick={quotaPct >= 50 ? () => { setShowQuotaModal(true); setQuotaModalError(''); setSelectedPalier(null); setQuotaRaison(''); } : undefined}
+                  title={quotaPct < 80 ? "Disponible à partir de 80% d'utilisation" : undefined}
+                  disabled={quotaPct < 80}
+                  onClick={quotaPct >= 80 ? () => { setShowQuotaModal(true); setQuotaModalError(''); setSelectedPalier(null); setQuotaRaison(''); } : undefined}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '8px 16px',
-                    background: 'var(--wings-blue)',
-                    border: 'none', borderRadius: 999,
-                    color: '#fff', fontSize: 12, fontWeight: 500,
-                    cursor: quotaPct < 50 ? 'not-allowed' : 'pointer',
-                    opacity: quotaPct < 50 ? 0.45 : 1,
-                    transition: 'opacity 0.2s',
+                    background: quotaPct < 80 ? 'transparent' : 'var(--wings-blue)',
+                    border: quotaPct < 80 ? '0.5px solid var(--wings-border)' : 'none',
+                    borderRadius: 999,
+                    color: quotaPct < 80 ? 'var(--wings-text-muted)' : '#fff',
+                    fontSize: 12, fontWeight: 500,
+                    cursor: quotaPct < 80 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
                   }}
                 >
-                  <TrendingUp size={13} />
-                  Demander une augmentation
+                  {quotaPct >= 80 && <TrendingUp size={13} />}
+                  {quotaPct < 80 ? 'Seuil de 80% requis' : 'Demander une augmentation'}
                 </button>
               )}
             </div>

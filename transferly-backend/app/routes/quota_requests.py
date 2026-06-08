@@ -30,6 +30,7 @@ def create_quota_request():
     if espace_id is not None:
         from app.models.espace import Espace
         from app.models.membership import Membership
+        from app.models.fichier import Fichier
 
         espace = Espace.query.get(espace_id)
         if espace is None:
@@ -45,6 +46,14 @@ def create_quota_request():
         )
         if not is_admin:
             return jsonify({'error': "Vous n'êtes pas administrateur de cet espace"}), 403
+
+        # --- Vérification du seuil des 80% pour l'espace ---
+        utilise_mb = sum(f.taille or 0 for f in Fichier.query.filter_by(espace_id=espace_id).all())
+        utilise_gb = utilise_mb / 1024.0
+        pourcentage = (utilise_gb / espace.quota) * 100 if espace.quota > 0 else 0
+        
+        if pourcentage < 80.0:
+            return jsonify({'error': "Seuil insuffisant. L'espace collaboratif doit être rempli à au moins 80% pour demander une augmentation."}), 403
 
         if quota_demande <= espace.quota:
             return jsonify({
@@ -64,18 +73,17 @@ def create_quota_request():
 
         user = User.query.get(g.user['id'])
 
+        # --- Vérification du seuil des 80% pour le user ---
+        # user.quota_utilise est déjà en Go, user.quota est en Go
+        pourcentage = (user.quota_utilise / user.quota) * 100 if user.quota > 0 else 0
+        
+        if pourcentage < 80.0:
+            return jsonify({'error': "Seuil insuffisant. Vous devez utiliser au moins 80% de votre espace actuel pour demander une augmentation."}), 403
+
         if quota_demande <= user.quota:
             return jsonify({
                 'error': f'Le quota demandé doit être supérieur à votre quota actuel ({user.quota} Go)'
             }), 400
-
-        existing = QuotaRequest.query.filter(
-            QuotaRequest.user_id == g.user['id'],
-            QuotaRequest.espace_id.is_(None),
-            QuotaRequest.statut == 'pending'
-        ).first()
-        if existing:
-            return jsonify({'error': 'Une demande personnelle en attente existe déjà'}), 409
 
     new_request = QuotaRequest(
         user_id=g.user['id'],
@@ -163,6 +171,8 @@ def _serialize_for_admin(r):
 
     demandeur = User.query.get(r.user_id)
     espace_nom = r.espace.nom if r.espace_id and r.espace else None
+    
+    req_type = 'espace' if r.espace_id is not None else 'user'
 
     if r.espace_id and r.espace:
         quota_actuel = r.espace.quota
@@ -175,6 +185,8 @@ def _serialize_for_admin(r):
 
     return {
         'id': r.id,
+        'type': req_type,
+        'nom_espace': espace_nom,
         'user_id': r.user_id,
         'user_email': demandeur.email if demandeur else None,
         'user_nom': demandeur.nom if demandeur else None,

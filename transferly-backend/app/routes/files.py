@@ -183,7 +183,20 @@ def upload_file():
                 return jsonify({'error': 'Espace introuvable'}), 404
 
             uid = g.user['id']
+            
+            # Vérification approfondie des droits d'admin (créateur + rôles membres)
             is_espace_admin = (espace_obj.admin_id == uid)
+            membre = Membership.query.filter_by(user_id=uid, espace_id=espace_id).first()
+            if membre and membre.role == 'admin':
+                is_espace_admin = True
+                
+            # Vérification du droit d'écriture explicite
+            has_write_permission = False
+            if espace_obj.upload_autorises:
+                autorises = [int(x) for x in espace_obj.upload_autorises.split(',') if x.strip()]
+                if uid in autorises:
+                    has_write_permission = True
+
             policy = espace_obj.upload_policy or 'tous'
 
             # Enforce espace quota if one is set (quota > 0 means limited)
@@ -194,15 +207,14 @@ def upload_file():
                 if utilise_gb + file_size_gb > espace_obj.quota:
                     return jsonify({'error': f"Quota de l'espace dépassé ({espace_obj.quota:.2f} Go alloués)"}), 413
 
-            if not is_espace_admin:
+            # Autorisation stricte : si l'utilisateur est admin ou possède les droits d'écriture
+            if not (is_espace_admin or has_write_permission):
                 if policy == 'admin_seul':
-                    return jsonify({'error': 'Seul l administrateur de l espace peut téléverser des fichiers'}), 403
+                    return jsonify({'error': 'Erreur : Droits insuffisants pour cet espace.'}), 403
                 elif policy == 'membres_choisis':
-                    autorises = []
-                    if espace_obj.upload_autorises:
-                        autorises = [int(x) for x in espace_obj.upload_autorises.split(',') if x.strip()]
-                    if uid not in autorises:
-                        return jsonify({'error': 'Vous n êtes pas autorisé à téléverser dans cet espace'}), 403
+                    return jsonify({'error': 'Erreur : Droits insuffisants pour cet espace.'}), 403
+                elif not membre:
+                    return jsonify({'error': 'Erreur : Droits insuffisants pour cet espace. (Non membre)'}), 403
 
         fichier = Fichier(
             nom=uploaded.filename,
@@ -594,6 +606,20 @@ def list_files_in_espace(espace_id):
     result = []
     for f in fichiers:
         owner = User.query.get(f.user_id)
+        
+        # Récupération des permissions ACL pour l'utilisateur courant sur ce fichier
+        acl = ACL.query.filter_by(user_id=user_id, fichier_id=f.id).first()
+        mes_permissions = None
+        if acl:
+            mes_permissions = {
+                'lecture': acl.lecture,
+                'ecriture': acl.ecriture,
+                'upload': acl.upload,
+                'download': acl.download,
+                'suppression': acl.suppression,
+                'partage': acl.partage,
+            }
+            
         result.append({
             'id': f.id,
             'nom': f.nom,
@@ -603,6 +629,7 @@ def list_files_in_espace(espace_id):
             'owner_nom': owner.nom if owner else None,
             'owner_email': owner.email if owner else None,
             'folder_id': f.folder_id,
+            'mes_permissions': mes_permissions,
         })
     return jsonify(result), 200
 

@@ -43,11 +43,11 @@ function PrivateRoute({ children }) {
 
 function NotFound() {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', background: '#0f172a', color: '#94a3b8', fontFamily: 'sans-serif' }}>
-      <span style={{ fontSize: '64px', fontWeight: 800, color: '#06b6d4' }}>404</span>
-      <p style={{ fontSize: '18px', fontWeight: 600, color: '#e2e8f0' }}>Page introuvable</p>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', background: 'var(--wings-bg)', color: 'var(--wings-text-muted)', fontFamily: 'sans-serif' }}>
+      <span style={{ fontSize: '64px', fontWeight: 800, color: 'var(--wings-blue)' }}>404</span>
+      <p style={{ fontSize: '18px', fontWeight: 600, color: 'var(--wings-text)' }}>Page introuvable</p>
       <p style={{ fontSize: '14px' }}>Cette page n'existe pas ou a été déplacée.</p>
-      <Link to="/" style={{ marginTop: '8px', padding: '10px 24px', background: '#06b6d4', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}>
+      <Link to="/" style={{ marginTop: '8px', padding: '10px 24px', background: 'var(--wings-blue)', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}>
         Retour à l'accueil
       </Link>
     </div>

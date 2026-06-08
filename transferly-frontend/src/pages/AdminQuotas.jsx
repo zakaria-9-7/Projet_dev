@@ -450,15 +450,12 @@ export default function AdminQuotas() {
 
                     {/* QUOTA */}
                     <div style={{ flex: '0 0 100px', color: 'var(--wings-text)', fontSize: 12, fontFamily: 'monospace' }}>
-                      {e.quota > 0 ? fmt(e.quota) : <span style={{ color: 'var(--wings-text-muted)', fontStyle: 'italic' }}>Illimité</span>}
+                      {fmt(e.quota)}
                     </div>
 
                     {/* BARRE */}
                     <div style={{ flex: '0 0 160px' }}>
-                      {e.quota > 0
-                        ? <QuotaBar used={e.quota_utilise} total={e.quota} />
-                        : <span style={{ fontSize: 11, color: 'var(--wings-text-muted)' }}>—</span>
-                      }
+                      <QuotaBar used={e.quota_utilise} total={e.quota} />
                     </div>
 
                     {/* INPUT */}

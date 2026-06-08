@@ -68,16 +68,6 @@ export default function History() {
   return (
     <AppLayout>
 
-      {/* ── Header ── */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--wings-text)', margin: 0 }}>
-          Historique
-        </h1>
-        <p style={{ fontSize: 13, color: 'var(--wings-text-muted)', marginTop: 4 }}>
-          Toutes les modifications de vos fichiers et des espaces dont vous êtes membre
-        </p>
-      </div>
-
       {/* ── Filtres ── */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
@@ -88,21 +78,24 @@ export default function History() {
           display: 'flex',
           border: '0.5px solid var(--wings-border)',
           borderRadius: 10, overflow: 'hidden',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         }}>
           {SCOPES.map((s, i) => (
             <button
               key={s.key}
               onClick={() => setScope(s.key)}
               style={{
-                padding: '7px 16px',
-                fontSize: 12, fontWeight: 500,
-                background: scope === s.key ? 'var(--wings-blue)' : 'var(--wings-surface)',
-                color: scope === s.key ? '#fff' : 'var(--wings-text-muted)',
+                padding: '8px 18px',
+                fontSize: 11, fontWeight: 700,
+                fontFamily: 'monospace',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                background: scope === s.key ? 'var(--wings-gold)' : 'var(--wings-surface)',
+                color: scope === s.key ? '#000' : 'var(--wings-text-muted)',
                 border: 'none',
                 borderLeft: i > 0 ? '0.5px solid var(--wings-border)' : 'none',
                 cursor: 'pointer',
-                transition: 'all 0.15s',
+                transition: 'all 0.2s',
               }}
             >
               {s.label}
@@ -206,7 +199,7 @@ export default function History() {
           background: 'var(--wings-surface)',
           border: '0.5px solid var(--wings-border)',
           borderRadius: 16, overflow: 'hidden',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
         }}>
           {filteredItems.map((item, i) => (
             <HistoryRow
@@ -257,22 +250,22 @@ function HistoryRow({ item, last, onClick }) {
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 14,
-        padding: '11px 20px',
+        padding: '12px 20px',
         borderBottom: last ? 'none' : '0.5px solid var(--wings-border)',
         cursor: 'pointer',
-        transition: 'background 0.12s',
+        transition: 'all 0.15s',
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(79,139,255,0.04)'; }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,193,7,0.03)'; }}
       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
     >
       {/* Icône fichier */}
       <div style={{
         width: 34, height: 34, borderRadius: 8, flexShrink: 0,
-        background: 'rgba(79,139,255,0.06)',
-        border: '0.5px solid rgba(79,139,255,0.12)',
+        background: 'rgba(79,139,255,0.05)',
+        border: '0.5px solid var(--wings-border)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <FileText style={{ width: 15, height: 15, color: 'var(--wings-blue)', opacity: 0.85 }} />
+        <FileText style={{ width: 14, height: 14, color: 'var(--wings-blue)', opacity: 0.8 }} />
       </div>
 
       {/* Infos principales */}
@@ -280,7 +273,7 @@ function HistoryRow({ item, last, onClick }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
           {/* Nom fichier */}
           <span style={{
-            fontSize: 13, fontWeight: 600, color: 'var(--wings-text)',
+            fontSize: 13, fontWeight: 500, color: 'var(--wings-text)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             maxWidth: 260,
           }}>
@@ -289,23 +282,25 @@ function HistoryRow({ item, last, onClick }) {
 
           {/* Badge version */}
           <span style={{
-            fontSize: 10, fontWeight: 700, padding: '2px 7px',
-            background: 'var(--wings-blue)',
-            color: '#fff',
-            borderRadius: 999, flexShrink: 0,
-            boxShadow: '0 2px 4px rgba(79,139,255,0.2)',
+            fontSize: 9, fontWeight: 800, padding: '2px 8px',
+            fontFamily: 'monospace',
+            background: 'var(--wings-gold)',
+            color: '#000',
+            borderRadius: 6, flexShrink: 0,
           }}>
-            v{item.numero_version}
+            V{item.numero_version}
           </span>
 
           {/* Badge espace (fichier pas perso) */}
           {!item.is_mine && item.espace_nom && (
             <span style={{
-              fontSize: 10, fontWeight: 600, padding: '2px 7px',
-              background: 'rgba(255,185,0,0.12)',
-              color: 'var(--wings-gold-dark)',
-              border: '0.5px solid rgba(255,185,0,0.3)',
-              borderRadius: 999, flexShrink: 0,
+              fontSize: 9, fontWeight: 700, padding: '2px 8px',
+              fontFamily: 'monospace',
+              textTransform: 'uppercase',
+              background: 'rgba(79,139,255,0.08)',
+              color: 'var(--wings-blue-pale)',
+              border: '0.5px solid rgba(79,139,255,0.2)',
+              borderRadius: 6, flexShrink: 0,
             }}>
               {item.espace_nom}
             </span>

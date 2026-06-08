@@ -39,8 +39,8 @@
 html { scroll-behavior: smooth; }
 
 body {
-  background: #121414;
-  color: #e3e2e2;
+  background: var(--wings-bg);
+  color: var(--wings-text);
   font-family: 'Inter', system-ui, sans-serif;
   font-feature-settings: 'cv11', 'ss01';
   letter-spacing: -0.011em;

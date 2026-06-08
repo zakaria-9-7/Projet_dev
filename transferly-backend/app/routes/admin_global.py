@@ -228,12 +228,16 @@ def admin_get_espace_quotas():
         fichiers = Fichier.query.filter_by(espace_id=e.id).all()
         utilise_mb = sum(f.taille or 0 for f in fichiers)
         utilise_gb = utilise_mb / 1024.0
+        
+        # Harmonise les quotas existants à 0 vers le nouveau défaut de 5.0
+        effective_quota = e.quota if (e.quota is not None and e.quota > 0) else 5.0
+        
         result.append({
             'id':          e.id,
             'nom':         e.nom,
             'admin_nom':   admin.nom   if admin else 'Inconnu',
             'admin_email': admin.email if admin else None,
-            'quota':       e.quota,        # GB, 0 = illimité
+            'quota':       effective_quota,
             'quota_utilise': round(utilise_gb, 6),
             'nb_fichiers': len(fichiers),
         })
