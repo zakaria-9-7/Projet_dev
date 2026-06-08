@@ -36,6 +36,7 @@ function normalizeFile(f) {
     shared_by: f.shared_by || null,
     // permissions: present for shared files, null for own files (owner has all)
     perms: f.mes_permissions || null,
+    espace_id: f.espace_id ?? null,  
   };
 }
 
@@ -289,9 +290,23 @@ export default function MyFiles() {
           onFolderCreated={(newFolder) => setFolders(prev => [...prev, newFolder])}
           onFolderUpdated={(id, nom) => setFolders(prev => prev.map(f => f.id === id ? { ...f, nom } : f))}
           onFolderDeleted={(id) => {
-            setFolders(prev => prev.filter(f => f.id !== id));
-            if (currentFolder === id) setCurrentFolder(null);
+            setFolders(prev => {
+              // Collecter tous les ids descendants
+              const toDelete = new Set([id]);
+              let changed = true;
+              while (changed) {
+                changed = false;
+                prev.forEach(f => {
+                  if (f.parent_id != null && toDelete.has(f.parent_id) && !toDelete.has(f.id)) {
+                    toDelete.add(f.id);
+                    changed = true;
+                  }
+                });
+              }
+              return prev.filter(f => !toDelete.has(f.id));
+            });
           }}
+
         />
 
         {/* Contenu principal */}
