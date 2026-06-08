@@ -39,13 +39,14 @@
 html { scroll-behavior: smooth; }
 
 body {
-  background: #121414;
-  color: #e3e2e2;
+  background: var(--wings-bg, #121414);
+  color: var(--wings-text, #e3e2e2);
   font-family: 'Inter', system-ui, sans-serif;
   font-feature-settings: 'cv11', 'ss01';
   letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 a { text-decoration: none; }

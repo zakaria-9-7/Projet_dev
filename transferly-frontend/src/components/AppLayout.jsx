@@ -81,7 +81,10 @@ function NavItem({ to, icon: Icon, label, onClick, active = false, extraClass = 
 }
 
 export default function AppLayout({ children, titleNode }) {
-  const [dark, setDark] = useState(() => localStorage.getItem('darkMode') === 'true');
+  const [dark, setDark] = useState(() => {
+    const stored = localStorage.getItem('darkMode');
+    return stored === null ? true : stored === 'true'; // default to dark
+  });
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
   const navigate = useNavigate();
@@ -92,7 +95,13 @@ export default function AppLayout({ children, titleNode }) {
   const role  = localStorage.getItem('role')  || 'Utilisateur';
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
+    if (dark) {
+      document.documentElement.removeAttribute('data-theme');
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.documentElement.classList.remove('dark');
+    }
     localStorage.setItem('darkMode', String(dark));
   }, [dark]);
 
@@ -121,6 +130,7 @@ export default function AppLayout({ children, titleNode }) {
   const handleLogout = () => {
     localStorage.clear();
     document.documentElement.classList.remove('dark');
+    document.documentElement.removeAttribute('data-theme');
     navigate('/login');
   };
 
