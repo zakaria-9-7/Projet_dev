@@ -1,6 +1,123 @@
+import { useState, useEffect, useCallback } from 'react';
+import { Inbox, RefreshCw, AlertCircle } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
+import API from '../api/auth';
+
+const TABS = [
+  { id: 'pending',  label: 'En attente' },
+  { id: 'approved', label: 'Approuvées' },
+  { id: 'rejected', label: 'Rejetées' },
+];
+
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('fr-FR', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function Avatar({ email, nom }) {
+  const initial = (nom || email || '?')[0].toUpperCase();
+  const colors = ['#4f8bff', '#b07cce', '#5dd39e', '#d4af37', '#e57373'];
+  const idx = (nom || email || '').length % colors.length;
+  return (
+    <div style={{
+      width: 36, height: 36, borderRadius: 10,
+      background: colors[idx], color: '#fff',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 14, fontWeight: 600, flexShrink: 0
+    }}>
+      {initial}
+    </div>
+  );
+}
+
+const statusBadge = (status) => {
+  if (status === 'approved') return (
+    <span style={{
+      color: '#059669', background: 'rgba(5,150,105,0.1)',
+      border: '0.5px solid rgba(5,150,105,0.3)',
+      padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 500
+    }}>
+      Approuvée
+    </span>
+  );
+  if (status === 'rejected') return (
+    <span style={{
+      color: '#e57373', background: 'rgba(229,115,115,0.08)',
+      border: '0.5px solid rgba(229,115,115,0.3)',
+      padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 500
+    }}>
+      Rejetée
+    </span>
+  );
+  return null;
+};
 
 export default function AdminQuotaRequests() {
+  const [tab,          setTab]          = useState('pending');
+  const [requests,     setRequests]     = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState('');
+  const [pendingCount, setPendingCount] = useState(0);
+  const [expanded,     setExpanded]     = useState(new Set());
+
+  const fetchRequests = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [res, resPending] = await Promise.all([
+        API.get(`/admin/quota-requests?statut=${tab}`),
+        API.get('/admin/quota-requests?statut=pending')
+      ]);
+      setRequests(res.data || []);
+      setPendingCount((resPending.data || []).length);
+    } catch (err) {
+      setError("Impossible de charger les demandes.");
+    } finally {
+      setLoading(false);
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
+  const toggleExpanded = (id) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const openApprove = async (req) => {
+    const comment = prompt(`Approuver la demande de ${req.user_email} ?\nCommentaire (optionnel) :`, "");
+    if (comment === null) return;
+    try {
+      await API.post(`/admin/quota-requests/${req.id}/approve`, { commentaire: comment });
+      fetchRequests();
+    } catch (err) {
+      alert(err.response?.data?.error || "Erreur lors de l'approbation.");
+    }
+  };
+
+  const openReject = async (req) => {
+    const comment = prompt(`Rejeter la demande de ${req.user_email} ?\nRaison du rejet (obligatoire) :`, "");
+    if (comment === null) return;
+    if (!comment.trim()) {
+      alert("Une raison est obligatoire pour rejeter une demande.");
+      return;
+    }
+    try {
+      await API.post(`/admin/quota-requests/${req.id}/reject`, { commentaire: comment.trim() });
+      fetchRequests();
+    } catch (err) {
+      alert(err.response?.data?.error || "Erreur lors du rejet.");
+    }
+  };
+
   return (
     <AppLayout>
       <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
