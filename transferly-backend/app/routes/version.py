@@ -152,18 +152,32 @@ def restore_version(fichier_id, numero_version):
             contenu_restaure = fp.read()
 
         # 5. Archive le binaire courant
+        current_sha256 = None
         if current_path and os.path.exists(current_path):
-            # On Windows os.rename fails if destination exists — remove it first
+            with open(current_path, 'rb') as fp:
+                current_encrypted = fp.read()
+            try:
+                import hashlib
+                current_sha256 = hashlib.sha256(decrypt_file(current_encrypted)).hexdigest()
+            except Exception:
+                pass
+
+            # ZT-06 Repair: if any version record points to live file, move it to archive_path
+            prev_pointing_to_live = VersionFichier.query.filter_by(fichier_id=fichier_id, chemin=current_path).all()
+            for pv in prev_pointing_to_live:
+                pv.chemin = archive_path
+
             if os.path.exists(archive_path):
                 os.remove(archive_path)
             os.rename(current_path, archive_path)
         else:
-            archive_path = current_path  # rien à déplacer, conserve la référence
+            archive_path = current_path  # rien à déplacer
 
         nouvelle_version = VersionFichier(
             numero_version=next_num,
             description=f'État avant restauration de la v{numero_version}',
             chemin=archive_path,
+            sha256=current_sha256,
             auteur_id=g.user['id'],
             fichier_id=fichier_id,
         )

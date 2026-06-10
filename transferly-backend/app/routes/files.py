@@ -2,6 +2,7 @@ import os
 import io
 import threading
 import hashlib
+import shutil
 from flask import Blueprint, request, jsonify, g, send_file, current_app
 from app.extensions import db
 from app.models.fichier import Fichier
@@ -29,7 +30,9 @@ ALLOWED_EXTENSIONS = {
     'zip', 'rar', '7z', 'tar', 'gz',
     # Code & Développement
     'py', 'js', 'jsx', 'ts', 'tsx', 'java', 'c', 'cpp', 'h', 'hpp',
-    'html', 'css', 'json', 'xml', 'sql', 'rb', 'go', 'rs'
+    'html', 'css', 'json', 'xml', 'sql', 'rb', 'go', 'rs',
+    # Vidéos
+    'mp4', 'webm', 'mov', 'mkv'
 }
 
 FORBIDDEN_EXTENSIONS = {
@@ -69,6 +72,137 @@ def _serialize(f, user_id):
         'folder_id':    f.folder_id,
         'est_partage':  est_partage,
     }
+
+
+@files_bp.route('/<int:fichier_id>/lock', methods=['GET', 'POST', 'OPTIONS'])
+def lock_file_sync(fichier_id):
+    from app.models.file_lock import FileLock
+    from datetime import datetime
+    from flask import request
+    
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    if not (hasattr(g, 'user') and g.user):
+        return jsonify({'error': 'Non authentifié'}), 401
+
+    # Forcer la conversion en entier
+    try:
+        fichier_id = int(fichier_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'ID de fichier invalide'}), 400
+
+    if request.method == 'GET':
+        lock = FileLock.query.filter_by(fichier_id=fichier_id).first()
+        return jsonify({
+            "is_locked": lock is not None,
+            "locked_by_email": lock.user.email if lock and lock.user else None,
+            "can_edit": lock.user_id == g.user['id'] if lock else True
+        }), 200
+
+    user_id = g.user['id']
+    user_email = g.user['email']
+
+    fichier = Fichier.query.get(fichier_id)
+    if not fichier:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+    
+    lock = FileLock.query.filter_by(fichier_id=fichier_id).first()
+    
+    if lock:
+        if lock.user.email == user_email:
+            # Déjà verrouillé par moi : rafraîchir l'activité
+            lock.last_activity = datetime.utcnow()
+            db.session.commit()
+            return jsonify({
+                "is_locked": True,
+                "locked_by_email": lock.user.email,
+                "can_edit": True
+            }), 200
+        else:
+            # Verrouillé par un autre
+            return jsonify({
+                "is_locked": True,
+                "locked_by_email": lock.user.email,
+                "can_edit": False
+            }), 200
+
+    # Création du verrou (si is_locked == False)
+    new_lock = FileLock(
+        fichier_id=fichier_id,
+        user_id=user_id,
+        created_at=datetime.utcnow(),
+        last_activity=datetime.utcnow()
+    )
+    db.session.add(new_lock)
+    db.session.commit()
+
+    log_action(
+        user_id=user_id,
+        user_email=user_email,
+        action="VERROU_AUTOMATIQUE",
+        resource_id=fichier_id,
+        statut="Succès",
+        details=f"Verrou automatique (Lazy Locking) posé sur le fichier '{fichier.nom}'."
+    )
+    db.session.commit()
+
+    return jsonify({
+        "is_locked": True,
+        "locked_by_email": user_email,
+        "can_edit": True
+    }), 200
+
+
+@files_bp.route('/<int:fichier_id>/status', methods=['GET'])
+def get_file_status(fichier_id):
+    from app.models.file_lock import FileLock
+    fichier = Fichier.query.get(fichier_id)
+    if not fichier:
+        return jsonify({'error': 'Fichier introuvable'}), 404
+    
+    lock = FileLock.query.filter_by(fichier_id=fichier_id).first()
+    # Optionnel: on pourrait appeler _cleanup_expired ici
+    
+    return jsonify({
+        "is_locked": lock is not None,
+        "locked_by": lock.user.email if lock and lock.user else None
+    }), 200
+
+
+@files_bp.route('/<int:fichier_id>/unlock', methods=['POST'])
+def unlock_file_sync(fichier_id):
+    from app.models.file_lock import FileLock
+    if not (hasattr(g, 'user') and g.user):
+        return jsonify({'error': 'Non authentifié'}), 401
+
+    # Forcer la conversion en entier
+    try:
+        fichier_id = int(fichier_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'ID de fichier invalide'}), 400
+
+    lock = FileLock.query.filter_by(fichier_id=fichier_id).first()
+    if not lock:
+        return jsonify({'message': 'Fichier non verrouillé'}), 200
+
+    if lock.user_id != g.user['id'] and g.user.get('role') != 'AdminGlobal':
+        return jsonify({'error': 'Permission refusée'}), 403
+
+    db.session.delete(lock)
+    db.session.commit()
+
+    log_action(
+        user_id=g.user['id'],
+        user_email=g.user['email'],
+        action="VERROU_LIBERE",
+        resource_id=fichier_id,
+        statut="Succès",
+        details=f"Verrou libéré sur le fichier ID {fichier_id} via route de synchronisation."
+    )
+    db.session.commit()
+
+    return jsonify({'message': 'Fichier déverrouillé'}), 200
 
 
 # ── GET /files/shared-with-me ────────────────────────────────────
@@ -236,12 +370,18 @@ def upload_file():
 
         fichier.chemin = file_path
 
+        # ZT-06: Fix version pointer shift. 
+        # Always point VersionFichier to a dedicated immutable archive path.
+        v1_path = f'{upload_dir}/{fichier.id}_v1.enc'
+        with open(v1_path, 'wb') as fp:
+            fp.write(encrypted)
+
         sha256_init = hashlib.sha256(file_content).hexdigest()
         auteur_init = User.query.get(user_id)
         version = VersionFichier(
             numero_version=1,
             description=f'Version initiale — {auteur_init.nom if auteur_init else "utilisateur"}',
-            chemin=file_path,
+            chemin=v1_path,
             sha256=sha256_init,
             auteur_id=user_id,
             fichier_id=fichier.id,
@@ -574,6 +714,20 @@ def delete_file(fichier_id):
         db.session.delete(fichier)  # cascade supprime versions + ACLs
         db.session.commit()
 
+        # --- LOG GOUVERNANCE ---
+        from app.models.espace import Espace
+        espace_obj = Espace.query.get(fichier.espace_id) if fichier.espace_id else None
+        espace_nom = espace_obj.nom if espace_obj else "Espace Personnel"
+
+        log_action(
+            user_id=user_id,
+            user_email=g.user['email'],
+            action="SUPPRESSION",
+            details=f"Suppression logique du fichier chiffré '{fichier.nom}' (Dernière version connue : v{fichier.version_courante}) au sein de l'espace '{espace_nom}'. Opération initiée par {g.user['email']}.",
+            statut="Succès"
+        )
+        db.session.commit()
+
         for chemin in chemins_versions:
             os.remove(chemin)
         if chemin_principal and os.path.exists(chemin_principal):
@@ -711,30 +865,37 @@ def update_file(fichier_id):
         ) or 0
         next_num = max_version + 1
 
-        # Archive l'ancien binaire sous un nom versionné
-        archive_path = f'uploads/user_{owner_id}/{fichier_id}_v{max_version}.enc'
-        if fichier.chemin and os.path.exists(fichier.chemin):
-            # On Windows os.rename fails if destination exists — remove it first
-            if os.path.exists(archive_path):
-                os.remove(archive_path)
-            os.rename(fichier.chemin, archive_path)
-        else:
-            archive_path = fichier.chemin  # référence conservée même si absent
+        # ZT-06: Fix version pointer shift & Repair existing ones
+        # Every version must have its own immutable file.
+        # If any previous version pointed to the live file, we must fix it now.
+        prev_versions_on_live = VersionFichier.query.filter_by(fichier_id=fichier_id, chemin=fichier.chemin).all()
+        for pv in prev_versions_on_live:
+            pv_path = f'uploads/user_{owner_id}/{fichier_id}_v{pv.numero_version}.enc'
+            if os.path.exists(fichier.chemin) and not os.path.exists(pv_path):
+                shutil.copy2(fichier.chemin, pv_path)
+            pv.chemin = pv_path
+
+        v_path = f'uploads/user_{owner_id}/{fichier_id}_v{next_num}.enc'
+        encrypted_content = encrypt_file(new_content)
+
+        # 1. Écrit le nouveau binaire chiffré dans l'archive de version
+        with open(v_path, 'wb') as fp:
+            fp.write(encrypted_content)
+
+        # 2. Écrit aussi le nouveau binaire à l'emplacement canonique (live)
+        new_path = f'uploads/user_{owner_id}/{fichier_id}.enc'
+        with open(new_path, 'wb') as fp:
+            fp.write(encrypted_content)
 
         version = VersionFichier(
             numero_version=next_num,
             description=f'Modifié par {auteur_nom}',
-            chemin=archive_path,
+            chemin=v_path,
             sha256=sha256,
             auteur_id=user_id,
             fichier_id=fichier_id,
         )
         db.session.add(version)
-
-        # Écrit le nouveau binaire chiffré à l'emplacement canonique
-        new_path = f'uploads/user_{owner_id}/{fichier_id}.enc'
-        with open(new_path, 'wb') as fp:
-            fp.write(encrypt_file(new_content))
 
         fichier.chemin = new_path
         fichier.taille = round(new_size_mb, 6)

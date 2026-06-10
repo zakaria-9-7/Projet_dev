@@ -10,7 +10,7 @@ function buildTree(folders) {
   folders.forEach(f => {
     if (f.parent_id != null && map[f.parent_id]) {
       map[f.parent_id].children.push(map[f.id]);
-    } else {v
+    } else {
       roots.push(map[f.id]);
     }
   });

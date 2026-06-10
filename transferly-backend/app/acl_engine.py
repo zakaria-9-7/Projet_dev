@@ -164,14 +164,9 @@ def grant_owner_permissions(user_id: int, fichier_id: int):
 
 def _log_refused(user_id: int, action: str, fichier_id: int):
     """Enregistre silencieusement un accès refusé."""
-    try:
-        log = Log(
-            user_id=user_id,
-            action=f"ACCES_REFUSE:{action}:fichier_{fichier_id}",
-            statut="echec",
-            date=datetime.utcnow()
-        )
-        db.session.add(log)
-        db.session.commit()
-    except Exception:
-        pass
+    from app.services.logger import log_action
+    log_action(
+        user_id=user_id,
+        action=f"ACCES_REFUSE:{action}:fichier_{fichier_id}",
+        statut="echec"
+    )

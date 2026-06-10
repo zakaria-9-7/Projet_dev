@@ -31,10 +31,11 @@ def create_my_espace():
     from app.services.logger import log_action
     log_action(
         user_id=user.id,
-        action='create_espace',
+        user_email=user.email,
+        action="CRÉATION D'ESPACE",
         resource_id=espace.id,
-        statut='succes',
-        details=f'Espace "{espace.nom}" créé, rôle promu : {user.role}'
+        statut='Succès',
+        details=f'Espace collaboratif "{espace.nom}" créé, rôle promu : {user.role}'
     )
     return jsonify({
         'id': espace.id,
@@ -48,7 +49,7 @@ def list_my_espaces():
     from flask import g, jsonify
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
-    espaces = Espace.query.filter_by(admin_id=g.user['id']).all()
+    espaces = Espace.query.filter(Espace.admin_id == g.user['id'], Espace.statut != 'Supprimé').all()
     return jsonify([{
         'id': e.id,
         'nom': e.nom,
@@ -62,7 +63,7 @@ def list_members(espace_id):
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
     espace = Espace.query.get(espace_id)
-    if espace is None:
+    if espace is None or espace.statut == 'Supprimé':
         return jsonify({'error': 'Espace introuvable'}), 404
     if espace.admin_id != g.user['id'] and g.user['role'] != 'AdminGlobal':
         return jsonify({'error': 'Accès refusé'}), 403
@@ -96,6 +97,17 @@ def invite_to_espace(espace_id):
     user = User.query.filter_by(email=email).first()
     if user is None:
         return jsonify({'error': 'Utilisateur introuvable'}), 404
+    
+    from app.services.logger import log_action
+    log_action(
+        user_id=g.user['id'],
+        user_email=g.user['email'],
+        action="GOUVERNANCE",
+        details=f"Extension des droits d'accès : Affectation de l'utilisateur '{user.email}' au sein de l'espace collaboratif '{espace.nom}' par l'opérateur {g.user['email']}.",
+        statut="Succès"
+    )
+    db.session.commit()
+
     return jsonify({
         'message': f'Invitation envoyée à {user.nom}',
         'user_id': user.id
@@ -114,6 +126,18 @@ def create_espace():
       space = Espace(nom=space_name, admin_id=admin.id)
       db.session.add(space)
       db.session.commit()
+      
+      from app.services.logger import log_action
+      log_action(
+          user_id=g.user['id'],
+          user_email=g.user['email'],
+          action="CRÉATION D'ESPACE",
+          resource_id=space.id,
+          details=f"Initialisation et création de l'espace collaboratif sécurisé nommé '{space.nom}'. Opérateur : {g.user['email']}.",
+          statut="Succès"
+      )
+      db.session.commit()
+
       return jsonify({'message' : 'Espace créé avec succès'}), 201
     else :
       return jsonify({'error' : 'Administrateur inexistant ou non non habilité à créer un espace'}), 400
@@ -123,7 +147,7 @@ def create_espace():
 @admin_espace_bp.route('/admin/espaces', methods=['GET'])
 @require_role('AdminGlobal')
 def get_espaces() :
-  spaces = Espace.query.all()
+  spaces = Espace.query.filter(Espace.statut != 'Supprimé').all()
   result = []
   for elt in spaces :
     admin = User.query.get(elt.admin_id)
@@ -166,8 +190,22 @@ def delete_espace(espace_id):
   if space is None :
     return jsonify({'error' : 'espace inexistant'}), 404
   else :
-    db.session.delete(space)
+    # Soft Delete pour libérer le nom
+    old_nom = space.nom
+    space.nom = f"deleted_{space.id}_{old_nom}"
+    space.statut = "Supprimé"
     db.session.commit()
+
+    from app.services.logger import log_action
+    log_action(
+        user_id=g.user['id'],
+        user_email=g.user['email'],
+        action="SUPPRESSION D'ESPACE",
+        details=f"Révocation et archivage logique (Soft Delete) de l'espace collaboratif '{old_nom}' (ID historique: {space.id}). Statut passé à inactif, contrainte de nommage libérée.",
+        statut="Succès"
+    )
+    db.session.commit()
+
     return  jsonify({'message' : 'Espace supprimé avec succès'}), 200
 
 # ── Endpoint dédié AdminEspace : son propre espace ──────────────
@@ -183,7 +221,7 @@ def get_my_espace():
     if g.user['role'] not in ('AdminEspace', 'AdminGlobal'):
         return jsonify({'error': 'Accès refusé'}), 403
     my_id = g.user['id']
-    espaces = Espace.query.filter_by(admin_id=my_id).all()
+    espaces = Espace.query.filter(Espace.admin_id == my_id, Espace.statut != 'Supprimé').all()
     result = []
     for e in espaces:
         admin = User.query.get(e.admin_id)
@@ -310,7 +348,7 @@ def list_invitations(espace_id):
         return jsonify({'error': 'Non authentifié'}), 401
 
     espace = Espace.query.get(espace_id)
-    if espace is None:
+    if espace is None or espace.statut == 'Supprimé':
         return jsonify({'error': 'Espace introuvable'}), 404
 
     if espace.admin_id != g.user['id'] and g.user['role'] != 'AdminGlobal':
@@ -429,11 +467,11 @@ def list_all_my_espaces():
 
     user_id = g.user['id']
 
-    espaces_admin = Espace.query.filter_by(admin_id=user_id).all()
+    espaces_admin = Espace.query.filter(Espace.admin_id == user_id, Espace.statut != 'Supprimé').all()
 
     memberships = Membership.query.filter_by(user_id=user_id).all()
     espaces_membre_ids = [m.espace_id for m in memberships]
-    espaces_membre = Espace.query.filter(Espace.id.in_(espaces_membre_ids)).all() if espaces_membre_ids else []
+    espaces_membre = Espace.query.filter(Espace.id.in_(espaces_membre_ids), Espace.statut != 'Supprimé').all() if espaces_membre_ids else []
 
     def serialize(e, role):
         nb_membres = Membership.query.filter_by(espace_id=e.id).count() + 1  # +1 pour l'admin
@@ -568,43 +606,36 @@ def delete_espace_by_admin(espace_id):
     if espace.admin_id != g.user['id'] and g.user['role'] != 'AdminGlobal':
         return jsonify({'error': 'Seul l admin de l espace peut le supprimer'}), 403
 
-    fichiers = Fichier.query.filter_by(espace_id=espace_id).all()
-    for f in fichiers:
-        if f.chemin and os_module.path.exists(f.chemin):
-            try:
-                os_module.remove(f.chemin)
-            except Exception:
-                pass
-        VersionFichier.query.filter_by(fichier_id=f.id).delete()
-        ACL.query.filter_by(fichier_id=f.id).delete()
-        db.session.delete(f)
+    # Soft Delete : On ne supprime plus physiquement l'espace ni ses données
+    # MODIFICATION : On renomme l'espace pour libérer son nom originel.
+    old_nom = espace.nom
+    espace.nom = f"deleted_{espace.id}_{old_nom}"
+    espace.statut = "Supprimé"
 
-    Membership.query.filter_by(espace_id=espace_id).delete()
-    Invitation.query.filter_by(espace_id=espace_id).delete()
-
-    db.session.delete(espace)
     db.session.commit()
 
     from app.services.logger import log_action
     log_action(
         user_id=g.user['id'],
-        action='delete_espace',
+        user_email=g.user['email'],
+        action="SUPPRESSION D'ESPACE",
         resource_id=espace_id,
-        statut='succes',
-        details=f'Espace "{espace.nom}" supprime'
+        statut='Succès',
+        details=f'Espace "{old_nom}" (ID {espace_id}) supprime logiquement'
     )
+    db.session.commit()
 
-    # Rétrograder si l'utilisateur ne gère plus aucun espace
+    # Rétrograder si l'utilisateur ne gère plus aucun espace ACTIF
     role_change = None
     user = User.query.get(g.user['id'])
     if user and user.role == 'AdminEspace':
-        autres = Espace.query.filter_by(admin_id=user.id).count()
-        if autres == 0:
+        autres_actifs = Espace.query.filter(Espace.admin_id == user.id, Espace.statut != 'Supprimé').count()
+        if autres_actifs == 0:
             user.role = 'Utilisateur'
             db.session.commit()
             role_change = 'Utilisateur'
 
-    return jsonify({'message': 'Espace supprime', 'role_updated': role_change}), 200
+    return jsonify({'message': 'Espace supprime logiquement', 'role_updated': role_change}), 200
 
 
 # ─── Renommer un espace ───────────────────────────────────────────
@@ -731,7 +762,7 @@ def get_espace_details(espace_id):
         return jsonify({'error': 'Non authentifié'}), 401
 
     espace = Espace.query.get(espace_id)
-    if espace is None:
+    if espace is None or espace.statut == 'Supprimé':
         return jsonify({'error': 'Espace introuvable'}), 404
 
     user_id = g.user['id']

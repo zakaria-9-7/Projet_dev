@@ -13,6 +13,7 @@ from app.models.notification import Notification
 from app.models.quota_request import QuotaRequest
 from app.models.log import Log
 from app.extensions import db, bcrypt
+from app.services.logger import log_action
 
 
 def _generate_temp_password(length=12):
@@ -86,6 +87,14 @@ def create_user():
     db.session.add(new_user)
     db.session.commit()
 
+    admin_email = g.user.get('email', 'Admin')
+    log_action(
+        user_id=g.user['id'],
+        user_email=admin_email,
+        action="Gouvernance",
+        details=f"Compte {email} créé manuellement par l'administrateur {admin_email}."
+    )
+
     email_envoye = False
     try:
         from app.services.mailer import send_temp_password_email
@@ -148,32 +157,35 @@ def delete_user(user_id):
           return jsonify({'error': 'Impossible de supprimer le dernier administrateur global'}), 403
 
   try:
-      # Nettoyage manuel des dépendances pour éviter les violations de clés étrangères
-      ACL.query.filter_by(user_id=user_id).delete()
-      Membership.query.filter_by(user_id=user_id).delete()
-      Notification.query.filter_by(user_id=user_id).delete()
-      QuotaRequest.query.filter_by(user_id=user_id).delete()
-      Log.query.filter_by(user_id=user_id).delete()
+      # Soft Delete : On ne supprime plus physiquement l'utilisateur ni ses données
+      # pour préserver l'intégrité référentielle et les pistes d'audit.
+      original_email = user.email
+      user.statut = "Supprimé"
+      user.email = f"deleted_{user.id}_{original_email}" # Libère l'email pour une réinscription
+      
+      admin_email = g.user.get('email', 'Admin')
+      
+      # 1. Log persistant pour l'utilisateur (identité figée)
+      log_action(
+          user_id=user.id,
+          user_email=original_email,
+          action="suppression_compte",
+          details=f"Compte révoqué par l'administrateur {admin_email}."
+      )
 
-      # Suppression des fichiers dont il est le propriétaire
-      fichiers = Fichier.query.filter_by(user_id=user_id).all()
-      for f in fichiers:
-          VersionFichier.query.filter_by(fichier_id=f.id).delete()
-          ACL.query.filter_by(fichier_id=f.id).delete()
-          db.session.delete(f)
+      # 2. Log de Gouvernance pour l'admin
+      log_action(
+          user_id=g.user['id'],
+          user_email=admin_email,
+          action="Gouvernance",
+          details=f"Compte révoqué par l'administrateur {admin_email}."
+      )
 
-      # Suppression des espaces dont il est l'administrateur
-      espaces = Espace.query.filter_by(admin_id=user_id).all()
-      for e in espaces:
-          # Note: On pourrait réassigner l'espace, mais ici on choisit le nettoyage simple
-          db.session.delete(e)
-
-      db.session.delete(user)
       db.session.commit()
-      return jsonify({'message': 'Utilisateur et ses données supprimés avec succès'}), 200
+      return jsonify({'message': 'Utilisateur désactivé avec succès (Soft Delete)'}), 200
   except Exception as e:
       db.session.rollback()
-      return jsonify({'error': f"Erreur d'intégrité BDD : {str(e)}"}), 400
+      return jsonify({'error': f"Erreur lors de la désactivation : {str(e)}"}), 400
 
 
 @admin_global_bp.route('/admin/files', methods=['GET'])
@@ -220,7 +232,7 @@ def admin_get_espace_quotas():
     from app.models.espace import Espace
     from app.models.fichier import Fichier
 
-    espaces = Espace.query.all()
+    espaces = Espace.query.filter(Espace.statut != 'Supprimé').all()
     result = []
     for e in espaces:
         admin = User.query.get(e.admin_id)
@@ -309,7 +321,7 @@ def admin_stats():
         'stockage_go': round(total_go, 4),
         'total_fichiers': len(fichiers),
         'total_users': User.query.count(),
-        'total_espaces': Espace.query.count(),
+        'total_espaces': Espace.query.filter(Espace.statut != 'Supprimé').count(),
     }), 200
 
 
@@ -324,7 +336,7 @@ def admin_list_all_espaces():
     if g.user['role'] != 'AdminGlobal':
         return jsonify({'error': 'Accès réservé à l administrateur global'}), 403
 
-    espaces = Espace.query.all()
+    espaces = Espace.query.filter(Espace.statut != 'Supprimé').all()
     result = []
     for e in espaces:
         admin = User.query.get(e.admin_id)
@@ -342,41 +354,38 @@ def admin_list_all_espaces():
 
 
 @admin_global_bp.route('/admin/espaces/<int:espace_id>', methods=['DELETE'])
+@require_role('AdminGlobal')
 def admin_delete_espace(espace_id):
     from app.models.espace import Espace
-    from app.models.membership import Membership
-    from app.models.invitation import Invitation
-    from app.models.fichier import Fichier
-    from app.models.acl import ACL
-    from app.models.version import VersionFichier
-    import os as os_module
 
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
-    if g.user['role'] != 'AdminGlobal':
-        return jsonify({'error': 'Accès réservé'}), 403
 
     espace = Espace.query.get(espace_id)
     if espace is None:
         return jsonify({'error': 'Espace introuvable'}), 404
 
-    fichiers = Fichier.query.filter_by(espace_id=espace_id).all()
-    for f in fichiers:
-        if f.chemin and os_module.path.exists(f.chemin):
-            try:
-                os_module.remove(f.chemin)
-            except Exception:
-                pass
-        VersionFichier.query.filter_by(fichier_id=f.id).delete()
-        ACL.query.filter_by(fichier_id=f.id).delete()
-        db.session.delete(f)
+    try:
+        # Soft Delete : On ne supprime plus physiquement l'espace ni ses données
+        # pour préserver l'intégrité référentielle et les pistes d'audit.
+        # MODIFICATION : On renomme l'espace pour libérer son nom originel.
+        old_nom = espace.nom
+        espace.nom = f"deleted_{espace.id}_{old_nom}"
+        espace.statut = "Supprimé"
+        
+        log_action(
+            user_id=g.user['id'],
+            user_email=g.user['email'],
+            action="SUPPRESSION D'ESPACE",
+            details=f"Révocation et archivage logique (Soft Delete) de l'espace collaboratif '{old_nom}' (ID historique: {espace.id}). Statut passé à inactif, contrainte de nommage libérée.",
+            statut="Succès"
+        )
+        db.session.commit()
 
-    Membership.query.filter_by(espace_id=espace_id).delete()
-    Invitation.query.filter_by(espace_id=espace_id).delete()
-    db.session.delete(espace)
-    db.session.commit()
-
-    return jsonify({'message': 'Espace supprimé'}), 200
+        return jsonify({'message': 'Espace supprimé avec succès'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f"Erreur lors de la suppression : {str(e)}"}), 400
 
 
 @admin_global_bp.route('/admin/espaces/<int:espace_id>/members', methods=['GET'])

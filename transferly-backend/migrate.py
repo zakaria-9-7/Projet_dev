@@ -26,6 +26,7 @@ COLUMNS = [
     # Espaces
     ("espaces",   "upload_policy",    "VARCHAR(20) DEFAULT 'tous'"),
     ("espaces",   "upload_autorises", "TEXT DEFAULT ''"),
+    ("espaces",   "statut",           "VARCHAR(20) DEFAULT 'actif'"),
 
     # Users – colonne preferences ajoutée pour les paramètres utilisateur
     ("users",     "preferences",      "TEXT"),

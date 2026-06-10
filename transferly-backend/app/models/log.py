@@ -10,4 +10,5 @@ class Log(db.Model):
     resource_id = db.Column(db.Integer, nullable=True)       # ID du fichier/dossier concerné
     details     = db.Column(db.Text, nullable=True)          # informations complémentaires libres
     date        = db.Column(db.DateTime, default=datetime.utcnow)
-    user_id     = db.Column(db.Integer, db.ForeignKey('users.id'))
+    user_id     = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    user_email  = db.Column(db.String(150), nullable=True)     # Identity persistence after deletion

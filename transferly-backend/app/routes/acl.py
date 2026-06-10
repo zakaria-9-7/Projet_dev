@@ -275,17 +275,8 @@ def _acl_to_dict(acl: ACL) -> dict:
 
 
 def _write_log(user_id: int, action: str, statut: str):
-    try:
-        log = Log(
-            user_id=user_id,
-            action=action,
-            statut=statut,
-            date=datetime.utcnow()
-        )
-        db.session.add(log)
-        db.session.commit()
-    except Exception:
-        pass
+    from app.services.logger import log_action
+    log_action(user_id=user_id, action=action, statut=statut)
 
 
 # ─── GET /acl/fichier/<fichier_id>/espace ────────────────────────

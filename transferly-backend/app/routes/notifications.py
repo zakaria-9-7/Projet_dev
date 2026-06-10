@@ -12,7 +12,12 @@ def list_notifications():
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
 
-    notifs = Notification.query.filter_by(user_id=g.user['id']) \
+    user_id = g.user.get('id')
+    if not user_id:
+        return jsonify([]), 200
+
+    # Filtre strict : Uniquement les notifications adressées personnellement à l'utilisateur
+    notifs = Notification.query.filter(Notification.user_id == user_id) \
         .order_by(Notification.date_creation.desc()).limit(30).all()
 
     return jsonify([{
@@ -30,7 +35,12 @@ def count_non_lues():
     if not hasattr(g, 'user') or g.user is None:
         return jsonify({'error': 'Non authentifié'}), 401
 
-    count = Notification.query.filter_by(user_id=g.user['id'], lu=False).count()
+    user_id = g.user.get('id')
+    if not user_id:
+        return jsonify({'count': 0}), 200
+
+    # Filtre strict pour le compteur
+    count = Notification.query.filter(Notification.user_id == user_id, Notification.lu == False).count()
     return jsonify({'count': count}), 200
 
 

@@ -40,6 +40,13 @@ def register():
     db.session.add(user)
     db.session.commit()
 
+    log_action(
+        user_id=user.id,
+        user_email=user.email,
+        action="register",
+        details="Création de compte par auto-inscription."
+    )
+
     send_welcome_email(user.email, user.nom)
 
     return jsonify({'message': 'Compte créé avec succès'}), 201
@@ -112,6 +119,12 @@ def verify_otp():
 
     if otp.tentatives >= MAX_TENTATIVES:
         user.statut = 'bloque'
+        log_action(
+            user_id=user.id,
+            action='blocage_securite',
+            statut='bloque',
+            details="Compte verrouillé automatiquement après 5 échecs d'authentification OTP (Protection Brute-Force)."
+        )
         db.session.delete(otp)
         db.session.commit()
         return jsonify({'error': 'Trop de tentatives, compte bloqué'}), 403
@@ -124,6 +137,16 @@ def verify_otp():
     if otp.code != code:
         otp.tentatives += 1
         db.session.commit()
+        
+        log_action(
+            user_id=user.id,
+            user_email=user.email,
+            action="CONNEXION ECHOUEE",
+            details=f"Authentification Échouée - Code OTP incorrect ou expiré renseigné pour le compte {user.email}.",
+            statut="Échec"
+        )
+        db.session.commit()
+        
         restantes = MAX_TENTATIVES - otp.tentatives
         return jsonify({'error': f'Code incorrect, {restantes} tentative(s) restante(s)'}), 401
 
@@ -137,9 +160,7 @@ def verify_otp():
         'exp': datetime.utcnow() + timedelta(hours=2)
     }, os.getenv('SECRET_KEY', 'devsecret'), algorithm='HS256')
 
-    log = Log(action='connexion', statut='succes', user_id=user.id)
-    db.session.add(log)
-    db.session.commit()
+    log_action(user_id=user.id, action='connexion', statut='succes', user_email=user.email)
 
     return jsonify({
         'token': token,
@@ -153,12 +174,14 @@ def verify_otp():
 # ── SD-04 : Logout ───────────────────────────────────────────────
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
-    user = getattr(g, 'user', None)
-    if user:
-        log = Log(action='deconnexion', statut='succes', user_id=user['id'])
-        db.session.add(log)
-        db.session.commit()
-    return jsonify({'message': 'Déconnecté'}), 200
+    if hasattr(g, 'user') and g.user:
+        log_action(
+            user_id=g.user['id'],
+            action='deconnexion',
+            statut='succes',
+            details='Déconnexion manuelle de l\'utilisateur'
+        )
+    return jsonify({'message': 'Déconnexion réussie'}), 200
 
 
 # ── Refresh JWT (mise à jour du rôle sans déconnexion) ───────────
@@ -349,6 +372,14 @@ def delete_my_account():
     if not user:
         return jsonify({'error': 'Utilisateur introuvable'}), 404
     user_email, user_nom = user.email, user.nom
+    
+    log_action(
+        user_id=user.id,
+        user_email=user_email,
+        action="suppression_compte",
+        details="Clôture de compte initiée par l'utilisateur lui-même."
+    )
+
     db.session.delete(user)
     db.session.commit()
     send_account_deleted_email(user_email, user_nom)

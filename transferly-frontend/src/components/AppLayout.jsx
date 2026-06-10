@@ -6,6 +6,7 @@ import {
   Sun, Moon, Inbox, Activity,
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
+import API from '../api/auth';
 import cicada from '../assets/cicada.svg';
 import './AppLayout.css';
 
@@ -123,11 +124,17 @@ export default function AppLayout({ children, titleNode }) {
     return 'U';
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    document.documentElement.classList.remove('dark');
-    document.documentElement.removeAttribute('data-theme');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await API.post('/logout');
+    } catch (err) {
+      console.warn('Logout API failed', err);
+    } finally {
+      localStorage.clear();
+      document.documentElement.classList.remove('dark');
+      document.documentElement.removeAttribute('data-theme');
+      navigate('/login');
+    }
   };
 
   const pageTitle = PAGE_TITLES[location.pathname] || 'Wings';

@@ -310,9 +310,27 @@ def move_file_to_folder():
         if folder.espace_id != espace_id:
             return jsonify({'error': 'Dossier incompatible avec le contexte du fichier'}), 400
 
+    from app.models.espace import Espace
+    espace_orig = Espace.query.get(fichier.espace_id) if fichier.espace_id else None
+    espace_dest = Espace.query.get(espace_id) if espace_id else None
+    
+    nom_orig = espace_orig.nom if espace_orig else "Espace Personnel"
+    nom_dest = espace_dest.nom if espace_dest else "Espace Personnel"
+
     fichier.folder_id = folder_id
     fichier.espace_id = espace_id  # ← AJOUTER : toujours préserver l'espace d'origine
     db.session.commit()
+
+    from app.services.logger import log_action
+    log_action(
+        user_id=g.user['id'],
+        user_email=g.user['email'],
+        action="DEPLACEMENT",
+        details=f"Modification de l'arborescence : Le fichier '{fichier.nom}' a été déplacé avec succès de l'emplacement d'origine '{nom_orig}' vers l'espace/dossier de destination '{nom_dest}'. Opérateur : {g.user['email']}.",
+        statut="Succès"
+    )
+    db.session.commit()
+
     return jsonify({'message': 'Fichier déplacé'}), 200
 
 

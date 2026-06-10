@@ -9,3 +9,4 @@ class Espace(db.Model):
     quota = db.Column(db.Float, default=5.0)
     upload_policy = db.Column(db.String(20), default='tous')
     upload_autorises = db.Column(db.Text, default='')
+    statut = db.Column(db.String(20), default='actif')

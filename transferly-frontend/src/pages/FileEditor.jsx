@@ -17,52 +17,40 @@ export default function FileEditor() {
   const [loading, setLoading]       = useState(true);
   const [saving, setSaving]         = useState(false);
   const [toast, setToast]           = useState(null);
-  const [lockStatus, setLockStatus] = useState({ checked: false, locked: false });
+  const [lockStatus, setLockStatus] = useState({ checked: false, locked: false, can_edit: true });
   const [lockReadOnly, setLockReadOnly] = useState(false);
   const [lockActionLoading, setLockActionLoading] = useState(false);
+  const [lockStateRef, setLockStateRef] = [useRef({ is_mine: false, fileId: null }), null]; // Correction technique interne pour le remplacement
   const heartbeatIntervalRef = useRef(null);
-  const lockStateRef = useRef({ is_mine: false, fileId: null });
+  const lockStateRefReal = useRef({ is_mine: false, fileId: null });
+  const [dirty, setDirty] = useState(false);
 
   const readOnly = urlReadOnly || lockReadOnly;
-  const dirty = !readOnly && content !== original;
 
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 4000);
-  };
-
-  const checkAndAcquireLock = useCallback(async (id) => {
-    if (!id) return;
+  const triggerAutoLock = useCallback(async (id) => {
+    if (!id || lockStatus.locked) return;
     try {
-      const statusRes = await API.get(`/files/${id}/lock`);
-      if (statusRes.data.locked && !statusRes.data.is_mine) {
-        setLockStatus({ checked: true, ...statusRes.data });
+      const res = await API.post(`/files/${id}/lock`);
+      const { is_locked, locked_by_email, can_edit } = res.data;
+      
+      setLockStatus({
+        checked: true,
+        locked: is_locked,
+        is_mine: can_edit,
+        can_edit: can_edit,
+        lock: { user_email: locked_by_email }
+      });
+      
+      if (!can_edit) {
         setLockReadOnly(true);
-        return;
-      }
-      try {
-        const acquireRes = await API.post(`/files/${id}/lock`, { manual: false });
-        setLockStatus({ checked: true, ...acquireRes.data });
+      } else {
         setLockReadOnly(false);
-      } catch (e) {
-        if (e.response?.status === 409) {
-          setLockStatus({ checked: true, locked: true, is_mine: false, lock: e.response.data.locked_by });
-          setLockReadOnly(true);
-        } else if (e.response?.status === 400) {
-          // Fichier non lié à un espace : verrou non applicable
-          setLockStatus({ checked: false, locked: false });
-          setLockReadOnly(false);
-        } else {
-          setLockStatus({ checked: true, locked: false });
-          setLockReadOnly(false);
-        }
       }
     } catch (e) {
-      console.error('Erreur check verrou:', e);
-      setLockStatus({ checked: true, locked: false });
-      setLockReadOnly(false);
+      console.error('Erreur auto-lock:', e);
+      setLockStatus({ checked: true, locked: false, can_edit: true });
     }
-  }, []);
+  }, [lockStatus.locked]);
 
   // Bloc navigation navigateur (F5, fermer onglet, etc.)
   useEffect(() => {
@@ -90,7 +78,9 @@ export default function FileEditor() {
         else showToast(err.response?.data?.error || 'Erreur lors du chargement.', 'error');
       })
       .finally(() => setLoading(false));
-    checkAndAcquireLock(fileId);
+    
+    // Lazy Locking: Le verrouillage automatique ne se déclenche plus à l'ouverture,
+    // mais lors de la première modification du texte.
   }, [fileId]);
 
   // Heartbeat : maintenir le verrou actif tant qu'on édite
@@ -102,7 +92,7 @@ export default function FileEditor() {
         await API.put(`/files/${fileId}/lock/heartbeat`);
       } catch (e) {
         console.error('Heartbeat échoué:', e);
-        checkAndAcquireLock(fileId);
+        // On ne tente pas de reprendre la main ici, le polling s'en chargera
       }
     };
 
@@ -115,37 +105,46 @@ export default function FileEditor() {
     };
   }, [lockStatus.checked, lockStatus.locked, lockStatus.is_mine, fileId]);
 
-  // Polling pour détecter quand un AUTRE utilisateur pose un verrou
-  // (utile quand on est en mode lecture ou édition sans verrou explicite)
+  // Polling quasi-temps réel (Short Polling) pour synchroniser les verrous
   useEffect(() => {
-    if (!fileId || (lockStatus.locked && lockStatus.is_mine)) return;
+    if (!fileId) return;
 
     const intervalId = setInterval(async () => {
       try {
-        const res = await API.get(`/files/${fileId}/lock`);
-        const newStatus = res.data;
+        // On vérifie toujours le statut pour détecter les verrous tiers
+        const res = await API.get(`/files/${fileId}/status`);
+        const { is_locked, locked_by } = res.data;
 
-        setLockStatus(prev => {
-          if (prev.locked === newStatus.locked &&
-              prev.is_mine === newStatus.is_mine &&
-              prev.lock?.user_id === newStatus.lock?.user_id) {
-            return prev;
-          }
-          return { checked: true, ...newStatus };
-        });
-
-        if (newStatus.locked && !newStatus.is_mine) {
+        if (is_locked && locked_by !== lockStatus.lock?.user_email) {
+          // Un autre utilisateur a pris le verrou
+          setLockStatus(prev => ({
+            ...prev,
+            checked: true,
+            locked: true,
+            is_mine: false,
+            can_edit: false,
+            lock: { user_email: locked_by }
+          }));
           setLockReadOnly(true);
-        } else if (!newStatus.locked) {
+        } else if (!is_locked && lockStatus.locked) {
+          // Le verrou a été libéré
+          setLockStatus(prev => ({
+            ...prev,
+            checked: true,
+            locked: false,
+            is_mine: false,
+            can_edit: true,
+            lock: null
+          }));
           setLockReadOnly(false);
         }
       } catch (e) {
-        // Silencieux
+        console.error('Erreur sync verrou:', e);
       }
-    }, 10000);
+    }, 3000);
 
     return () => clearInterval(intervalId);
-  }, [fileId, lockStatus.locked, lockStatus.is_mine]);
+  }, [fileId, lockStatus.can_edit, lockStatus.locked, lockStatus.lock?.user_email]);
 
   // Synchronisation de la ref avec le state courant du verrou
   useEffect(() => {
@@ -160,13 +159,14 @@ export default function FileEditor() {
     return () => {
       const { is_mine, fileId: storedFileId } = lockStateRef.current;
       if (is_mine && storedFileId) {
-        API.delete(`/files/${storedFileId}/lock`).catch(() => {});
+        // Utilisation de la route synchronisée POST /unlock
+        API.post(`/files/${storedFileId}/unlock`).catch(() => {});
       }
     };
-  }, []); // Pas de dépendances → s'exécute uniquement au mount/unmount réel
+  }, []); // Pas de dépendances → s'exécute uniquement au unmount réel
 
   const handleSave = useCallback(async () => {
-    if (saving || !fileId) return;
+    if (saving || !fileId || !lockStatus.can_edit) return;
     setSaving(true);
     try {
       await API.put(`/files/${fileId}`, { content }, {
@@ -178,6 +178,8 @@ export default function FileEditor() {
       const status = err.response?.status;
       if (status === 423) {
         showToast('Ce fichier est en cours de modification par un autre utilisateur. Réessayez dans quelques instants.', 'error');
+        // On force le mode lecture seule si on s'aperçoit d'un verrou concurrent
+        setLockReadOnly(true);
       } else if (status === 403) {
         showToast('Vous n\'avez pas la permission de modifier ce fichier.', 'error');
       } else if (status === 415) {
@@ -188,7 +190,7 @@ export default function FileEditor() {
     } finally {
       setSaving(false);
     }
-  }, [fileId, content, saving]);
+  }, [fileId, content, saving, lockStatus.can_edit]);
 
   const handleBack = () => {
     if (dirty && !window.confirm('Vous avez des modifications non sauvegardées. Quitter quand même ?')) return;
@@ -257,16 +259,16 @@ export default function FileEditor() {
             {!urlReadOnly && !lockReadOnly && (
               <button
                 onClick={handleSave}
-                disabled={saving || loading || !fileId}
+                disabled={saving || loading || !fileId || !lockStatus.can_edit}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 7,
                   padding: '9px 20px', borderRadius: 9,
                   border: 'none',
                   background: 'var(--wings-blue)',
                   color: '#fff', fontSize: 13.5, fontWeight: 600,
-                  cursor: saving || loading ? 'not-allowed' : 'pointer',
+                  cursor: saving || loading || !lockStatus.can_edit ? 'not-allowed' : 'pointer',
                   transition: 'background .15s',
-                  opacity: saving || loading ? 0.75 : 1,
+                  opacity: saving || loading || !lockStatus.can_edit ? 0.75 : 1,
                 }}
               >
                 {saving ? (
@@ -303,140 +305,48 @@ export default function FileEditor() {
         </div>
       )}
 
-      {/* ── Bannière verrou actif ── */}
-      {lockStatus.checked && lockStatus.locked && (
+      {/* ── Bannière restrictive (verrouillé par un autre) ── */}
+      {lockStatus.checked && lockStatus.locked && !lockStatus.is_mine && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
           padding: '10px 16px',
           marginBottom: 12,
           borderRadius: 10,
-          background: lockStatus.is_mine
-            ? 'rgba(255,193,7,0.08)'
-            : 'rgba(229,115,115,0.08)',
-          border: `0.5px solid ${lockStatus.is_mine
-            ? 'rgba(255,193,7,0.3)'
-            : 'rgba(229,115,115,0.3)'}`,
+          background: 'rgba(229,115,115,0.08)',
+          border: '0.5px solid rgba(229,115,115,0.3)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {lockStatus.is_mine ? (
-              <Lock size={14} style={{ color: 'var(--wings-gold)' }} />
-            ) : (
-              <AlertTriangle size={14} style={{ color: '#e57373' }} />
-            )}
+            <AlertTriangle size={14} style={{ color: '#e57373' }} />
             <div>
-              <div style={{
-                fontSize: 13,
-                fontWeight: 500,
-                color: lockStatus.is_mine ? 'var(--wings-gold)' : '#e57373',
-              }}>
-                {lockStatus.is_mine
-                  ? 'Vous avez verrouillé ce fichier'
-                  : `Fichier verrouillé par ${lockStatus.lock?.user_nom || lockStatus.lock?.user_email || 'un autre utilisateur'}`}
+              <div style={{ fontSize: 13, fontWeight: 500, color: '#e57373' }}>
+                Fichier verrouillé par {lockStatus.lock?.user_email || 'un autre utilisateur'}
               </div>
-              <div style={{
-                fontSize: 11,
-                color: 'var(--wings-text-muted)',
-                fontFamily: 'monospace',
-                marginTop: 2,
-              }}>
-                {lockStatus.is_mine
-                  ? 'Les autres ne peuvent pas modifier ce fichier'
-                  : "Vous êtes en mode lecture seule. Le verrou expire après 15 minutes d'inactivité."}
+              <div style={{ fontSize: 11, color: 'var(--wings-text-muted)', fontFamily: 'monospace', marginTop: 2 }}>
+                Vous êtes en mode lecture seule.
               </div>
             </div>
           </div>
-
-          {lockStatus.is_mine && (
-            <button
-              onClick={async () => {
-                if (lockActionLoading) return;
-                setLockActionLoading(true);
-                try {
-                  await API.delete(`/files/${fileId}/lock`);
-                  setLockStatus({ checked: true, locked: false });
-                  setLockReadOnly(false);
-                } catch (e) {
-                  console.error(e);
-                } finally {
-                  setLockActionLoading(false);
-                }
-              }}
-              disabled={lockActionLoading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                background: 'transparent',
-                border: '0.5px solid var(--wings-gold)',
-                borderRadius: 999,
-                color: 'var(--wings-gold)',
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: lockActionLoading ? 'wait' : 'pointer',
-                opacity: lockActionLoading ? 0.5 : 1,
-                flexShrink: 0,
-              }}
-            >
-              {lockActionLoading
-                ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                : <Unlock size={12} />}
-              Libérer le verrou
-            </button>
-          )}
         </div>
       )}
 
-      {/* ── Bannière : pas de verrou actif ── */}
-      {lockStatus.checked && !lockStatus.locked && (
+      {/* ── Badge : Verrou détenu par vous ── */}
+      {lockStatus.checked && lockStatus.locked && lockStatus.is_mine && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 16px',
+          padding: '10px 16px',
           marginBottom: 12,
           borderRadius: 10,
-          background: 'var(--wings-surface)',
-          border: '0.5px solid var(--wings-border)',
+          background: 'rgba(255,193,7,0.08)',
+          border: '0.5px solid rgba(255,193,7,0.3)',
         }}>
-          <div style={{ fontSize: 12, color: 'var(--wings-text-muted)' }}>
-            Aucun verrou actif. D'autres peuvent modifier ce fichier.
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Lock size={14} style={{ color: 'var(--wings-gold)' }} />
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--wings-gold)' }}>
+              Verrou détenu par vous
+            </div>
           </div>
-          <button
-            onClick={async () => {
-              if (lockActionLoading) return;
-              setLockActionLoading(true);
-              try {
-                const res = await API.post(`/files/${fileId}/lock`, { manual: true });
-                setLockStatus({ checked: true, ...res.data });
-              } catch (e) {
-                console.error(e);
-              } finally {
-                setLockActionLoading(false);
-              }
-            }}
-            disabled={lockActionLoading}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              background: 'transparent',
-              border: '0.5px solid var(--wings-blue)',
-              borderRadius: 999,
-              color: 'var(--wings-blue)',
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: lockActionLoading ? 'wait' : 'pointer',
-              opacity: lockActionLoading ? 0.5 : 1,
-              flexShrink: 0,
-            }}
-          >
-            <Lock size={12} />
-            Verrouiller
-          </button>
         </div>
       )}
 
@@ -459,7 +369,14 @@ export default function FileEditor() {
         ) : (
           <textarea
             value={content}
-            onChange={readOnly ? undefined : e => setContent(e.target.value)}
+            onChange={readOnly ? undefined : e => {
+              setContent(e.target.value);
+              setDirty(true);
+              // Déclenchement du Lazy Locking automatique lors de la première frappe
+              if (!lockStatus.locked) {
+                triggerAutoLock(fileId);
+              }
+            }}
             readOnly={readOnly}
             spellCheck={false}
             style={{

@@ -15,8 +15,18 @@ _LIMIT_MAX = 1000
 
 def _log_to_dict(log):
     user = User.query.get(log.user_id) if log.user_id else None
+    user_email = log.user_email
+    if not user_email:
+        if user:
+            user_email = user.email
+        else:
+            user_email = f"Utilisateur Supprimé (ID: {log.user_id})" if log.user_id else "Système"
+
     fichier_nom = None
-    if log.resource_id:
+    # Ne chercher le nom du fichier QUE si l'action n'est pas liée à un espace
+    # (pour éviter que l'ID de l'espace ne matche un ID de fichier et n'affiche un nom zip)
+    space_actions = ["CRÉATION D'ESPACE", "SUPPRESSION D'ESPACE", "GOUVERNANCE"]
+    if log.resource_id and log.action not in space_actions:
         fic = Fichier.query.get(log.resource_id)
         if fic:
             fichier_nom = fic.nom
@@ -24,7 +34,7 @@ def _log_to_dict(log):
         'id':          log.id,
         'action':      log.action,
         'statut':      log.statut,
-        'user_email':  user.email if user else None,
+        'user_email':  user_email,
         'date':        log.date.isoformat() if log.date else None,
         'resource_id': log.resource_id,
         'details':     log.details,
@@ -76,7 +86,12 @@ def get_all_logs():
         cw.writerow(['id', 'action', 'statut', 'user_email', 'date', 'resource_id', 'details'])
         for log in logs:
             user = User.query.get(log.user_id) if log.user_id else None
-            user_email = user.email if user else ''
+            user_email = log.user_email
+            if not user_email:
+                if user:
+                    user_email = user.email
+                else:
+                    user_email = f"Utilisateur Supprimé (ID: {log.user_id})" if log.user_id else "Système"
             cw.writerow([log.id, log.action, log.statut, user_email, log.date.isoformat() if log.date else '', log.resource_id or '', log.details or ''])
         return Response(
             si.getvalue(),
